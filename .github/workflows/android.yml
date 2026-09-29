@@ -1,0 +1,72 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Copiar o app para www
+        run: |
+          mkdir www
+          cp index.html manifest.webmanifest www/
+          cp -r icons vendor www/
+
+      - name: Criar o projeto Android
+        run: npx cap add android
+
+      - name: Ícones do app
+        run: npx @capacitor/assets generate --android
+
+      - name: Permissão da câmera
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />#' "$M"
+          grep -n "CAMERA" "$M"
+
+      - name: Chave de assinatura fixa (atualizações instalam por cima)
+        run: |
+          mkdir -p ~/.android
+          cp signing/debug.keystore ~/.android/debug.keystore
+
+      - name: Sincronizar
+        run: npx cap sync android
+
+      - name: Compilar o APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Nomear o APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Revela.apk && ls -la Revela.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Revela-apk
+          path: Revela.apk
+
+      - name: Publicar na página de versões
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-${{ github.run_number }}"
+          gh release create "$TAG" Revela.apk --title "Revela (Android) $TAG" --notes "APK de teste do Revela, assinado com a chave de depuração. Instale pelo celular abrindo o arquivo e permitindo instalar de fontes desconhecidas." --latest

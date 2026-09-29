@@ -2154,8 +2154,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
   $("camBtn").addEventListener("click", () => $("cam").click());
   $("cam").addEventListener("change", e => { loadFile(e.target.files[0]); e.target.value = ""; });
   $("exBtn").addEventListener("click", () => load(sampleLandscape(), "Exemplo: paisagem"));
+  // dentro do app Android (Capacitor): salvar e compartilhar pelo sistema
+  const nativeCap = () => { const c = window.Capacitor; return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins.Filesystem && c.Plugins.Share ? c : null; };
+  async function nativeShare(blob) {
+    const c = nativeCap(); if (!c) return false;
+    const b64 = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1]); fr.onerror = no; fr.readAsDataURL(blob); });
+    const w = await c.Plugins.Filesystem.writeFile({ path: "revela-" + Date.now() + ".jpg", data: b64, directory: "CACHE" });
+    await c.Plugins.Share.share({ title: "Revela", files: [w.uri], dialogTitle: "Salvar ou compartilhar" });
+    return true;
+  }
   $("shareBtn").addEventListener("click", async () => {
     if (!S.lastBlob) return;
+    try { if (await nativeShare(S.lastBlob)) return; } catch (e) { return; }
     try { await navigator.share({ files: [new File([S.lastBlob], "revela.jpg", { type: "image/jpeg" })], title: "Revela" }); } catch (e) { /* o usuário cancelou */ }
   });
   $("file").addEventListener("change", e => { loadFile(e.target.files[0]); e.target.value = ""; });
@@ -2179,9 +2189,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
     const out = render(src, w, h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
     const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").putImageData(out, 0, 0);
     (geoIsId(S.geo) ? c : geoRender(c, S.geo, null, 6000)).toBlob(b => {
-      S.lastBlob = b; try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); $("shareBtn").hidden = !(navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { $("shareBtn").hidden = true; }
+      S.lastBlob = b; try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); $("shareBtn").hidden = !(nativeCap() || (navigator.canShare && navigator.canShare({ files: [f] }))); } catch (e) { $("shareBtn").hidden = !nativeCap(); }
       const url = URL.createObjectURL(b); $("finalImg").src = url; $("final").classList.add("show");
       $("final").scrollIntoView({ block: "nearest" });
+      if (nativeCap()) { nativeShare(b).catch(() => {}); return; }
       const a = document.createElement("a"); a.href = url; a.download = "revela-" + STYLES[S.style].name.toLowerCase() + ".jpg"; try { a.click(); } catch (e) { /* segue o aviso na tela */ }
     }, "image/jpeg", 0.93);
   });
@@ -2192,6 +2203,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
 
   buildStyleCards(); buildSliders();
   initSegmenter();
-  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>
