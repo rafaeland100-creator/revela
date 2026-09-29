@@ -211,6 +211,34 @@ body { background: var(--bg); }
 .hero b { display: block; font-size: 15px; }
 .hero span { color: var(--mute); font-size: 12.5px; }
 .hero .chips { margin: 10px 0 0; }
+.loading { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(6,6,8,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.loading[hidden] { display: none; }
+.lcard { width: min(360px, 100%); text-align: center; display: grid; gap: 14px; }
+.ring { width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; border: 4px solid rgba(255,255,255,.12); border-top-color: var(--accent); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ring { animation-duration: 3s; } }
+.lcard h3 { margin: 0; font-family: var(--font-display); font-size: 22px; }
+.lcard p { margin: 0; color: var(--mute); font-size: 14px; }
+.lbar { height: 8px; background: rgba(255,255,255,.12); border-radius: 4px; overflow: hidden; }
+.lbar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff8a4c, #ff4d7e); transition: width .25s; }
+.lsteps { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--mute); }
+.lsteps span.on { color: var(--fg); }
+.switch { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 0; }
+.switch input { position: absolute; opacity: 0; }
+.switch .tr { width: 46px; height: 28px; border-radius: 14px; background: #34343b; position: relative; transition: background .2s; flex: none; }
+.switch .tr::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.switch input:checked + .tr { background: linear-gradient(135deg, #ff8a4c, #ff4d7e); }
+.switch input:checked + .tr::after { transform: translateX(18px); }
+.switch input:focus-visible + .tr { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch b { font-size: 15px; }
+.switch small { display: block; color: var(--mute); font-size: 12px; font-weight: 400; }
+.detail { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+.detail[hidden] { display: none; }
+.dpair { display: flex; gap: 8px; width: min(920px, 100%); }
+.dpair figure { margin: 0; flex: 1; min-width: 0; }
+.dpair canvas { width: 100%; aspect-ratio: 1; background: #111; border-radius: 8px; touch-action: none; display: block; }
+.dpair figcaption { text-align: center; font-size: 13px; color: var(--mute); margin-top: 6px; }
+.detail p { margin: 0; color: var(--mute); font-size: 13px; text-align: center; }
 .hero.ai { background: linear-gradient(135deg, rgba(120,90,255,.18), rgba(60,190,255,.14)); border-color: rgba(120,140,255,.4); }
 .aibar { height: 6px; background: #2a2a31; border-radius: 3px; overflow: hidden; margin-top: 10px; }
 .aibar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7a5aff, #3cbeff); }
@@ -276,6 +304,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         <canvas id="view" width="10" height="10"></canvas>
         <span class="flag" id="flag" hidden>Original</span>
         <div class="drop" id="drop">Solte a foto aqui</div>
+        <div class="loading" id="loading" hidden><div class="lcard"><div class="ring"></div><h3 id="ldTitle">Analisando a foto…</h3><p id="ldSub">Procurando pessoas, rostos e a luz da cena.</p><div class="lbar"><i id="ldFill"></i></div><div class="lsteps" id="ldSteps"></div><button class="btn" id="ldCancel" type="button" hidden>Cancelar</button></div></div>
       </div>
       <div class="caption"><span id="capName">–</span><span id="capSize">–</span><span id="capTime">–</span></div>
     </section>
@@ -290,13 +319,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       <div class="panes">
 
       <div class="tab" data-tab="looks">
+        <label class="switch"><input type="checkbox" id="autoSw" checked><span class="tr"></span><span><b>Automático</b><small id="autoHint">Ao abrir a foto, o app escolhe e aplica a produção.</small></span></label>
         <div class="hero" id="hero"><b id="heroT">Preparando a produção…</b><span id="heroS">Escolhendo o visual de cinema para esta foto.</span><div class="chips"><button class="chip" id="barsChip" type="button" aria-pressed="true">Faixas de cinema</button><button class="chip" id="grainChip" type="button" aria-pressed="true">Grão de filme</button></div></div>
         <div class="hero ai" id="aiBox">
           <b>Melhoria com IA</b><span id="aiSub">Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho.</span>
           <div class="chips"><button class="chip" id="aiFast" type="button">Rápido</button><button class="chip" id="aiBest" type="button">Melhor</button><button class="chip" id="aiUndo" type="button" hidden>Desfazer IA</button></div>
+          <div class="chips" id="aiViewRow" hidden><button class="chip" id="aiSplit" type="button" aria-pressed="false">Antes / Depois</button><button class="chip" id="aiZoom" type="button">Ver detalhe 100%</button></div>
           <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
           <div class="chips" id="aiCancelRow" hidden><button class="chip" id="aiCancel" type="button">Cancelar</button></div>
-          <div class="field" id="aiStrRow" hidden style="margin-top:8px"><label for="aiStr">Força da IA</label><input type="range" id="aiStr" min="0" max="100" step="1" value="60"><output id="aiStrOut">60%</output></div>
+          <div class="field" id="aiStrRow" hidden style="margin-top:8px"><label for="aiStr">Força da IA</label><input type="range" id="aiStr" min="0" max="150" step="1" value="100"><output id="aiStrOut">100%</output></div>
         </div>
         <div class="looks" id="looks"></div>
         <div class="field lookk"><label for="lookK">Intensidade</label><input type="range" id="lookK" min="0" max="120" step="1" value="100"><output id="lookKOut">100%</output></div>
@@ -392,6 +423,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     </aside>
   </div>
 </div>
+<div class="detail" id="detail" hidden><div class="dpair"><figure><canvas id="dBefore"></canvas><figcaption>Antes</figcaption></figure><figure><canvas id="dAfter"></canvas><figcaption>Depois (IA)</figcaption></figure></div><p>Arraste para andar pela foto em tamanho real. Toque fora ou em Fechar para sair.</p><button class="btn" id="dClose" type="button">Fechar</button></div>
 
 <script>
 (function () {
@@ -622,13 +654,13 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         } catch (e) { segmenter = null; }
       }
       if (!segmenter) throw new Error("modelo não iniciou");
-      segState = "ready"; if (S.prev) runSeg(); else setSegStatus("Segmentação pronta. Abra uma foto.", true);
+      segState = "ready"; if (S.prev) { showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Rosto", "Edição"], false); setLoading(0.12, null, 0); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
       for (const delegate of ["GPU", "CPU"]) {
         try { faceLm = await vision.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 8, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 }); break; } catch (e) { faceLm = null; }
       }
       if (faceLm && S.prev && S.seg) runFace();
     } catch (e) {
-      segState = "fail";
+      segState = "fail"; hideLoading();
       setSegStatus("Segmentação indisponível aqui (" + (e.message || e) + "). O app segue funcionando sem regiões.", false);
     }
   }
@@ -1011,9 +1043,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     a.suggested = studio ? "leib" : (a.seg.person > 0.05 ? (a.satMean > 0.38 && a.seg.person < 0.3 ? "mccurry" : "natural") : (a.scores.adams > a.scores.mccurry && a.med >= 0.25 && a.dr > 0.4 ? "adams" : (a.satMean > 0.38 ? "mccurry" : "natural")));
     S.suggested = a.suggested; if (!S.userPicked) S.style = a.suggested;
     if (S.autoFmt && S.fmt === "feed") { S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; applyAspect(); suggestCrop(); }
-    setSegStatus("Regiões prontas em " + ms + " ms.", true);
+    setSegStatus("Regiões prontas em " + ms + " ms.", true); setLoading(0.7, "Ajustando luz, cor e rosto…", 2);
     $("regs").innerHTML = REG.map((r, i) => `<span><i style="background:rgb(${r.rgb})"></i>${r.name}<b>${Math.round(fr[i] * 100)}%</b></span>`).join("");
-    $("ovl").disabled = false; showStats(a); applyStyle();
+    $("ovl").disabled = false; showStats(a); applyStyle(); setTimeout(hideLoading, 900);
   }
 
   /* ---------- decisão automática ---------- */
@@ -1387,8 +1419,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- parâmetros efetivos ---------- */
   const LOOKS = {
-    blockbuster: { name: "Blockbuster", tag: "Cinema", d: { contrast: 0.38, sat: 0.04, vibrance: 0.2, clarity: 0.22, tcMid: 0.25, vignette: 0.34, grain: 0.14, halation: 0.55, bars: 2.39, shR: -0.075, shG: 0.028, shB: 0.11, hiR: 0.13, hiG: 0.05, hiB: -0.11, warm: 0.15, teal: 0.2 } },
-    kodak: { name: "Filme Kodak", tag: "Cinema", d: { fade: 0.2, contrast: 0.16, sat: -0.02, vibrance: 0.24, warm: 0.3, grain: 0.32, halation: 0.4, bloomHi: 0.25, vignette: 0.2, shR: 0.03, shG: 0.03, shB: -0.01, hiR: 0.1, hiG: 0.055, hiB: -0.07, mid: 0.06 } },
+    blockbuster: { name: "Blockbuster", tag: "Cinema", d: { contrast: 0.38, sat: 0.04, vibrance: 0.2, clarity: 0.22, tcMid: 0.25, vignette: 0.34, grain: 0.14, halation: 0.55, bars: 2.39, shR: -0.07, shG: 0.026, shB: 0.1, hiR: 0.06, hiG: 0.03, hiB: -0.06, warm: 0.06, teal: 0.2 } },
+    kodak: { name: "Filme Kodak", tag: "Cinema", d: { fade: 0.2, contrast: 0.16, sat: -0.02, vibrance: 0.24, warm: 0.3, grain: 0.32, halation: 0.4, bloomHi: 0.25, vignette: 0.2, shR: 0.03, shG: 0.03, shB: -0.01, hiR: 0.07, hiG: 0.04, hiB: -0.05, mid: 0.06 } },
     golden: { name: "Golden Hour", tag: "Cinema", d: { temp: 0.32, warm: 0.6, contrast: 0.18, vibrance: 0.3, glow: 0.35, glowRange: 0.55, bloomHi: 0.5, halation: 0.35, vignette: 0.2, shadows: 0.15, shR: 0.06, shB: -0.04, hiR: 0.16, hiG: 0.075, hiB: -0.13, mid: 0.05 } },
     noir: { name: "Noir", tag: "Cinema", d: { bw: 1, contrast: 0.55, structure: 0.35, tcMid: 0.3, vignette: 0.45, grain: 0.34, halation: 0.3, bars: 2.39, fade: 0.05 } },
     neon: { name: "Neon noite", tag: "Cinema", d: { contrast: 0.42, sat: 0.16, vibrance: 0.4, tcLow: 0.25, bloomHi: 0.6, halation: 0.3, vignette: 0.3, grain: 0.12, shR: -0.06, shG: -0.01, shB: 0.11, hiR: 0.13, hiG: -0.02, hiB: 0.07 } },
@@ -1988,7 +2020,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const t0 = performance.now(), sm = getSmall();
     const img = render(sm.d, sm.w, sm.h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender());
     sm.cx.putImageData(img, 0, 0); rcx.imageSmoothingEnabled = true; rcx.drawImage(sm.c, 0, 0, rc.width, rc.height);
-    present(); TM.fast = Math.round(performance.now() - t0);
+    present(); drawSplit(); TM.fast = Math.round(performance.now() - t0);
   }
   function draw() {
     raf = 0;
@@ -2004,7 +2036,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if ((S.tool === "selective" || S.tool === "brush") && S.showMask) drawLocalOverlay();
     if (S.overlay && S.ov) rcx.drawImage(S.ov, 0, 0, rc.width, rc.height);
     if (S.overlay && S.ovFace) rcx.drawImage(S.ovFace, 0, 0, rc.width, rc.height);
-    present();
+    present(); drawSplit();
     drawHist(h);
     TM.render = Math.round(performance.now() - t0);
     $("capTime").textContent = "render " + Math.round(performance.now() - t0) + " ms";
@@ -2199,7 +2231,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   function applyStyle() {
     const r = autoParams(S.style, S.an);
-    S.target = r.P; S.notes = r.notes;
+    S.target = autoOn() ? r.P : { ...NEUTRAL }; S.notes = autoOn() ? r.notes : ["O modo Automático está desligado. A foto está como você tirou, e você escolhe tudo à mão."];
     $("notes").innerHTML = ""; r.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
     $("reset").hidden = Object.keys(S.manual).length === 0;
     refreshStyleCards(); schedule();
@@ -2213,6 +2245,19 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       ["Saturação média", Math.round(a.satMean * 100) + "%"], ["Sombras afundadas", Math.round(a.fracDark * 100) + "%"], ["Regiões", S.seg ? "detectadas" : "não detectadas"], ["Rostos", S.face ? S.face.n + " (olhos e dentes)" : (S.an && S.an.face === null && S.seg ? "nenhum" : "–")], ["Detalhe do fundo", S.an && S.an.seg ? String(Math.round(S.an.seg.bgGrad * 1000) / 10) : "–"], ["Vinheta existente", a.vig < 0.6 ? "sim" : "não"], ["Pretos levantados", a.p005 > 0.07 ? "sim" : "não"]];
     $("stats").innerHTML = rows.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join("");
   }
+
+  /* ---------- tela de espera ---------- */
+  let ldT = null;
+  function showLoading(title, sub, steps, cancelable) {
+    $("ldTitle").textContent = title; $("ldSub").textContent = sub; $("ldFill").style.width = "4%"; $("ldCancel").hidden = !cancelable;
+    $("ldSteps").innerHTML = (steps || []).map(t => `<span>${t}</span>`).join(" · "); $("loading").hidden = false;
+    clearTimeout(ldT); ldT = setTimeout(hideLoading, 90000);
+  }
+  function setLoading(frac, sub, stepIdx) {
+    if (frac != null) $("ldFill").style.width = Math.max(4, Math.round(frac * 100)) + "%"; if (sub) $("ldSub").textContent = sub;
+    if (stepIdx != null) [...$("ldSteps").children].forEach((e, i) => e.classList.toggle("on", i <= stepIdx));
+  }
+  function hideLoading() { clearTimeout(ldT); $("loading").hidden = true; }
 
   /* ---------- melhoria com IA (Real-ESRGAN) ---------- */
   const AI = { ort: null, sess: null, busy: false, cancel: false };
@@ -2260,30 +2305,86 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   async function aiEnhance(long) {
     if (AI.busy || !S.orig) return; AI.busy = true; AI.cancel = false;
-    $("aiFast").disabled = $("aiBest").disabled = true; $("aiBar").hidden = false; $("aiCancelRow").hidden = false; $("aiSub").textContent = "Carregando a IA…"; $("aiFill").style.width = "0%";
+    $("aiFast").disabled = $("aiBest").disabled = true; $("aiSub").textContent = "Melhorando com IA…"; showLoading("Melhorando com IA", "Carregando a rede neural…", ["Carregar IA", "Reconstruir detalhe", "Misturar e finalizar"], true); setLoading(0.04, null, 0);
     const t0 = performance.now();
     try {
       if (!S.orig0) S.orig0 = S.orig;
       const src0 = S.orig0, sc = Math.min(1, long / Math.max(src0.width, src0.height)), lw = Math.round(src0.width * sc), lh = Math.round(src0.height * sc);
       const small = document.createElement("canvas"); small.width = lw; small.height = lh; const sx = small.getContext("2d", { willReadFrequently: true }); sx.imageSmoothingQuality = "high"; sx.drawImage(src0, 0, 0, lw, lh);
-      const up = await upscale4x(small, f => { $("aiFill").style.width = Math.round(f * 100) + "%"; const el = (performance.now() - t0) / 1000; $("aiSub").textContent = `Reconstruindo detalhe… ${Math.round(f * 100)}% (faltam uns ${Math.max(1, Math.round(el / Math.max(0.02, f) * (1 - f)))} s)`; });
+      const up = await upscale4x(small, f => { const el = (performance.now() - t0) / 1000; setLoading(0.06 + f * 0.86, `${Math.round(f * 100)}% pronto · faltam uns ${Math.max(1, Math.round(el / Math.max(0.02, f) * (1 - f)))} s. Pode deixar o app aberto.`, 1); });
+      setLoading(0.94, "Misturando o resultado com a sua foto…", 2); await nextTick();
       const tw = Math.min(3000, up.width), k = tw / up.width, fw = Math.round(up.width * k), fh = Math.round(up.height * k);
       const ai = document.createElement("canvas"); ai.width = fw; ai.height = fh; const ax = ai.getContext("2d", { willReadFrequently: true }); ax.imageSmoothingQuality = "high"; ax.drawImage(up, 0, 0, fw, fh);
       const bs = document.createElement("canvas"); bs.width = fw; bs.height = fh; const bx = bs.getContext("2d", { willReadFrequently: true }); bx.imageSmoothingQuality = "high"; bx.drawImage(src0, 0, 0, fw, fh);
       S.aiCache = { ai: ax.getImageData(0, 0, fw, fh), base: bx.getImageData(0, 0, fw, fh), w: fw, h: fh };
-      applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false;
+      applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false; $("aiViewRow").hidden = false;
       $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s. A foto agora tem ${fw} × ${fh} px, com detalhe reconstruído. ${S.orig0.width * S.orig0.height > fw * fh * 0.9 ? "Esta foto já tinha muitos pixels, então o ganho é principalmente limpeza de ruído e bordas." : ""} Se ficar com cara de pintura, baixe a força.`;
     } catch (e) { $("aiSub").textContent = e.message === "cancelado" ? "Cancelado. A foto continua como estava." : "Não deu para rodar a IA aqui: " + (e.message || e); }
-    $("aiBar").hidden = true; $("aiCancelRow").hidden = true; $("aiFast").disabled = $("aiBest").disabled = false; AI.busy = false;
+    hideLoading(); $("aiFast").disabled = $("aiBest").disabled = false; AI.busy = false;
   }
   function applyAiBlend() {
     const c = S.aiCache; if (!c) return; const k = parseInt($("aiStr").value, 10) / 100, o = new ImageData(c.w, c.h), a = c.ai.data, b = c.base.data, d = o.data;
-    for (let i = 0; i < d.length; i += 4) { d[i] = b[i] + (a[i] - b[i]) * k; d[i + 1] = b[i + 1] + (a[i + 1] - b[i + 1]) * k; d[i + 2] = b[i + 2] + (a[i + 2] - b[i + 2]) * k; d[i + 3] = 255; }
+    const sg = S.segRef || S.seg, cls2 = sg && sg.cls[2], cls3 = sg && sg.cls[3];
+    for (let y = 0; y < c.h; y++) {
+      const sy = sg ? Math.min(sg.h - 1, (y * sg.h / c.h) | 0) * sg.w : 0;
+      for (let x = 0; x < c.w; x++) {
+        const i = (y * c.w + x) * 4; let kk = k;
+        if (sg) { const q = sy + Math.min(sg.w - 1, (x * sg.w / c.w) | 0), sk = Math.min(1, (cls2[q] + cls3[q]) / 255); kk = k * (1 - 0.45 * sk); }
+        for (let ch = 0; ch < 3; ch++) { const v = b[i + ch] + (a[i + ch] - b[i + ch]) * kk; d[i + ch] = v < 0 ? 0 : v > 255 ? 255 : v; }
+        d[i + 3] = 255;
+      }
+    }
     const cv = document.createElement("canvas"); cv.width = c.w; cv.height = c.h; cv.getContext("2d").putImageData(o, 0, 0);
     if (!S.prevData0) S.prevData0 = S.prevData;
     S.orig = cv; setPreviewFrom(cv); $("capSize").textContent = c.w + " × " + c.h + " px (IA)"; schedule(); scheduleThumbs();
+    if (!$("detail").hidden) drawDetail();
   }
-  function aiUndo() { if (!S.orig0) return; S.orig = S.orig0; setPreviewFrom(S.orig); S.aiCache = null; $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Voltei para a foto original."; $("capSize").textContent = S.orig.width + " × " + S.orig.height + " px"; schedule(); scheduleThumbs(); }
+  function aiUndo() { if (!S.orig0) return; S.orig = S.orig0; setPreviewFrom(S.orig); S.aiCache = null; $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiViewRow").hidden = true; S.split = false; $("aiSplit").setAttribute("aria-pressed", "false"); $("aiSub").textContent = "Voltei para a foto original."; $("capSize").textContent = S.orig.width + " × " + S.orig.height + " px"; schedule(); scheduleThumbs(); }
+
+  /* ---------- detalhe 100% e antes/depois ---------- */
+  const DT = { cx: 0.5, cy: 0.4 };
+  function drawDetail() {
+    const c = S.aiCache; if (!c) return; const size = 360, a = $("dAfter"), b = $("dBefore"); a.width = a.height = b.width = b.height = size;
+    const sx = Math.max(0, Math.min(c.w - size, Math.round(DT.cx * c.w - size / 2))), sy = Math.max(0, Math.min(c.h - size, Math.round(DT.cy * c.h - size / 2)));
+    a.getContext("2d").drawImage(S.orig, sx, sy, size, size, 0, 0, size, size);
+    const bx = b.getContext("2d"); bx.imageSmoothingQuality = "high"; bx.drawImage(S.orig0, sx / c.w * S.orig0.width, sy / c.h * S.orig0.height, size / c.w * S.orig0.width, size / c.h * S.orig0.height, 0, 0, size, size);
+  }
+  function openDetail() {
+    if (!S.aiCache) return; const face = S.face && S.face.n; DT.cx = 0.5; DT.cy = 0.4;
+    if (face) { const f = S.face, n = f.w * f.h; let sx = 0, sy = 0, k = 0; for (let i = 0; i < n; i += 3) { const v = f.sclera[i] + f.iris[i]; if (v > 0.5) { sx += i % f.w; sy += (i / f.w) | 0; k++; } } if (k) { DT.cx = sx / k / f.w; DT.cy = sy / k / f.h; } }
+    $("detail").hidden = false; drawDetail();
+  }
+  ["dBefore", "dAfter"].forEach(id => {
+    const el = $(id); let drag = null;
+    el.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, cx: DT.cx, cy: DT.cy }; el.setPointerCapture(e.pointerId); });
+    el.addEventListener("pointermove", e => { if (!drag || !S.aiCache) return; const r = el.getBoundingClientRect(), k = 360 / r.width; DT.cx = Math.max(0.05, Math.min(0.95, drag.cx - (e.clientX - drag.x) * k / S.aiCache.w)); DT.cy = Math.max(0.05, Math.min(0.95, drag.cy - (e.clientY - drag.y) * k / S.aiCache.h)); drawDetail(); });
+    ["pointerup", "pointercancel"].forEach(ev => el.addEventListener(ev, () => { drag = null; }));
+  });
+  $("dClose").addEventListener("click", () => { $("detail").hidden = true; });
+  $("detail").addEventListener("click", e => { if (e.target === $("detail")) $("detail").hidden = true; });
+  $("aiZoom").addEventListener("click", openDetail);
+  $("aiSplit").addEventListener("click", () => { S.split = !S.split; S.splitX = 0.5; $("aiSplit").setAttribute("aria-pressed", String(S.split)); schedule(); });
+  view.addEventListener("pointerdown", e => { if (!S.split || S.tool) return; const r = view.getBoundingClientRect(); S.splitX = Math.max(0.02, Math.min(0.98, (e.clientX - r.left) / r.width)); S.splitDrag = true; view.setPointerCapture(e.pointerId); schedule(); });
+  view.addEventListener("pointermove", e => { if (!S.splitDrag) return; const r = view.getBoundingClientRect(); S.splitX = Math.max(0.02, Math.min(0.98, (e.clientX - r.left) / r.width)); schedule(); });
+  ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, () => { S.splitDrag = false; }));
+  function drawSplit() {
+    if (!S.split || !S.aiCache || !S.orig0) return;
+    const W = view.width, H = view.height, x = S.splitX * W, o = S.orig0;
+    // "antes": a foto original nítida como estava, na mesma janela
+    vctx.save(); vctx.beginPath(); vctx.rect(0, 0, x, H); vctx.clip();
+    const g = S.geo, d = geoDims(rc.width, rc.height, g), cr = (S.tool === "crop" || S.tool === "rotate") ? FULLC : g.crop;
+    if (geoIsId(g)) vctx.drawImage(o, 0, 0, W, H); else { const tmp = geoRender(o, g, cr, Math.max(W, H)); vctx.drawImage(tmp, 0, 0, W, H); }
+    vctx.restore();
+    vctx.save(); vctx.strokeStyle = "#fff"; vctx.lineWidth = Math.max(2, W * 0.004); vctx.beginPath(); vctx.moveTo(x, 0); vctx.lineTo(x, H); vctx.stroke();
+    vctx.fillStyle = "#fff"; vctx.beginPath(); vctx.arc(x, H / 2, Math.max(14, W * 0.028), 0, 7); vctx.fill(); vctx.fillStyle = "#111"; vctx.font = "600 " + Math.max(12, W * 0.024) + "px sans-serif"; vctx.textAlign = "center"; vctx.textBaseline = "middle"; vctx.fillText("↔", x, H / 2);
+    vctx.font = "600 " + Math.max(12, W * 0.026) + "px sans-serif"; vctx.textAlign = "left"; vctx.fillStyle = "rgba(0,0,0,.6)"; vctx.fillRect(8, 8, W * 0.16, W * 0.06); vctx.fillStyle = "#fff"; vctx.fillText("Antes", 14, 8 + W * 0.03);
+    vctx.textAlign = "right"; vctx.fillStyle = "rgba(0,0,0,.6)"; vctx.fillRect(W - 8 - W * 0.16, 8, W * 0.16, W * 0.06); vctx.fillStyle = "#fff"; vctx.fillText("Depois", W - 14, 8 + W * 0.03);
+    vctx.restore();
+  }
+
+  /* ---------- automático ligado/desligado ---------- */
+  function autoOn() { try { return localStorage.getItem("revela_auto") !== "0"; } catch (e) { return true; } }
+  function setAutoPref(v) { try { localStorage.setItem("revela_auto", v ? "1" : "0"); } catch (e) { /* segue sem guardar */ } }
 
   /* ---------- looks, retoques em 1 toque, ajustar e formato ---------- */
   const LOOK_ORDER = ["blockbuster", "kodak", "golden", "noir", "neon", "editorial", "sonho", "drama", "vibrante", "pb", "claro"];
@@ -2306,7 +2407,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const a = S.an; if (!a) return [];
     const portrait = a.skinFrac > 0.03 || (a.seg && a.seg.person > 0.3), land = a.skyFrac > 0.1 || a.greenFrac > 0.15, warmS = a.avgR / Math.max(0.02, a.avgB) > 1.12, dark = a.med < 0.28, colorful = a.satMean > 0.42;
     const first = dark ? (colorful ? ["neon", "drama", "blockbuster"] : ["drama", "noir", "blockbuster"])
-      : portrait ? (warmS ? ["golden", "kodak", "blockbuster"] : ["blockbuster", "kodak", "editorial"])
+      : portrait ? (warmS ? ["kodak", "editorial", "golden"] : ["editorial", "kodak", "blockbuster"])
       : land ? ["golden", "blockbuster", "vibrante"] : colorful ? ["vibrante", "kodak", "blockbuster"] : ["kodak", "blockbuster", "golden"];
     return [...first, ...LOOK_ORDER.filter(k => !first.includes(k))];
   }
@@ -2329,7 +2430,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const auto = items[0], byId = Object.fromEntries(items.slice(1).map(b => [b.dataset.id, b])), order = rank.filter(k => byId[k]);
     if (box.dataset.order !== order.join()) { box.dataset.order = order.join(); order.forEach(k => box.appendChild(byId[k])); }
     box.appendChild(auto);
-    if (!S.autoDone) { S.autoDone = true; autoProduce(rank[0]); }
+    if (!S.autoDone) { S.autoDone = true; if (autoOn()) autoProduce(rank[0]); else { S.look = null; renderLooksState(); } }
   }
   // ao abrir a foto: aplica a melhor produção sozinho, já no formato do Instagram
   function autoProduce(id) {
@@ -2394,7 +2495,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- carregar foto ---------- */
   function load(canvas, name) {
-    S.orig = canvas; S.orig0 = null; S.aiCache = null; S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    S.orig = canvas; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
     const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
     const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
     const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
@@ -2410,7 +2511,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("capName").textContent = name; $("capSize").textContent = canvas.width + " × " + canvas.height + " px";
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     showStats(S.an); applyStyle();
-    if (segState === "ready") { setSegStatus("Analisando a foto…", false); runSeg(); }
+    if (segState === "ready") { setSegStatus("Analisando a foto…", false); showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Rosto", "Edição"], false); setLoading(0.12, null, 0); runSeg(); }
+    else if (segState === "loading") { showLoading("Preparando o app", "Carregando os modelos de análise (só na primeira vez).", [], false); }
   }
 
   function loadFile(file) {
@@ -2471,11 +2573,19 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   let lp = null;
   view.addEventListener("pointerdown", e => { if (S.tool || !S.prevData || e.pointerType === "mouse" && e.button !== 0) return; lp = setTimeout(() => { lp = null; cmp(true); }, 280); });
   ["pointerup", "pointercancel", "pointerleave"].forEach(ev => view.addEventListener(ev, () => { if (lp) { clearTimeout(lp); lp = null; } if (comparing && !S.tool) cmp(false); }));
+  $("autoSw").checked = autoOn();
+  $("autoHint").textContent = autoOn() ? "Ao abrir a foto, o app escolhe e aplica a produção." : "Desligado: a foto abre como você tirou.";
+  $("autoSw").addEventListener("change", e => {
+    setAutoPref(e.target.checked); $("autoHint").textContent = e.target.checked ? "Ao abrir a foto, o app escolhe e aplica a produção." : "Desligado: a foto abre como você tirou.";
+    if (!S.an) return; S.manual = {}; applyStyle();
+    if (e.target.checked) autoProduce(rankLooks()[0]); else { S.look = null; S.filter = null; renderLooksState(); schedule(); scheduleThumbs(); }
+  });
   $("barsChip").addEventListener("click", () => { const on = S.noBars === null || S.noBars === undefined ? !outPortrait() : !S.noBars; S.noBars = on; heroText(); schedule(); scheduleThumbs(); });
   $("grainChip").addEventListener("click", () => { S.noGrain = !S.noGrain; heroText(); schedule(); scheduleThumbs(); });
   $("aiFast").addEventListener("click", () => aiEnhance(512));
   $("aiBest").addEventListener("click", () => aiEnhance(768));
   $("aiCancel").addEventListener("click", () => { AI.cancel = true; });
+  $("ldCancel").addEventListener("click", () => { AI.cancel = true; $("ldSub").textContent = "Cancelando…"; });
   $("aiUndo").addEventListener("click", aiUndo);
   let aiT = null; $("aiStr").addEventListener("input", e => { $("aiStrOut").textContent = e.target.value + "%"; clearTimeout(aiT); aiT = setTimeout(applyAiBlend, 250); });
   $("btAdd").addEventListener("click", () => $("btFiles").click());
