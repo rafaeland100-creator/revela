@@ -1,0 +1,2197 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#131312">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Revela">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Revela</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: palco da foto à esquerda, mesa de controle à direita; empilha no celular.
+   Cor: grafite neutro de sala de edição, acento cobalto. */
+:root {
+  --bg: #f1f0ed;
+  --stage: #e3e2de;
+  --panel: #fbfaf8;
+  --line: #d9d7d1;
+  --fg: #1b1b19;
+  --mute: #6f6d66;
+  --accent: #2b52d6;
+  --accent-fg: #ffffff;
+  --ok: #2f7d4f;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131312; --stage: #0c0c0b; --panel: #1a1a18; --line: #2c2b28;
+    --fg: #ecebe6; --mute: #9b988e; --accent: #8aa4ff; --accent-fg: #0d1230; --ok: #6cc38f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131312; --stage: #0c0c0b; --panel: #1a1a18; --line: #2c2b28;
+  --fg: #ecebe6; --mute: #9b988e; --accent: #8aa4ff; --accent-fg: #0d1230; --ok: #6cc38f;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.top { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; margin-right: auto; }
+.brand small { font-family: var(--font-data); font-weight: 400; font-size: 11px; color: var(--mute); letter-spacing: 0; margin-left: 10px; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--panel); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.btn:hover { border-color: var(--mute); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.on { border-color: var(--accent); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 0; }
+.stage { background: var(--stage); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.canvas-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 16px; position: relative; }
+#view { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; box-shadow: 0 6px 30px rgba(0,0,0,.28); background: #000; }
+.drop { position: absolute; inset: 8px; border: 2px dashed var(--accent); border-radius: 8px; display: none; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 20px; background: color-mix(in srgb, var(--stage) 80%, transparent); }
+.drop.show { display: flex; }
+.flag { position: absolute; top: 24px; left: 24px; background: rgba(0,0,0,.72); color: #fff; font-family: var(--font-data); font-size: 11px; padding: 3px 8px; border-radius: 4px; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+.caption { padding: 8px 16px 12px; font-family: var(--font-data); font-size: 11px; color: var(--mute); display: flex; gap: 16px; flex-wrap: wrap; }
+
+.panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; padding: 4px 16px 24px; }
+.sec { padding-block: 16px; border-bottom: 1px solid var(--line); }
+.sec:last-child { border-bottom: 0; }
+h2 { font-family: var(--font-display); font-size: 13px; text-transform: uppercase; letter-spacing: .09em; margin: 0 0 12px; color: var(--mute); font-weight: 600; }
+
+.styles { display: grid; gap: 8px; }
+.style { text-align: left; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 10px 12px; cursor: pointer; display: grid; gap: 4px; }
+.style:hover { border-color: var(--mute); }
+.style[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.style .row { display: flex; align-items: baseline; gap: 8px; }
+.style b { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.style .kind { font-family: var(--font-data); font-size: 11px; color: var(--mute); }
+.style .tag { margin-left: auto; font-size: 11px; color: var(--ok); font-weight: 600; }
+.style p { margin: 0; color: var(--mute); font-size: 12.5px; }
+.meter { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); width: 0; }
+
+.field { display: grid; grid-template-columns: 96px minmax(0, 1fr) 46px; align-items: center; gap: 8px; padding-block: 3px; }
+.field label { font-size: 13px; }
+.field output { font-family: var(--font-data); font-size: 11.5px; text-align: right; color: var(--mute); }
+.field.changed output { color: var(--accent); }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-width: 0; }
+.group { font-family: var(--font-data); font-size: 11px; color: var(--mute); margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .08em; }
+.linkbtn { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 0 0 12px; }
+.stats div { min-width: 0; }
+.stats dt { font-size: 11.5px; color: var(--mute); }
+.stats dd { margin: 0; font-family: var(--font-data); font-size: 13px; }
+#hist { width: 100%; height: 64px; display: block; border: 1px solid var(--line); border-radius: 4px; }
+.legend { display: flex; gap: 14px; font-size: 11px; color: var(--mute); margin-top: 6px; }
+.notes { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; }
+.notes li::marker { color: var(--accent); }
+
+.segstat { margin: 0 0 10px; font-size: 13px; color: var(--mute); }
+.segstat.ok { color: var(--ok); }
+.regs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-bottom: 10px; }
+.regs span { display: flex; align-items: center; gap: 8px; font-size: 12.5px; min-width: 0; }
+.regs i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.regs b { margin-left: auto; font-family: var(--font-data); font-weight: 400; font-size: 11.5px; color: var(--mute); }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+.chk input { accent-color: var(--accent); }
+.final { display: none; margin-top: 12px; }
+.final.show { display: block; }
+.final img { max-width: 100%; border-radius: 4px; display: block; }
+.final p { color: var(--mute); font-size: 12.5px; margin: 8px 0 0; }
+.samples { display: flex; gap: 6px; align-items: center; color: var(--mute); font-size: 12.5px; }
+.samples .btn { padding: 5px 10px; font-size: 12.5px; }
+
+.tabs { display: flex; gap: 4px; position: sticky; top: 0; background: var(--panel); z-index: 2; padding-top: 8px; border-bottom: 1px solid var(--line); margin-inline: -16px; padding-inline: 16px; }
+.tabbtn { flex: 1; white-space: nowrap; background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 4px; cursor: pointer; font-weight: 600; color: var(--mute); font-size: 13.5px; }
+.tabbtn[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin-top: 14px; }
+.tool { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border: 1px solid var(--line); border-radius: 10px; background: transparent; cursor: pointer; font-size: 12.5px; text-align: center; }
+.tool:hover { border-color: var(--mute); }
+.tool svg { width: 26px; height: 26px; stroke: var(--fg); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.tool[data-dirty="1"] { border-color: var(--accent); }
+.tool[data-dirty="1"] svg { stroke: var(--accent); }
+.toolhead { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.toolhead h3 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+.tnote { color: var(--mute); font-size: 12.5px; margin: 8px 0 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; }
+.chip[aria-pressed="true"], .fchip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.fchip { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 9px 6px; cursor: pointer; font-size: 12.5px; }
+.bthumbs { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.bthumb { position: relative; }
+.bthumb canvas { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; border: 2px solid var(--line); display: block; }
+.bthumb[data-base="1"] canvas { border-color: var(--accent); }
+.bthumb button { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); cursor: pointer; line-height: 1; padding: 0; font-size: 12px; }
+.bthumb span { display: block; font-size: 11px; color: var(--mute); text-align: center; }
+.bp { margin: 10px 0 14px; }
+.bp h4 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.bpfaces { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.bface { flex: none; border: 2px solid var(--line); border-radius: 10px; padding: 3px; background: transparent; cursor: pointer; text-align: left; }
+.bface[aria-pressed="true"] { border-color: var(--accent); }
+.bface canvas { width: 72px; height: 72px; display: block; border-radius: 6px; }
+.bface small { display: block; font-size: 10.5px; color: var(--mute); max-width: 72px; line-height: 1.25; margin-top: 3px; }
+.bface .bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 3px; overflow: hidden; }
+.bface .bar i { display: block; height: 100%; background: var(--ok); }
+.bmsg { font-size: 13px; color: var(--accent); margin: 8px 0; min-height: 1.3em; }
+.lyrs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.lyr { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 12.5px; cursor: pointer; background: transparent; }
+.lyr[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.lyr b { font-weight: 400; opacity: .6; padding: 0 4px; }
+.lsec { margin-top: 12px; }
+.lsec h4 { margin: 0 0 6px; font-family: var(--font-data); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); font-weight: 500; }
+.fgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 14px; }
+#curveCv { width: 100%; max-width: 300px; aspect-ratio: 1; display: block; border: 1px solid var(--line); border-radius: 6px; touch-action: none; cursor: crosshair; margin-bottom: 10px; }
+.start { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 3; }
+.startcard { max-width: 380px; text-align: center; display: grid; gap: 14px; }
+.startcard h1 { font-family: var(--font-display); font-size: 40px; letter-spacing: -.03em; margin: 0; }
+.startcard p { margin: 0; color: var(--mute); font-size: 15px; }
+.startbtns { display: grid; gap: 10px; }
+.btn.big { padding: 14px 18px; font-size: 16px; border-radius: 10px; }
+#view { touch-action: pan-y pinch-zoom; }
+@media (max-width: 860px) {
+  .app { height: 100dvh; }
+  .top { padding: 8px 12px; gap: 8px; }
+  .brand { font-size: 19px; }
+  .brand small, .samples { display: none; }
+  .tools { flex-wrap: nowrap; gap: 6px; }
+  .tools .btn { padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+  .main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 48%); }
+  .canvas-wrap { padding: 8px; }
+  .caption { display: none; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 24px rgba(0,0,0,.12); }
+  .flag { top: 14px; left: 14px; }
+  .tgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .field { grid-template-columns: 88px minmax(0, 1fr) 64px; }
+  .field output { white-space: nowrap; }
+  input[type="range"] { height: 28px; }
+}
+@media (prefers-reduced-motion: no-preference) { .meter i { transition: width .3s; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">Revela<small>protótipo v0.1</small></div>
+    <div class="samples">Exemplos:
+      <button class="btn" id="sLand" type="button">Paisagem</button>
+      <button class="btn" id="sPort" type="button">Retrato</button>
+    </div>
+    <div class="tools">
+      <button class="btn" id="openBtn" type="button">Abrir foto</button>
+      <button class="btn" id="cmpBtn" type="button">Comparar</button>
+      <button class="btn primary" id="saveBtn" type="button">Salvar</button>
+      <button class="btn" id="shareBtn" type="button" hidden>Compartilhar</button>
+    </div>
+    <input type="file" id="file" accept="image/*" hidden>
+    <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+  </header>
+
+  <div class="main">
+    <section class="stage">
+      <div class="canvas-wrap" id="wrap">
+        <div class="start" id="start"><div class="startcard">
+          <h1>Revela</h1>
+          <p>Tire uma foto ou escolha uma da galeria. O app cuida da luz, da cor e do rosto sozinho.</p>
+          <div class="startbtns">
+            <button class="btn primary big" id="camBtn" type="button">Tirar foto</button>
+            <button class="btn big" id="galBtn" type="button">Escolher da galeria</button>
+          </div>
+          <button class="linkbtn" id="exBtn" type="button">Ver com uma foto de exemplo</button>
+        </div></div>
+        <canvas id="view" width="10" height="10"></canvas>
+        <span class="flag" id="flag" hidden>Original</span>
+        <div class="drop" id="drop">Solte a foto aqui</div>
+      </div>
+      <div class="caption"><span id="capName">–</span><span id="capSize">–</span><span id="capTime">–</span></div>
+    </section>
+
+    <aside class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tabbtn" role="tab" data-tab="estilos" type="button" aria-selected="true">Estilos</button>
+        <button class="tabbtn" role="tab" data-tab="ferramentas" type="button" aria-selected="false">Ferramentas</button>
+        <button class="tabbtn" role="tab" data-tab="rosto" type="button" aria-selected="false">Melhor rosto</button>
+        <button class="tabbtn" role="tab" data-tab="analise" type="button" aria-selected="false">Análise</button>
+      </div>
+
+      <div class="tab" data-tab="estilos">
+        <div class="sec">
+          <h2>Estilo</h2>
+          <div class="styles" id="styles"></div>
+        </div>
+        <div class="sec">
+          <h2>Intensidade</h2>
+          <div class="field"><label for="k">Edição</label><input type="range" id="k" min="0" max="120" step="1" value="100"><output id="kOut">100%</output></div>
+          <p style="margin:12px 0 0"><button class="linkbtn" id="reset" type="button">Voltar ao automático</button></p>
+        </div>
+        <div class="sec">
+          <h2>Por que essa edição</h2>
+          <ul class="notes" id="notes"></ul>
+        </div>
+      </div>
+
+      <div class="tab" data-tab="ferramentas" hidden>
+        <div id="toolList">
+          <div class="tgrid" id="toolGrid"></div>
+        </div>
+        <div id="toolView" hidden>
+          <div class="toolhead"><button class="linkbtn" id="toolBack" type="button">‹ Ferramentas</button></div>
+          <div id="toolPanes"></div>
+        </div>
+      </div>
+
+      <div class="tab" data-tab="rosto" hidden>
+        <div class="sec">
+          <h2>Melhor rosto entre várias fotos</h2>
+          <p class="tnote" style="margin-top:0">Escolha de 2 a 6 fotos seguidas da mesma cena, tiradas do mesmo lugar. O app acha cada pessoa, compara os rostos (olhos abertos, sorriso, boca fechada, de frente) e monta uma foto só com o melhor de cada um.</p>
+          <input type="file" id="btFiles" accept="image/*" multiple hidden>
+          <button class="btn" id="btAdd" type="button">Adicionar fotos</button>
+          <div class="bthumbs" id="btThumbs"></div>
+          <p class="bmsg" id="btMsg"></p>
+          <div id="btBaseWrap" hidden>
+            <h2 style="margin-top:14px">Foto base</h2>
+            <div class="chips" id="btBase"></div>
+            <h2 style="margin-top:8px">Rostos por pessoa</h2>
+            <div id="btPersons"></div>
+            <button class="btn primary" id="btMake" type="button">Montar foto</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab" data-tab="analise" hidden>
+        <div class="sec">
+          <h2>Regiões</h2>
+          <p class="segstat" id="segStat">Carregando o modelo de segmentação…</p>
+          <div class="regs" id="regs"></div>
+          <label class="chk"><input type="checkbox" id="ovl" disabled> Mostrar regiões sobre a foto</label>
+          <label class="chk" style="margin-top:6px"><input type="checkbox" id="refine" checked> Refinar bordas pela imagem</label>
+        </div>
+        <div class="sec">
+          <h2>O que o app viu</h2>
+          <dl class="stats" id="stats"></dl>
+          <canvas id="hist" width="320" height="64"></canvas>
+          <div class="legend"><span>Antes (linha)</span><span>Depois (área)</span></div>
+        </div>
+      </div>
+
+      <div class="sec final" id="final">
+        <h2>Imagem final</h2>
+        <img id="finalImg" alt="Foto editada em resolução final">
+        <p>Se o download não começar, clique com o botão direito na imagem (ou segure o dedo sobre ela) e escolha salvar.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- parâmetros ---------- */
+  const NEUTRAL = { ev: 0, bp: 0, wp: 1, temp: 0, tint: 0, contrast: 0, highlights: 0, shadows: 0, clarity: 0,
+    vibrance: 0, sat: 0, midDesat: 0, teal: 0, warm: 0, bw: 0, vignette: 0,
+    bgLight: 0, subjLight: 0, bgSat: 0, clothVib: 0, hairDepth: 0,
+    skinSmooth: 0, skinEven: 0, skinShine: 0,
+    bgBlur: 0, skyDeep: 0, clothSmooth: 0, hairShine: 0, hairVolume: 0, hairSmooth: 0, beardDef: 0, mid: 0,
+    teethWhite: 0, eyeWhite: 0, eyeIris: 0,
+    tcLow: 0, tcMid: 0, tcHigh: 0, glow: 0, glowRange: 0, fade: 0, leak: 0,
+    structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0 };
+  const BWW = [[0.3, 0.59, 0.11], [0.5, 0.45, 0.05], [0.6, 0.3, 0.1], [0.8, 0.18, 0.02], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6]];
+  const BWN = ["Neutro", "Amarelo", "Laranja", "Vermelho", "Verde", "Azul"];
+
+  const SLIDERS = [
+    ["ev", "Brilho", -2, 2, 0.05, v => sgn(v, 2) + " EV"],
+    ["mid", "Tons médios", -0.5, 0.9, 0.01, v => sgn(v, 2)],
+    ["contrast", "Contraste", -0.5, 1, 0.01, pct],
+    ["sat", "Saturação", -0.6, 0.6, 0.01, pct],
+    ["vibrance", "Vibração", -0.5, 1, 0.01, pct],
+    ["clarity", "Ambiente", -0.5, 1, 0.01, pct],
+    ["highlights", "Realces", -0.6, 1, 0.01, pct],
+    ["shadows", "Sombras", -0.6, 1, 0.01, pct],
+    ["bp", "Pretos", 0, 0.2, 0.005, pct],
+    ["wp", "Brancos", 0.8, 1, 0.005, pct],
+    ["structure", "Estrutura", -0.5, 1, 0.01, pct],
+    ["sharpen", "Nitidez", 0, 1, 0.01, pct],
+    ["temp", "Temperatura", -1, 1, 0.01, v => sgn(v * 100, 0)],
+    ["tint", "Matiz", -1, 1, 0.01, v => sgn(v * 100, 0)],
+    ["midDesat", "Meios-tons calmos", 0, 1, 0.01, pct],
+    ["teal", "Sombras frias", 0, 1, 0.01, pct],
+    ["warm", "Brilhos quentes", 0, 1, 0.01, pct],
+    ["vignette", "Intensidade", 0, 0.8, 0.01, pct],
+    ["vigSize", "Tamanho do centro", 0, 1, 0.01, pct],
+    ["bw", "Preto e branco", 0, 1, 0.01, pct],
+    ["lensBlur", "Desfoque", 0, 1, 0.01, pct],
+    ["lensSize", "Tamanho do foco", 0.05, 0.8, 0.01, pct],
+    ["grain", "Granulação", 0, 1, 0.01, pct],
+    ["tcLow", "Sombras", -0.6, 1, 0.01, pct],
+    ["tcMid", "Tons médios", -0.6, 1, 0.01, pct],
+    ["tcHigh", "Realces", -0.6, 1, 0.01, pct],
+    ["glow", "Brilho suave", 0, 1, 0.01, pct],
+    ["glowRange", "Só nas partes claras", 0, 1, 0.01, pct],
+    ["fade", "Desbotar pretos", 0, 1, 0.01, pct],
+    ["leak", "Vazamento de luz", 0, 1, 0.01, pct],
+    ["faceEnh", "Realçar rosto", 0, 1, 0.01, pct],
+    ["faceLight", "Luz no rosto", -0.5, 1, 0.01, v => sgn(v, 2)],
+    ["skinSmooth", "Suavizar pele", 0, 1, 0.01, pct],
+    ["skinEven", "Uniformizar tom", 0, 1, 0.01, pct],
+    ["skinShine", "Reduzir brilho", 0, 1, 0.01, pct],
+    ["eyeWhite", "Branco dos olhos", 0, 1, 0.01, pct],
+    ["eyeIris", "Realçar íris", 0, 1, 0.01, pct],
+    ["teethWhite", "Clarear dentes", 0, 1, 0.01, pct],
+    ["hairVolume", "Volume do cabelo", 0, 1, 0.01, pct],
+    ["hairSmooth", "Assentar fios", 0, 1, 0.01, pct],
+    ["hairShine", "Brilho do cabelo", 0, 1, 0.01, pct],
+    ["hairDepth", "Cabelo mais denso", 0, 1, 0.01, pct],
+    ["beardDef", "Definir barba", 0, 1, 0.01, pct],
+    ["bgBlur", "Desfocar fundo", 0, 1, 0.01, pct],
+    ["bgLight", "Luz no cenário", -0.8, 0.6, 0.01, v => sgn(v, 2)],
+    ["bgSat", "Cor do cenário", -0.8, 0.6, 0.01, v => sgn(v, 2)],
+    ["skyDeep", "Céu mais profundo", 0, 1, 0.01, pct],
+    ["subjLight", "Luz nas pessoas", -0.5, 1.5, 0.01, v => sgn(v, 2)],
+    ["clothVib", "Cor da roupa", 0, 1, 0.01, pct],
+    ["clothSmooth", "Alisar roupa", 0, 1, 0.01, pct]
+  ];
+  const FILTERS = {
+    hdr: { name: "HDR", d: { structure: 0.7, shadows: 0.5, highlights: 0.4, clarity: 0.3, sat: 0.1, tcMid: 0.4 } },
+    drama: { name: "Drama", d: { contrast: 0.4, clarity: 0.5, structure: 0.3, sat: -0.15, vignette: 0.25, tcHigh: 0.3, tcLow: 0.3 } },
+    tonal: { name: "Contraste tonal", d: { tcLow: 0.6, tcMid: 0.6, tcHigh: 0.6 } },
+    glamour: { name: "Brilho glamour", d: { glow: 0.6, sat: 0.1, structure: -0.2, skinSmooth: 0.2 } },
+    bloom: { name: "Bloom", d: { glow: 0.75, glowRange: 0.7, warm: 0.15 } },
+    noir: { name: "Noir", d: { bw: 1, contrast: 0.5, vignette: 0.4, grain: 0.3, fade: 0.08 } },
+    vintage: { name: "Vintage", d: { fade: 0.35, sat: -0.2, warm: 0.5, teal: 0.2, vignette: 0.3, grain: 0.25 } },
+    retrolux: { name: "Retrolux", d: { fade: 0.2, sat: 0.15, warm: 0.4, leak: 0.7, vignette: 0.3, grain: 0.3, contrast: 0.15 } },
+    grunge: { name: "Grunge", d: { contrast: 0.5, structure: 0.8, sat: -0.35, vignette: 0.45, grain: 0.5, tcMid: 0.5 } },
+    grainy: { name: "Filme granulado", d: { grain: 0.8, fade: 0.12, contrast: 0.15, sat: -0.1 } }
+  };
+  const SD = {}; SLIDERS.forEach(x => { SD[x[0]] = x; });
+  const ICO = {
+    adjust: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
+    detail: '<path d="M3 19l6-11 4 7 2-3 6 7z"/>',
+    wb: '<path d="M10 4a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/>',
+    tone: '<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="8" cy="17" r="1.6"/>',
+    vignette: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
+    bw: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    lens: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3"/>',
+    grain: '<circle cx="6" cy="7" r=".8"/><circle cx="12" cy="5" r=".8"/><circle cx="18" cy="8" r=".8"/><circle cx="9" cy="12" r=".8"/><circle cx="16" cy="13" r=".8"/><circle cx="6" cy="17" r=".8"/><circle cx="12" cy="18" r=".8"/><circle cx="19" cy="18" r=".8"/>',
+    face: '<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r=".8"/><circle cx="15" cy="10" r=".8"/><path d="M8.5 14.5c1 1.6 2.2 2.3 3.5 2.3s2.5-.7 3.5-2.3"/>',
+    skin: '<path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>',
+    eyes: '<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    hair: '<path d="M6 21c0-9 1.5-16 6-16s6 7 6 16"/><path d="M9 11c1-2 5-2 6 0"/>',
+    scene: '<path d="M3 18l5-8 4 5 3-4 6 7z"/><circle cx="17" cy="6" r="1.6"/>',
+    crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14"/>',
+    rotate: '<path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/>',
+    selective: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/>',
+    brush: '<path d="M18 3l3 3-9 9-4 1 1-4z"/><path d="M4 21c2 0 4-1 4-3"/>',
+    curves: '<path d="M3 21V3M3 21h18"/><path d="M5 19c6 0 5-12 14-14"/>',
+    tonal: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>',
+    glow: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" stroke-dasharray="2 3"/>',
+    film: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+    filters: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5"/>',
+    people: '<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 20c0-4 2-6.5 5-6.5s5 2.5 5 6.5M14 20c0-3 1-5 3-5s4 2 4 5"/>'
+  };
+  const TOOLS = [
+    { id: "adjust", name: "Ajustar imagem", keys: ["ev", "mid", "contrast", "sat", "vibrance", "clarity", "highlights", "shadows", "bp", "wp"], note: "Ambiente é o contraste local (clareza). Realces e Sombras também aceitam valores negativos." },
+    { id: "detail", name: "Detalhes", keys: ["structure", "sharpen"], note: "Estrutura aumenta o detalhe fino e a textura. Nitidez afia as bordas. A pele é protegida." },
+    { id: "curves", name: "Curvas", keys: [], note: "Toque na curva para criar um ponto e arraste. Toque duas vezes num ponto para remover. \"Sugerida\" calcula a curva pela sua foto.", custom: "curves" },
+    { id: "crop", name: "Cortar", keys: [], note: "Arraste os cantos ou o corte inteiro. \"Sugerir\" enquadra o sujeito pela regra dos terços.", custom: "crop" },
+    { id: "rotate", name: "Girar", keys: [], note: "Gire de 90 em 90, espelhe ou ajuste o ângulo fino. \"Endireitar\" procura o horizonte e as linhas verticais.", custom: "rotate" },
+    { id: "selective", name: "Seletivo", keys: [], note: "Toque na foto para criar um ponto de ajuste, ou escolha uma região inteira com um toque.", custom: "local", mode: "point" },
+    { id: "brush", name: "Pincel", keys: [], note: "Pinte sobre a foto onde quer o ajuste. O pincel respeita as bordas da imagem.", custom: "local", mode: "brush" },
+    { id: "wb", name: "Balanço de branco", keys: ["temp", "tint"], note: "Temperatura esquenta ou esfria. Matiz vai do verde ao magenta." },
+    { id: "tone", name: "Tons e cor", keys: ["midDesat", "teal", "warm"], note: "Cor nas sombras e nos brilhos, e meios-tons mais calmos, para um visual de cinema." },
+    { id: "tonal", name: "Contraste tonal", keys: ["tcLow", "tcMid", "tcHigh"], note: "Realça o detalhe só nas sombras, nos tons médios ou nos realces, sem estourar a foto." },
+    { id: "vignette", name: "Vinheta", keys: ["vignette", "vigSize"], note: "Escurece as bordas para o olhar ir ao centro." },
+    { id: "bw", name: "Preto e branco", keys: ["bw"], note: "O filtro de cor muda como cada cor vira cinza. Vermelho escurece o céu azul.", chips: true },
+    { id: "lens", name: "Desfoque de lente", keys: ["lensBlur", "lensSize"], note: "Toque na foto para mover o centro do foco.", lens: true },
+    { id: "glow", name: "Brilho suave", keys: ["glow", "glowRange"], note: "Halo suave de luz. Com \"só nas partes claras\" vira um bloom." },
+    { id: "film", name: "Filme", keys: ["fade", "leak"], note: "Pretos levantados e vazamento de luz laranja, como filme antigo." },
+    { id: "grain", name: "Granulação", keys: ["grain"], note: "Grão de filme, mais visível nos tons médios." },
+    { id: "filters", name: "Filtros", keys: [], note: "Camada por cima da edição automática. A intensidade vai de 0 a 120%.", custom: "filters" },
+    { id: "face", name: "Realçar rosto", keys: ["faceEnh", "faceLight"], note: "Um controle só: suaviza a pele, clareia olhos e dentes e ilumina o rosto. Precisa que o rosto tenha sido detectado." },
+    { id: "skin", name: "Pele", keys: ["skinSmooth", "skinEven", "skinShine"], note: "Barba, sobrancelhas, olhos e lábios ficam de fora." },
+    { id: "eyes", name: "Olhos e dentes", keys: ["eyeWhite", "eyeIris", "teethWhite"], note: "Só age em rostos detectados. Óculos escuros ficam de fora." },
+    { id: "hair", name: "Cabelo e barba", keys: ["hairVolume", "hairSmooth", "hairShine", "hairDepth", "beardDef"], note: "Dá corpo aos fios pela luz e sombra entre as mechas. Não muda o corte nem o penteado." },
+    { id: "scene", name: "Cenário", keys: ["bgBlur", "bgLight", "bgSat", "skyDeep"], note: "Age só no fundo e no céu, sem mexer nas pessoas." },
+    { id: "people", name: "Pessoas e roupa", keys: ["subjLight", "clothVib", "clothSmooth"], note: "Luz nas pessoas e cor e alisamento só na roupa." }
+  ];
+
+  const STYLES = {
+    natural: { name: "Natural", kind: "Todas as fotos", desc: "Luz limpa, cor viva e pele natural, como o modo automático de um bom celular." },
+    adams: { name: "Adams", kind: "Paisagem", desc: "Tons dramáticos e céu escuro. Vira preto e branco só em cenas quase sem cor." },
+    leib: { name: "Leibovitz", kind: "Retrato", desc: "Meios-tons calmos, sombras verde-azuladas, pele preservada." },
+    mccurry: { name: "McCurry", kind: "Cor", desc: "Cor densa, tons quentes, contraste entre complementares." }
+  };
+
+  function pct(v) { return Math.round(v * 100) + "%"; }
+  function sgn(v, d) { const s = v.toFixed(d).replace(".", ","); return (v > 0 ? "+" : "") + s; }
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const TM = window.__tm = {}, tm = (k, f) => { const t = performance.now(); const r = f(); TM[k] = Math.round(performance.now() - t); return r; };
+  const $ = id => document.getElementById(id);
+
+  /* ---------- estado ---------- */
+  const REG = [
+    { k: "bg", name: "Cenário", rgb: [60, 130, 255] },
+    { k: "hair", name: "Cabelo", rgb: [170, 90, 255] },
+    { k: "bskin", name: "Pele do corpo", rgb: [255, 150, 40] },
+    { k: "fskin", name: "Pele do rosto", rgb: [255, 70, 90] },
+    { k: "cloth", name: "Roupa", rgb: [40, 200, 120] },
+    { k: "other", name: "Acessórios", rgb: [240, 210, 40] }
+  ];
+  const S = { locals: [], sel: -1, showMask: true, lmode: "point", rm: {}, painting: false, undo: [], brush: { size: 0.06, hard: 0.5, edge: 0.6, erase: false }, geo: { rot: 0, flip: false, angle: 0, crop: { x: 0, y: 0, w: 1, h: 1 }, aspect: "free" }, filter: null, filterK: 1, curves: { L: [[0, 0], [1, 1]], R: [[0, 0], [1, 1]], G: [[0, 0], [1, 1]], B: [[0, 0], [1, 1]] }, curveCh: "L", curveLut: null, seg: null, overlay: false, orig: null, prev: null, prevData: null, mask: null, an: null,
+    style: "natural", suggested: "natural", k: 1, target: { ...NEUTRAL }, manual: {}, name: "", notes: [], hist0: null };
+
+  /* ---------- análise ---------- */
+  function analyze(canvas) {
+    const long = 220, sc = long / Math.max(canvas.width, canvas.height);
+    const w = Math.max(8, Math.round(canvas.width * sc)), h = Math.max(8, Math.round(canvas.height * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(canvas, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data, n = w * h;
+    const hist = new Float64Array(256);
+    let sumS = 0, mr = 0, mg = 0, mb = 0, mc = 0, skin = 0, skinYs = [], sky = 0, green = 0, skyN = 0, cSum = 0, cN = 0, eSum = 0, eN = 0;
+    for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) {
+      const i = (y * w + xx) * 4;
+      const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
+      const Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      hist[Math.min(255, (Y * 255) | 0)]++;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      sumS += mx > 0 ? (mx - mn) / mx : 0;
+      // pele: faixa clássica em YCbCr
+      const R = r * 255, G = g * 255, B = b * 255;
+      const cb = 128 - 0.168736 * R - 0.331264 * G + 0.5 * B;
+      const cr = 128 + 0.5 * R - 0.418688 * G - 0.081312 * B;
+      const isSkin = cb > 77 && cb < 127 && cr > 133 && cr < 173 && r > g && g > b && Y > 0.15;
+      if (isSkin) { skin++; skinYs.push(Y); }
+      else if (Y > 0.2 && Y < 0.8 && (mx - mn) < 0.35) { mr += r; mg += g; mb += b; mc++; }
+      const ex = Math.abs(xx / w - 0.5), ey = Math.abs(y / h - 0.5);
+      if (ex < 0.2 && ey < 0.2) { cSum += Y; cN++; } else if (ex > 0.38 && ey > 0.38) { eSum += Y; eN++; }
+      if (y < h * 0.45) { skyN++; if (b > r + 0.04 && b >= g - 0.02 && Y > 0.35) sky++; }
+      if (g > r * 1.05 && g > b * 1.1 && Y > 0.1) green++;
+    }
+    const pctl = q => { let acc = 0; for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= q * n) return i / 255; } return 1; };
+    let dark = 0, bright = 0;
+    for (let i = 0; i < 256; i++) { if (i < 20) dark += hist[i]; if (i > 240) bright += hist[i]; }
+    skinYs.sort((a, b) => a - b);
+    const a = {
+      p005: pctl(0.005), p05: pctl(0.05), med: pctl(0.5), p95: pctl(0.95), p995: pctl(0.995),
+      fracDark: dark / n, fracBright: bright / n, satMean: sumS / n,
+      avgR: mc > n * 0.02 ? mr / mc : 0.5, avgG: mc > n * 0.02 ? mg / mc : 0.5, avgB: mc > n * 0.02 ? mb / mc : 0.5,
+      skinFrac: skin / n, skinY: skinYs.length ? skinYs[skinYs.length >> 1] : 0.5,
+      skyFrac: sky / Math.max(1, skyN), greenFrac: green / n
+    };
+    a.dr = a.p95 - a.p05;
+    a.vig = cN && eN && cSum > 0 ? (eSum / eN) / (cSum / cN) : 1;
+    const sL = Math.min(1, a.skinFrac * 6);
+    const sA = Math.min(1, a.skyFrac * 1.6 + a.greenFrac * 1.2 + (a.dr > 0.7 ? 0.15 : 0));
+    const sM = Math.min(1, 0.25 + a.satMean * 1.4);
+    a.scores = { natural: 0.55, adams: sA, leib: sL, mccurry: sM };
+    a.suggested = a.skinFrac > 0.05 ? "natural" : (sA > sM && a.med >= 0.25 && a.dr > 0.4 ? "adams" : (a.satMean > 0.38 ? "mccurry" : "natural"));
+    a.scene = a.med < 0.2 ? "Pouca luz" : a.skinFrac > 0.05 ? "Retrato" : (a.skyFrac > 0.15 || a.greenFrac > 0.2) ? "Paisagem" : "Cena geral";
+    return a;
+  }
+
+  /* ---------- regiões (segmentação) ---------- */
+  let segmenter = null, faceLm = null, segState = "loading", mpVision = null, mpFileset = null, faceLm2 = null;
+  // primeiro os arquivos locais (funciona offline); se faltarem, cai para a internet
+  const LOCAL = new URL("vendor/", location.href).href;
+  let MP = LOCAL + "mediapipe", MODEL = LOCAL + "models/selfie_multiclass_256x256.tflite", FACE_MODEL = LOCAL + "models/face_landmarker.task";
+  const CDN = { MP: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21", MODEL: "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite", FACE: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task" };
+
+  async function initSegmenter() {
+    try {
+      let vision;
+      try { vision = await import(MP + "/vision_bundle.mjs"); } catch (e) { MP = CDN.MP; MODEL = CDN.MODEL; FACE_MODEL = CDN.FACE; vision = await import(MP + "/vision_bundle.mjs"); }
+      const fileset = await vision.FilesetResolver.forVisionTasks(MP + "/wasm"); mpVision = vision; mpFileset = fileset;
+      for (const delegate of ["GPU", "CPU"]) {
+        try {
+          segmenter = await vision.ImageSegmenter.createFromOptions(fileset, {
+            baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+          break;
+        } catch (e) { segmenter = null; }
+      }
+      if (!segmenter) throw new Error("modelo não iniciou");
+      segState = "ready"; if (S.prev) runSeg(); else setSegStatus("Segmentação pronta. Abra uma foto.", true);
+      for (const delegate of ["GPU", "CPU"]) {
+        try { faceLm = await vision.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 8, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 }); break; } catch (e) { faceLm = null; }
+      }
+      if (faceLm && S.prev && S.seg) runFace();
+    } catch (e) {
+      segState = "fail";
+      setSegStatus("Segmentação indisponível aqui (" + (e.message || e) + "). O app segue funcionando sem regiões.", false);
+    }
+  }
+  function setSegStatus(t, ok) { const e = $("segStat"); e.textContent = t; e.classList.toggle("ok", !!ok); }
+
+  function runSeg() {
+    if (!segmenter || !S.prev) return;
+    const token = S.prev, t0 = performance.now();
+    setSegStatus("Separando pele, cabelo, roupa e cenário…", false);
+    setTimeout(() => {
+      try {
+        const res = tm("segment", () => segmenter.segment(S.prev));
+        if (token !== S.prev) { res.close(); return; }
+        const ms = res.confidenceMasks, mw = ms[0].width, mh = ms[0].height;
+        const cls = ms.map(m => { const f = m.getAsFloat32Array(), u = new Uint8Array(f.length); for (let i = 0; i < f.length; i++) u[i] = f[i] * 255; return u; });
+        res.close();
+        S.segRaw = { w: mw, h: mh, cls, n: cls.length };
+        S.segRef = tm("refine", () => refineSeg(S.segRaw, S.prev));
+        S.skin = tm("skin", () => prepareSkin(S.prev, S.segRef));
+        S.bgb = tm("bg", () => prepareBg(S.prev, S.segRef));
+        S.beard = tm("beard", () => buildBeard(S.segRef, S.skin)); S.an.beard = S.beard ? S.beard.frac : 0;
+        S.seg = $("refine").checked ? S.segRef : S.segRaw;
+        S.segMs = Math.round(performance.now() - t0);
+        tm("onSeg", () => onSeg(S.segMs));
+        runFace();
+      } catch (e) { setSegStatus("A segmentação falhou nesta foto: " + (e.message || e), false); }
+    }, 30);
+  }
+
+  /* Filtro guiado (He et al.): a máscara do modelo é borrada, a imagem tem os contornos.
+     Cada classe é reescrita como uma função linear local da luminância da foto. */
+  const colBuf = { a: new Float64Array(0) };
+  function boxF(a, w, h, r, out, tmp) {
+    const inv = new Float32Array(w), invY = new Float32Array(h);
+    for (let x = 0; x < w; x++) inv[x] = 1 / (Math.min(w - 1, x + r) - Math.max(0, x - r) + 1);
+    for (let y = 0; y < h; y++) invY[y] = 1 / (Math.min(h - 1, y + r) - Math.max(0, y - r) + 1);
+    for (let y = 0; y < h; y++) {
+      const o = y * w; let acc = 0;
+      for (let x = 0, e = Math.min(r, w - 1); x <= e; x++) acc += a[o + x];
+      for (let x = 0; x < w; x++) {
+        tmp[o + x] = acc * inv[x];
+        if (x + r + 1 < w) acc += a[o + x + r + 1];
+        if (x - r >= 0) acc -= a[o + x - r];
+      }
+    }
+    if (colBuf.a.length < w) colBuf.a = new Float64Array(w);
+    const cs = colBuf.a; cs.fill(0, 0, w);
+    for (let y = 0, e = Math.min(r, h - 1); y <= e; y++) { const o = y * w; for (let x = 0; x < w; x++) cs[x] += tmp[o + x]; }
+    for (let y = 0; y < h; y++) {
+      const o = y * w, iy = invY[y];
+      for (let x = 0; x < w; x++) out[o + x] = cs[x] * iy;
+      if (y + r + 1 < h) { const o2 = (y + r + 1) * w; for (let x = 0; x < w; x++) cs[x] += tmp[o2 + x]; }
+      if (y - r >= 0) { const o3 = (y - r) * w; for (let x = 0; x < w; x++) cs[x] -= tmp[o3 + x]; }
+    }
+  }
+  function upsample(u8, sw, sh, tw, th) {
+    const out = new Float32Array(tw * th);
+    for (let y = 0; y < th; y++) {
+      const fy = Math.min(sh - 1.001, y * (sh - 1) / Math.max(1, th - 1)), y0 = fy | 0, ty = fy - y0;
+      for (let x = 0; x < tw; x++) {
+        const fx = Math.min(sw - 1.001, x * (sw - 1) / Math.max(1, tw - 1)), x0 = fx | 0, tx = fx - x0, i = y0 * sw + x0;
+        out[y * tw + x] = ((u8[i] * (1 - tx) + u8[i + 1] * tx) * (1 - ty) + (u8[i + sw] * (1 - tx) + u8[i + sw + 1] * tx) * ty) / 255;
+      }
+    }
+    return out;
+  }
+  function refineSeg(raw, canvas) {
+    const sc = Math.min(1, 1000 / Math.max(canvas.width, canvas.height));
+    const tw = Math.round(canvas.width * sc), th = Math.round(canvas.height * sc), n = tw * th;
+    const c = document.createElement("canvas"); c.width = tw; c.height = th;
+    const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(canvas, 0, 0, tw, th);
+    const px = cx.getImageData(0, 0, tw, th).data, I = new Float32Array(n);
+    for (let i = 0; i < n; i++) I[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
+    const r = Math.max(4, Math.round(tw * 0.008)), eps = 0.0008;
+    const tmp = new Float32Array(n), mI = new Float32Array(n), vI = new Float32Array(n), t1 = new Float32Array(n);
+    boxF(I, tw, th, r, mI, tmp);
+    for (let i = 0; i < n; i++) t1[i] = I[i] * I[i];
+    boxF(t1, tw, th, r, vI, tmp);
+    for (let i = 0; i < n; i++) vI[i] -= mI[i] * mI[i];
+    const q = [], mP = new Float32Array(n), mIP = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n), mA = new Float32Array(n), mB = new Float32Array(n);
+    for (let c2 = 0; c2 < raw.n; c2++) {
+      const P = upsample(raw.cls[c2], raw.w, raw.h, tw, th);
+      boxF(P, tw, th, r, mP, tmp);
+      for (let i = 0; i < n; i++) t1[i] = I[i] * P[i];
+      boxF(t1, tw, th, r, mIP, tmp);
+      for (let i = 0; i < n; i++) { const a = (mIP[i] - mI[i] * mP[i]) / (vI[i] + eps); A[i] = a; B[i] = mP[i] - a * mI[i]; }
+      boxF(A, tw, th, r, mA, tmp); boxF(B, tw, th, r, mB, tmp);
+      const o = new Float32Array(n);
+      for (let i = 0; i < n; i++) o[i] = Math.min(1, Math.max(0, mA[i] * I[i] + mB[i]));
+      q.push(o);
+    }
+    const cls = q.map(() => new Uint8Array(n));
+    for (let i = 0; i < n; i++) {
+      let sum = 0; for (let k = 0; k < q.length; k++) sum += q[k][i];
+      const inv = sum > 0 ? 1 / sum : 0;
+      for (let k = 0; k < q.length; k++) cls[k][i] = Math.min(255, Math.max(0, ((q[k][i] * inv - 0.5) * 1.4 + 0.5) * 255));
+    }
+    return { w: tw, h: th, cls, n: q.length };
+  }
+
+  /* Pele: separa a foto em base suave (filtro guiado por ela mesma) e detalhe.
+     Onde o detalhe é forte (barba, olhos, sobrancelha), a proteção fica alta e nada é suavizado. */
+  function prepareSkin(canvas, seg) {
+    const sc = Math.min(1, 1000 / Math.max(canvas.width, canvas.height));
+    const tw = Math.round(canvas.width * sc), th = Math.round(canvas.height * sc), n = tw * th;
+    if (seg.w !== tw || seg.h !== th) return null;
+    const c = document.createElement("canvas"); c.width = tw; c.height = th;
+    const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(canvas, 0, 0, tw, th);
+    const px = cx.getImageData(0, 0, tw, th).data;
+    const ch = [new Float32Array(n), new Float32Array(n), new Float32Array(n)], I = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      ch[0][i] = px[i * 4] / 255; ch[1][i] = px[i * 4 + 1] / 255; ch[2][i] = px[i * 4 + 2] / 255;
+      I[i] = 0.2126 * ch[0][i] + 0.7152 * ch[1][i] + 0.0722 * ch[2][i];
+    }
+    const r = Math.max(3, Math.round(tw * 0.006)), eps = 0.0025;
+    const tmp = new Float32Array(n), mI = new Float32Array(n), vI = new Float32Array(n), t1 = new Float32Array(n);
+    const mP = new Float32Array(n), mIP = new Float32Array(n), A = new Float32Array(n), Bq = new Float32Array(n), mA = new Float32Array(n), mB = new Float32Array(n);
+    boxF(I, tw, th, r, mI, tmp);
+    for (let i = 0; i < n; i++) t1[i] = I[i] * I[i];
+    boxF(t1, tw, th, r, vI, tmp);
+    for (let i = 0; i < n; i++) vI[i] -= mI[i] * mI[i];
+    const sd = new Float32Array(n); for (let i = 0; i < n; i++) sd[i] = Math.sqrt(Math.max(0, vI[i]));
+    const gf = (P, rr = r, ee = eps) => {
+      boxF(P, tw, th, rr, mP, tmp);
+      for (let i = 0; i < n; i++) t1[i] = I[i] * P[i];
+      boxF(t1, tw, th, rr, mIP, tmp);
+      for (let i = 0; i < n; i++) { const a = (mIP[i] - mI[i] * mP[i]) / (vI[i] + ee); A[i] = a; Bq[i] = mP[i] - a * mI[i]; }
+      boxF(A, tw, th, rr, mA, tmp); boxF(Bq, tw, th, rr, mB, tmp);
+      const o = new Float32Array(n);
+      for (let i = 0; i < n; i++) o[i] = Math.min(1, Math.max(0, mA[i] * I[i] + mB[i]));
+      return o;
+    };
+    const base = ch.map(P => gf(P)), Yb = new Float32Array(n), act = new Float32Array(n);
+    for (let i = 0; i < n; i++) { Yb[i] = 0.2126 * base[0][i] + 0.7152 * base[1][i] + 0.0722 * base[2][i]; act[i] = Math.abs(I[i] - Yb[i]); }
+    const actB = new Float32Array(n); boxF(act, tw, th, r * 3, actB, tmp);
+    const prot = new Float32Array(n), w = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = Math.min(1, Math.max(0, (actB[i] - 0.016) / 0.03));
+      prot[i] = 1 - t * t * (3 - 2 * t);
+      w[i] = Math.min(1, (seg.cls[2][i] + seg.cls[3][i]) / 255) * prot[i];
+    }
+    const rb = Math.max(10, Math.round(tw * 0.03)), wB = new Float32Array(n); boxF(w, tw, th, rb, wB, tmp);
+    const E = ch.map((_, k) => {
+      for (let i = 0; i < n; i++) t1[i] = (base[k][i] - Yb[i]) * w[i];
+      const num = new Float32Array(n); boxF(t1, tw, th, rb, num, tmp);
+      for (let i = 0; i < n; i++) num[i] = wB[i] > 0.002 ? num[i] / wB[i] : base[k][i] - Yb[i];
+      return num;
+    });
+    const r2 = Math.max(6, Math.round(tw * 0.014));
+    let B2c = null;
+    return { w: tw, h: th, B: base, get B2() {
+      if (!B2c) {
+        boxF(I, tw, th, r2, mI, tmp);
+        for (let i = 0; i < n; i++) t1[i] = I[i] * I[i];
+        boxF(t1, tw, th, r2, vI, tmp);
+        for (let i = 0; i < n; i++) vI[i] -= mI[i] * mI[i];
+        B2c = ch.map(P => gf(P, r2, 0.006));
+      }
+      return B2c;
+    }, E, prot, act: actB, sd };
+  }
+
+  /* Fundo desfocado: média só com pixels do cenário, para a cor da pessoa não vazar no borrão. */
+  function prepareBg(canvas, seg) {
+    const w2 = Math.max(16, Math.round(seg.w / 2)), h2 = Math.max(16, Math.round(seg.h / 2)), n = w2 * h2;
+    const c = document.createElement("canvas"); c.width = w2; c.height = h2;
+    const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(canvas, 0, 0, w2, h2);
+    const px = cx.getImageData(0, 0, w2, h2).data, wt = new Float32Array(n);
+    const ch = [new Float32Array(n), new Float32Array(n), new Float32Array(n)];
+    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+      const i = y * w2 + x, q = Math.min(seg.h - 1, (y * seg.h / h2) | 0) * seg.w + Math.min(seg.w - 1, (x * seg.w / w2) | 0);
+      const w = Math.max(0, seg.cls[0][q] / 255 - 0.15) / 0.85;
+      wt[i] = w; ch[0][i] = px[i * 4] / 255 * w; ch[1][i] = px[i * 4 + 1] / 255 * w; ch[2][i] = px[i * 4 + 2] / 255 * w;
+    }
+    const r = Math.max(4, Math.round(w2 * 0.03)), tmp = new Float32Array(n), t2 = new Float32Array(n);
+    const blur = a => { const o = new Float32Array(n); boxF(a, w2, h2, r, t2, tmp); boxF(t2, w2, h2, r, o, tmp); return o; };
+    const den = blur(wt), out = ch.map(blur);
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) out[k][i] = den[i] > 0.02 ? out[k][i] / den[i] : px[i * 4 + k] / 255;
+    return { w: w2, h: h2, R: out[0], G: out[1], B: out[2] };
+  }
+
+  /* ---------- rosto: dentes e olhos ---------- */
+  const LIPS_IN = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
+  const EYE_R = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+  const EYE_L = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466];
+  const IRIS_R = [468, 469, 470, 471, 472], IRIS_L = [473, 474, 475, 476, 477];
+  const JAW = [234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397, 288, 361, 323, 454];
+
+  function runFace() {
+    if (!faceLm || !S.prev || !S.seg) return;
+    const token = S.prev;
+    setTimeout(() => {
+      try {
+        const f0 = performance.now();
+        // imagem inteira + 4 recortes ampliados (rostos pequenos ou de perfil)
+        const W = S.prev.width, H = S.prev.height, dets = [], out = [];
+        const add = (lms, ox, oy, cw, ch) => lms.forEach(l => {
+          const m = l.map(q => ({ x: (ox + q.x * cw) / W, y: (oy + q.y * ch) / H }));
+          const nose = m[1], wd = Math.hypot((m[454].x - m[234].x) * W, (m[454].y - m[234].y) * H);
+          if (dets.some(d => Math.hypot((d.nose.x - nose.x) * W, (d.nose.y - nose.y) * H) < 0.5 * d.wd)) return;
+          dets.push({ nose, wd }); out.push(m);
+        });
+        // só procura rostos se a segmentação achou pele de rosto
+        const sg0 = S.segRef || S.seg, gk = Math.max(1, Math.round(sg0.w / 200)), gw = Math.ceil(sg0.w / gk), gh = Math.ceil(sg0.h / gk);
+        const fs = new Uint8Array(gw * gh); let fcount = 0;
+        for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (sg0.cls[3][Math.min(sg0.h - 1, y * gk) * sg0.w + Math.min(sg0.w - 1, x * gk)] > 128) { fs[y * gw + x] = 1; fcount++; }
+        if (fcount < 3) { TM.detect = 0; if (token === S.prev) buildFace([]); return; }
+        add(faceLm.detect(S.prev).faceLandmarks || [], 0, 0, W, H);
+        // blocos de pele de rosto sem nenhum rosto detectado: procura de novo num recorte ampliado
+        const seen = new Uint8Array(gw * gh); let extra = 0;
+        for (let i0 = 0; i0 < gw * gh && extra < 6; i0++) {
+          if (!fs[i0] || seen[i0]) continue;
+          const st = [i0]; seen[i0] = 1; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1, A = 0;
+          while (st.length) { const c = st.pop(), cx0 = c % gw, cy0 = (c / gw) | 0; A++; x0 = Math.min(x0, cx0); x1 = Math.max(x1, cx0); y0 = Math.min(y0, cy0); y1 = Math.max(y1, cy0);
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = cx0 + dx, ny = cy0 + dy; if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue; const k = ny * gw + nx; if (fs[k] && !seen[k]) { seen[k] = 1; st.push(k); } } }
+          if (A < 6) continue;
+          const bx0 = x0 / gw * W, bx1 = (x1 + 1) / gw * W, by0 = y0 / gh * H, by1 = (y1 + 1) / gh * H;
+          if (out.some(m => { const nx = m[1].x * W, ny = m[1].y * H; return nx > bx0 - 0.25 * (bx1 - bx0) && nx < bx1 + 0.25 * (bx1 - bx0) && ny > by0 - 0.25 * (by1 - by0) && ny < by1 + 0.25 * (by1 - by0); })) continue;
+          extra++;
+          const sz = Math.min(Math.min(W, H), Math.max(160, Math.max(bx1 - bx0, by1 - by0) * 2.4)), ox = Math.max(0, Math.min(W - sz, (bx0 + bx1) / 2 - sz / 2)), oy = Math.max(0, Math.min(H - sz, (by0 + by1) / 2 - sz / 2));
+          const cc = document.createElement("canvas"); cc.width = Math.round(sz); cc.height = Math.round(sz);
+          cc.getContext("2d").drawImage(S.prev, ox, oy, sz, sz, 0, 0, cc.width, cc.height);
+          add(faceLm.detect(cc).faceLandmarks || [], ox, oy, cc.width, cc.height);
+        }
+        // descarta rostos falsos: o tamanho precisa bater com a área de pele do rosto em volta
+        const sg = S.seg, kept = out.filter(m => {
+          const qx = Math.min(sg.w - 1, (m[1].x * sg.w) | 0), qy = Math.min(sg.h - 1, (m[1].y * sg.h) | 0);
+          const ok = (x, y) => sg.cls[3][y * sg.w + x] > 128;
+          if (!ok(qx, qy)) return true;
+          const seen = new Uint8Array(sg.w * sg.h), st = [qy * sg.w + qx]; seen[st[0]] = 1; let A = 0;
+          while (st.length) { const c = st.pop(); A++; const x = c % sg.w, y = (c / sg.w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= sg.w || ny >= sg.h) continue; const k = ny * sg.w + nx; if (!seen[k] && ok(nx, ny)) { seen[k] = 1; st.push(k); } } }
+          const AP = A * (W / sg.w) * (H / sg.h), wd = Math.hypot((m[454].x - m[234].x) * W, (m[454].y - m[234].y) * H), ex = Math.sqrt(AP * 1.25);
+          return wd / ex > 0.55 && wd / ex < 1.7;
+        });
+        TM.detect = Math.round(performance.now() - f0);
+        if (token === S.prev) tm("buildFace", () => buildFace(kept));
+      }
+      catch (e) { S.face = null; if (S.an) S.an.face = null; }
+    }, 30);
+  }
+
+  function buildFace(faces) {
+    const a = S.an, P = S.prevData;
+    if (!faces.length) { S.face = null; a.face = null; S.ovFace = null; showStats(a); applyStyle(); return; }
+    const sc = Math.min(1, 1000 / Math.max(S.prev.width, S.prev.height));
+    const tw = Math.round(S.prev.width * sc), th = Math.round(S.prev.height * sc), n = tw * th;
+    const mk = () => { const c = document.createElement("canvas"); c.width = tw; c.height = th; const x = c.getContext("2d", { willReadFrequently: true }); x.fillStyle = "#000"; x.fillRect(0, 0, tw, th); return x; };
+    const cT = mk(), cS = mk(), cI = mk(), cB = mk();
+    const path = (ctx, lm, idx, sx, sy) => { ctx.beginPath(); idx.forEach((k, i) => { const q = lm[k]; i ? ctx.lineTo(q.x * sx, q.y * sy) : ctx.moveTo(q.x * sx, q.y * sy); }); ctx.closePath(); };
+    const area = (lm, idx) => { let s2 = 0; for (let i = 0; i < idx.length; i++) { const q = lm[idx[i]], r2 = lm[idx[(i + 1) % idx.length]]; s2 += q.x * P.width * r2.y * P.height - r2.x * P.width * q.y * P.height; } return Math.abs(s2) / 2; };
+    let eyesOk = 0, mouths = 0;
+    for (const lm of faces) {
+      if (area(lm, LIPS_IN) > 60) { cT.fillStyle = "#fff"; path(cT, lm, LIPS_IN, tw, th); cT.fill(); mouths++; }
+      cB.fillStyle = "#fff"; path(cB, lm, JAW, tw, th); cB.fill();
+      [[EYE_R, IRIS_R], [EYE_L, IRIS_L]].forEach(([eye, iris]) => {
+        if (area(lm, eye) < 15) return;
+        // média de luz dentro do olho: óculos escuros e olhos fechados ficam de fora
+        const p2 = new Path2D(); eye.forEach((k, i) => { const q = lm[k]; i ? p2.lineTo(q.x * P.width, q.y * P.height) : p2.moveTo(q.x * P.width, q.y * P.height); }); p2.closePath();
+        let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1; eye.forEach(k => { x0 = Math.min(x0, lm[k].x * P.width); x1 = Math.max(x1, lm[k].x * P.width); y0 = Math.min(y0, lm[k].y * P.height); y1 = Math.max(y1, lm[k].y * P.height); });
+        let sy = 0, sn = 0, s5 = 0;
+        for (let y = Math.max(0, y0 | 0); y < Math.min(P.height, y1 + 1); y++) for (let x = Math.max(0, x0 | 0); x < Math.min(P.width, x1 + 1); x++) {
+          if (!cT.isPointInPath(p2, x, y)) continue;
+          const i = (y * P.width + x) * 4; sy += (0.2126 * P.data[i] + 0.7152 * P.data[i + 1] + 0.0722 * P.data[i + 2]) / 255; sn++;
+          s5 += S.seg.cls[5][Math.min(S.seg.h - 1, (y * S.seg.h / P.height) | 0) * S.seg.w + Math.min(S.seg.w - 1, (x * S.seg.w / P.width) | 0)] / 255;
+        }
+        if (sn < 20 || sy / sn < 0.08 || s5 / sn > 0.45 || x1 - x0 < 7) return;
+        cS.fillStyle = "#fff"; path(cS, lm, eye, tw, th); cS.fill();
+        const c0 = lm[iris[0]]; let rr = 0; for (let k = 1; k < 5; k++) rr += Math.hypot((lm[iris[k]].x - c0.x) * tw, (lm[iris[k]].y - c0.y) * th); rr /= 4;
+        cS.fillStyle = "#000"; cS.beginPath(); cS.arc(c0.x * tw, c0.y * th, rr * 1.05, 0, 7); cS.fill();
+        cI.save(); path(cI, lm, eye, tw, th); cI.clip(); cI.fillStyle = "#fff"; cI.beginPath(); cI.arc(c0.x * tw, c0.y * th, rr, 0, 7); cI.fill(); cI.restore();
+        eyesOk++;
+      });
+    }
+    const tmp = new Float32Array(n), out = () => new Float32Array(n);
+    const grab = ctx => { const d = ctx.getImageData(0, 0, tw, th).data, f = out(), o = out(); for (let i = 0; i < n; i++) f[i] = d[i * 4] / 255; boxF(f, tw, th, 1, o, tmp); return o; };
+    const F = { w: tw, h: th, teeth: grab(cT), sclera: grab(cS), iris: grab(cI), n: faces.length };
+    // barba: parte de baixo do rosto onde há muito detalhe (fios) em vez de pele lisa
+    const lowerM = grab(cB), sp = S.skin && S.skin.w === tw && S.skin.h === th ? S.skin.prot : null;
+    F.beard = new Float32Array(n); let bpx = 0, lpx = 0;
+    if (sp) for (let i = 0; i < n; i++) {
+      const l = lowerM[i]; if (l < 0.02) continue; if (l > 0.5) lpx++;
+      const t = Math.min(1, Math.max(0, ((1 - sp[i]) - 0.3) / 0.4)), bv = l * t * t * (3 - 2 * t);
+      F.beard[i] = bv; if (bv > 0.5) bpx++;
+    }
+    // estatísticas para decidir quanto clarear
+    let tY = 0, tN = 0, sR = 0, sN = 0;
+    const sx = P.width / tw, sy2 = P.height / th;
+    for (let i = 0; i < n; i++) {
+      const tt = F.teeth[i], ss = F.sclera[i];
+      if (tt < 0.5 && ss < 0.5) continue;
+      const q = ((Math.floor((i / tw | 0) * sy2)) * P.width + Math.floor((i % tw) * sx)) * 4;
+      const r = P.data[q] / 255, g = P.data[q + 1] / 255, b = P.data[q + 2] / 255, Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      if (tt >= 0.5 && Y > 0.4 && r - g < 0.15) { tY += (r + g) / 2 - b; tN++; }
+      if (ss >= 0.5 && Y > 0.35 && Math.max(r, g, b) - Math.min(r, g, b) < 0.3) { sR += r - g; sN++; }
+    }
+    a.face = { beard: lpx ? bpx / lpx : 0, eyes: eyesOk, n: faces.length, teethPx: tN, yellow: tN ? tY / tN : 0, eyePx: sN, red: sN ? Math.max(0, sR / sN) : 0 };
+    S.face = F; S.rm = {};
+    const ov = document.createElement("canvas"); ov.width = tw; ov.height = th;
+    const ox = ov.getContext("2d"), oi = ox.createImageData(tw, th);
+    for (let i = 0; i < n; i++) {
+      const t2 = F.teeth[i], s2 = F.sclera[i], i2 = F.iris[i];
+      if (t2 > 0.3) { oi.data[i * 4] = 0; oi.data[i * 4 + 1] = 230; oi.data[i * 4 + 2] = 255; oi.data[i * 4 + 3] = 200; }
+      else if (i2 > 0.3) { oi.data[i * 4] = 255; oi.data[i * 4 + 1] = 230; oi.data[i * 4 + 2] = 0; oi.data[i * 4 + 3] = 200; }
+      else if (F.beard[i] > 0.3) { oi.data[i * 4] = 200; oi.data[i * 4 + 1] = 120; oi.data[i * 4 + 2] = 40; oi.data[i * 4 + 3] = 170; }
+      else if (s2 > 0.3) { oi.data[i * 4] = 255; oi.data[i * 4 + 1] = 255; oi.data[i * 4 + 2] = 255; oi.data[i * 4 + 3] = 200; }
+    }
+    ox.putImageData(oi, 0, 0); S.ovFace = ov;
+    showStats(a); applyStyle();
+  }
+
+  /* Barba: pele de rosto com muito detalhe (fios) na metade de baixo de cada rosto. Não depende dos pontos do rosto. */
+  function buildBeard(sg, sk) {
+    if (!sg || !sk || sg.w !== sk.w || sg.h !== sk.h) return null;
+    const w = sg.w, h = sg.h, n = w * h, gk = Math.max(1, Math.round(w / 200)), gw = Math.ceil(w / gk), gh = Math.ceil(h / gk);
+    const fs = new Uint8Array(gw * gh), lab = new Int16Array(gw * gh).fill(-1), comps = [];
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (sg.cls[3][Math.min(h - 1, y * gk) * w + Math.min(w - 1, x * gk)] > 128) fs[y * gw + x] = 1;
+    for (let i0 = 0; i0 < gw * gh; i0++) {
+      if (!fs[i0] || lab[i0] >= 0) continue;
+      const id = comps.length, st = [i0]; lab[i0] = id; const cp = { y0: 1e9, y1: -1, A: 0 };
+      while (st.length) { const c = st.pop(), cx = c % gw, cy = (c / gw) | 0; cp.A++; cp.y0 = Math.min(cp.y0, cy); cp.y1 = Math.max(cp.y1, cy);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue; const k = ny * gw + nx; if (fs[k] && lab[k] < 0) { lab[k] = id; st.push(k); } } }
+      comps.push(cp);
+    }
+    const arr = new Float32Array(n); let bpx = 0, lpx = 0;
+    const ss = (a, b2, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b2 - a))); return t * t * (3 - 2 * t); };
+    const rel = (y, cp) => ((y / gk) - cp.y0) / Math.max(1, cp.y1 - cp.y0 + 1);
+    // textura típica da parte de cima do rosto (testa e bochechas) de cada rosto
+    const ups = comps.map(() => []);
+    for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+      const i = y * w + x; if (sg.cls[3][i] < 128) continue;
+      const c = lab[Math.min(gh - 1, (y / gk) | 0) * gw + Math.min(gw - 1, (x / gk) | 0)]; if (c < 0) continue;
+      const t = rel(y, comps[c]); if (t > 0.1 && t < 0.4) ups[c].push(sk.sd[i]);
+    }
+    const med = ups.map(a => { if (a.length < 30) return -1; a.sort((p1, p2) => p1 - p2); return a[a.length >> 1]; });
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x; if (sg.cls[3][i] < 128) continue;
+      const c = lab[Math.min(gh - 1, (y / gk) | 0) * gw + Math.min(gw - 1, (x / gk) | 0)]; if (c < 0 || comps[c].A < 8 || med[c] < 0) continue;
+      const lowerT = ss(0.42, 0.62, rel(y, comps[c])); if (lowerT <= 0) continue;
+      lpx++;
+      const bv = lowerT * ss(med[c] * 1.4 + 0.004, med[c] * 2.2 + 0.012, sk.sd[i]); arr[i] = bv; if (bv > 0.5) bpx++;
+    }
+    return { arr, frac: lpx > 50 ? bpx / lpx : 0 };
+  }
+
+  function onSeg(ms) {
+    const sg = S.seg, n = sg.w * sg.h, a = S.an, P = S.prevData, sx = P.width / sg.w, sy = P.height / sg.h;
+    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0; const skinYs = [];
+    const ov = document.createElement("canvas"); ov.width = sg.w; ov.height = sg.h;
+    const ox = ov.getContext("2d"), oi = ox.createImageData(sg.w, sg.h);
+    for (let i = 0; i < n; i++) {
+      let best = 0, bv = -1;
+      for (let c = 0; c < 6; c++) { const v = sg.cls[c][i]; cover[c] += v / 255; if (v > bv) { bv = v; best = c; } }
+      const px = ((Math.floor((i / sg.w | 0) * sy)) * P.width + Math.floor((i % sg.w) * sx)) * 4;
+      const Y = (0.2126 * P.data[px] + 0.7152 * P.data[px + 1] + 0.0722 * P.data[px + 2]) / 255;
+      const bw = sg.cls[0][i] / 255;
+      if (bw > 0.7) { bgY += Y; bgN++; } else if (bw < 0.3) { sjY += Y; sjN++; }
+      if (sg.cls[2][i] + sg.cls[3][i] > 400) skinYs.push(Y);
+      if (best !== 0) { const c = REG[best].rgb; oi.data[i * 4] = c[0]; oi.data[i * 4 + 1] = c[1]; oi.data[i * 4 + 2] = c[2]; oi.data[i * 4 + 3] = 110; }
+    }
+    S.rm = {};
+    ox.putImageData(oi, 0, 0); S.ov = ov;
+    const fr = Array.from(cover, v => v / n);
+    skinYs.sort((x, y) => x - y);
+    let gs = 0, gn = 0;
+    for (let y = 2; y < P.height - 2; y += 3) for (let x = 2; x < P.width - 2; x += 3) {
+      const q = Math.min(sg.h - 1, (y * sg.h / P.height) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / P.width) | 0);
+      if (sg.cls[0][q] < 200) continue;
+      const i = (y * P.width + x) * 4, j = i + 8, k = i + P.width * 8, d = P.data;
+      const Y0 = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2], Y1 = 0.2126 * d[j] + 0.7152 * d[j + 1] + 0.0722 * d[j + 2], Y2 = 0.2126 * d[k] + 0.7152 * d[k + 1] + 0.0722 * d[k + 2];
+      gs += (Math.abs(Y1 - Y0) + Math.abs(Y2 - Y0)) / 255; gn++;
+    }
+    const bgGrad = gn > 50 ? gs / gn : 0;
+    let shineN = 0; for (const v of skinYs) if (v > 0.8) shineN++;
+    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr };
+    a.skinFrac = fr[2] + fr[3];
+    if (skinYs.length > 20) a.skinY = skinYs[skinYs.length >> 1];
+    a.scene = a.med < 0.2 ? "Pouca luz" : (fr[3] > 0.05 || a.seg.person > 0.35) ? "Retrato" : a.seg.person > 0.05 ? "Pessoa no ambiente" : (a.skyFrac > 0.15 || a.greenFrac > 0.2) ? "Paisagem" : "Cena geral";
+    a.scores.leib = Math.min(1, fr[3] * 12 + fr[2] * 3);
+    const studio = (a.seg.person > 0.3 || fr[3] > 0.05) && (a.med < 0.36 || a.seg.bgY < 0.3);
+    a.suggested = studio ? "leib" : (a.seg.person > 0.05 ? (a.satMean > 0.38 && a.seg.person < 0.3 ? "mccurry" : "natural") : (a.scores.adams > a.scores.mccurry && a.med >= 0.25 && a.dr > 0.4 ? "adams" : (a.satMean > 0.38 ? "mccurry" : "natural")));
+    S.suggested = a.suggested; if (!S.userPicked) S.style = a.suggested;
+    setSegStatus("Regiões prontas em " + ms + " ms.", true);
+    $("regs").innerHTML = REG.map((r, i) => `<span><i style="background:rgb(${r.rgb})"></i>${r.name}<b>${Math.round(fr[i] * 100)}%</b></span>`).join("");
+    $("ovl").disabled = false; showStats(a); applyStyle();
+  }
+
+  /* ---------- decisão automática ---------- */
+  function autoParams(style, a) {
+    const P = { ...NEUTRAL }, notes = [];
+    const T = { natural: { lv: 0.6, wb: 0.5, tgt: 0.5 }, adams: { lv: 1, wb: 0.5, tgt: 0.42 }, leib: { lv: 0.5, wb: 0.6, tgt: 0.48 }, mccurry: { lv: 0.5, wb: 0.3, tgt: 0.48 } }[style];
+    const useSkin = a.skinFrac > 0.03;
+    const localSubj = !!(a.seg && useSkin && a.seg.person < 0.35);
+    const faceRef = useSkin && !localSubj;
+    const ref = clamp(faceRef ? a.skinY : a.med, 0.05, 0.95), tgt = faceRef ? 0.6 : T.tgt;
+    // tons médios: uma curva de potência leva a referência ao alvo sem estourar os brilhos
+    P.mid = clamp(-Math.log2(Math.log(tgt) / Math.log(ref)) * 0.85, a.fracBright > 0.1 ? -0.5 : -0.3, a.fracDark > 0.25 ? 0.3 : 0.9);
+    const expo = Math.pow(2, -P.mid);
+    notes.push(`${faceRef ? "A pele" : "A luz mediana"} estava em ${Math.round(ref * 100)}%. Levei os tons médios para ${Math.round(Math.pow(ref, expo) * 100)}% (${sgn(P.mid, 2)}) com uma curva que não estoura os brilhos.`);
+
+    P.bp = clamp(a.p005, 0, 0.08) * T.lv;
+    P.wp = 1 - (1 - clamp(a.p995, 0.85, 1)) * T.lv;
+    if (P.bp > 0.01 || P.wp < 0.99) notes.push("Ajustei pretos e brancos para a foto usar a escala inteira, sem cinza lavado nas pontas.");
+
+    const ratio = a.avgR / Math.max(0.02, a.avgB), gm = a.avgG / Math.max(0.02, (a.avgR + a.avgB) / 2);
+    const cast = ratio - 1, eff = Math.sign(cast) * Math.max(0, Math.abs(cast) - 0.2);
+    P.temp = clamp(-eff / 0.36 * T.wb, useSkin ? -0.08 : -0.15, 0.15);
+    P.tint = clamp(-(gm - 1) / 0.2 * T.wb, -0.4, 0.4);
+    if (useSkin && ratio > 1.05) notes.push("O fundo é quente, mas a pele já está com boa cor. Não esfriei a foto para não deixar as pessoas pálidas.");
+    else if (Math.abs(P.temp) > 0.08) notes.push(ratio > 1 ? "Os meios-tons puxavam para o quente. Esfriei um pouco, sem apagar o clima da cena." : "Os meios-tons puxavam para o frio. Esquentei um pouco, sem apagar o clima da cena.");
+
+    const base = {
+      natural: { contrast: 0.2, shadows: 0.3, highlights: 0.3, clarity: 0.2, vibrance: 0.35, sat: 0.05, midDesat: 0, teal: 0, warm: 0.05, bw: 0, vignette: 0.06 },
+      adams: { contrast: 0.5, shadows: 0.45, highlights: 0.5, clarity: 0.5, vibrance: 0.2, sat: 0, midDesat: 0, teal: 0, warm: 0, bw: clamp((0.22 - a.satMean) * 10, 0, 1), vignette: 0.3 },
+      leib: { contrast: 0.22, shadows: 0.25, highlights: 0.3, clarity: 0.08, vibrance: 0.12, sat: -0.05, midDesat: 0.2, teal: 0.12, warm: 0.15, bw: 0, vignette: 0.18 },
+      mccurry: { contrast: 0.24, shadows: 0.25, highlights: 0.25, clarity: 0.26, vibrance: 0.4, sat: 0.1, midDesat: 0.08, teal: 0, warm: 0.12, bw: 0, vignette: 0.1 }
+    }[style];
+    Object.assign(P, base);
+    const satF = clamp(1 - (a.satMean - 0.25) * 1.5, 0.5, 1);
+    P.vibrance *= satF; P.sat *= satF;
+    const dc = clamp((0.7 - a.dr) * 0.6, -0.15, 0.2);
+    P.contrast += dc;
+    if (a.dr > 0.75) P.contrast -= 0.1;
+    P.shadows += clamp(a.fracDark * 2.5, 0, 0.35);
+    P.highlights += clamp(a.fracBright * 5, 0, 0.3);
+    if (!useSkin && a.fracDark > 0.08) { P.shadows *= 0.4; notes.push("As áreas escuras ocupam boa parte da foto e não têm rosto visível. Mantive o preto, pois ele faz parte do clima (silhueta ou noite)."); }
+    if (dc > 0.05) notes.push("A foto tinha pouca diferença entre claro e escuro, então aumentei o contraste.");
+    if (dc < -0.05) notes.push("A foto já tinha contraste forte, então segurei a curva.");
+    if (a.fracDark > 0.1) notes.push(`${Math.round(a.fracDark * 100)}% da imagem estava afundada no preto. Abri as sombras por região, como um dodge no laboratório.`);
+    if (a.fracBright > 0.04) notes.push(`${Math.round(a.fracBright * 100)}% da imagem estava estourando. Segurei os brilhos por região, como um burn.`);
+    if (a.vig < 0.6) { P.vignette *= 0.25; notes.push("A foto já tem vinheta (bordas bem mais escuras que o centro). Reduzi a minha para não escurecer duas vezes."); }
+    if (a.p005 > 0.07) notes.push("Os pretos estão levantados, com aspecto desbotado. Mantive parte disso e só firmei o contraste.");
+
+    if (a.seg && a.seg.person > 0.08) {
+      const seg = a.seg, gap = seg.bgY - seg.subjY;
+      P.bgLight = clamp(-gap * 1.1, -0.6, 0.25);
+      P.subjLight = clamp(gap * 0.5 + (style === "leib" ? 0.08 : 0.04), -0.1, 0.35);
+      if (localSubj) {
+        P.bgLight *= 0.5;
+        const need = Math.log2(0.6 / Math.max(0.05, Math.pow(a.skinY, expo))) / 0.45;
+        P.subjLight = clamp(need * 0.7, -0.3, 0.9);
+        notes.push(`A pele estava em ${Math.round(a.skinY * 100)}% de luz (o ideal é perto de 60%). Iluminei só as pessoas em ${sgn(P.subjLight, 1)} EV, para o céu e o resto da cena não estourarem.`);
+      } else if (!useSkin) {
+        P.bgLight = 0; P.subjLight = 0;
+        notes.push("Não achei rosto nem pele visível (silhueta ou pessoas pequenas). Deixei a luz das pessoas como está para preservar o clima da cena.");
+      } else if (gap > 0.08) notes.push(`O cenário estava mais claro (${Math.round(seg.bgY * 100)}%) que as pessoas (${Math.round(seg.subjY * 100)}%). Escureci o fundo e iluminei as pessoas para o olhar ir até elas.`);
+      else if (gap < -0.12) notes.push(`As pessoas estavam mais escuras (${Math.round(seg.subjY * 100)}%) que o cenário (${Math.round(seg.bgY * 100)}%). Iluminei as pessoas sem mexer no fundo.`);
+      P.bgSat = { natural: 0, adams: 0, leib: -0.15, mccurry: 0 }[style];
+      P.clothVib = { natural: 0.2, adams: 0, leib: 0.1, mccurry: 0.3 }[style];
+      P.hairDepth = { natural: 0.15, adams: 0.2, leib: 0.3, mccurry: 0.2 }[style];
+      if (seg.skin > 0.02) {
+        P.skinSmooth = { natural: 0.3, adams: 0.15, leib: 0.4, mccurry: 0.18 }[style];
+        P.skinEven = { natural: 0.3, adams: 0.2, leib: 0.35, mccurry: 0.25 }[style];
+        P.skinShine = seg.shine;
+        notes.push(`Pele: suavizei a textura fina em ${Math.round(P.skinSmooth * 100)}% e uniformizei o tom em ${Math.round(P.skinEven * 100)}%. Barba, sobrancelhas, olhos e lábios ficam de fora, porque têm detalhe que deve aparecer.${seg.shine > 0.05 ? ` Reduzi o brilho oleoso em ${Math.round(seg.shine * 100)}%.` : ""}`);
+      }
+    }
+    if (style === "natural") notes.push("Estilo Natural: contraste moderado, cor viva que poupa a pele, sombras abertas e brilhos preservados.");
+    if (style === "adams") notes.push(P.bw > 0.5 ? "Estilo Adams: a cena tem pouca cor, então virou preto e branco, com clareza local e bordas mais escuras para guiar o olhar." : "Estilo Adams: tons dramáticos, clareza local e bordas mais escuras. A cena tem cor, então continua colorida.");
+    if (style === "leib") notes.push("Estilo Leibovitz: meios-tons mais calmos, sombras levemente verde-azuladas e brilhos quentes. A vibração evita tons de pele.");
+    if (style === "mccurry") notes.push("Estilo McCurry: cor densa que poupa a pele, saturação moderada e brilhos quentes.");
+    if (a.skyFrac > 0.08 && a.med > 0.3 && style !== "adams") {
+      P.skyDeep = style === "mccurry" ? 0.4 : 0.3;
+      notes.push(`Céu azul em ${Math.round(a.skyFrac * 100)}% da parte de cima: aprofundei o azul só nele, sem pintar nuvens nem pessoas.`);
+    }
+    if (a.seg) {
+      const q = a.seg;
+      if (q.person > 0.12 && q.person < 0.7 && q.fr[3] > 0.005) {
+        P.bgBlur = clamp((q.bgGrad - 0.02) * 25, 0, 0.7);
+        if (P.bgBlur > 0.1) notes.push(`O fundo tem muito detalhe e compete com as pessoas. Desfoquei ${Math.round(P.bgBlur * 100)}%, calculado só com as cores do fundo para não borrar o contorno.`);
+      }
+      if (q.cloth > 0.06 && q.person > 0.2 && style !== "adams") {
+        P.clothSmooth = style === "leib" ? 0.3 : 0.2;
+        notes.push(`Roupa em ${Math.round(q.cloth * 100)}% da foto: alisei amassados leves em ${Math.round(P.clothSmooth * 100)}%, mantendo estampas e costuras.`);
+      }
+      if (q.hair > 0.02 && style !== "adams") {
+        P.hairShine = style === "leib" ? 0.25 : 0.2;
+        P.hairVolume = 0.65; P.hairSmooth = 0.3;
+        notes.push("Cabelo: dei corpo aos fios (mais definição e luz e sombra entre as mechas, o que lê como mais volume), assentei fios soltos e realcei o brilho. Não muda o corte nem o penteado.");
+      }
+    }
+    if (a.face) {
+      const f = a.face;
+      if (f.teethPx > 30) {
+        P.teethWhite = clamp((f.yellow - 0.05) * 6, 0, 0.7);
+        if (P.teethWhite > 0.05) notes.push(`Dentes com tom amarelado (${Math.round(f.yellow * 100)}%): clareei ${Math.round(P.teethWhite * 100)}%, só nos dentes.`);
+      }
+      if (f.eyes > 0) {
+        P.eyeWhite = f.eyePx > 4 ? clamp(0.25 + f.red * 3, 0.25, 0.6) : 0;
+        P.eyeIris = style === "leib" ? 0.3 : 0.25;
+        notes.push(`Olhos: clareei o branco em ${Math.round(P.eyeWhite * 100)}% e realcei a íris em ${Math.round(P.eyeIris * 100)}%. Óculos escuros ficam de fora.`);
+      }
+    }
+    if (a.beard > 0.3) {
+      P.beardDef = 0.7;
+      notes.push(`Barba detectada (${Math.round(a.beard * 100)}% da metade de baixo do rosto): uniformizei o tom e realcei a definição dos fios, para parecer mais cheia e cuidada. Não muda o formato.`);
+    }
+    const hk = clamp((a.med - 0.45) / 0.2, 0, 1);
+    if (hk > 0.3) {
+      P.midDesat *= 1 - 0.7 * hk; P.teal *= 1 - 0.7 * hk; P.highlights *= 1 - 0.6 * hk; P.vignette *= 1 - 0.6 * hk;
+      P.bgLight = Math.max(P.bgLight, -0.25 * (1 - hk));
+      notes.push("Cena clara e ensolarada: mantive o brilho e o calor da luz, sem escurecer o fundo nem esfriar a cor.");
+    }
+    return { P, notes };
+  }
+
+  /* ---------- máscara de luz (base do dodge/burn) ---------- */
+  function boxBlur(src, w, h, r) {
+    const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+    for (let pass = 0; pass < 2; pass++) {
+      const a = pass === 0 ? src : out, b = tmp;
+      for (let y = 0; y < h; y++) {
+        let acc = 0, cnt = 0;
+        for (let x = -r; x <= r; x++) { const xx = clamp(x, 0, w - 1); acc += a[y * w + xx]; cnt++; }
+        for (let x = 0; x < w; x++) {
+          b[y * w + x] = acc / cnt;
+          acc += a[y * w + clamp(x + r + 1, 0, w - 1)] - a[y * w + clamp(x - r, 0, w - 1)];
+        }
+      }
+      for (let x = 0; x < w; x++) {
+        let acc = 0, cnt = 0;
+        for (let y = -r; y <= r; y++) { const yy = clamp(y, 0, h - 1); acc += b[yy * w + x]; cnt++; }
+        for (let y = 0; y < h; y++) {
+          out[y * w + x] = acc / cnt;
+          acc += b[clamp(y + r + 1, 0, h - 1) * w + x] - b[clamp(y - r, 0, h - 1) * w + x];
+        }
+      }
+    }
+    return out;
+  }
+  function buildMask(canvas) {
+    const long = 320, sc = long / Math.max(canvas.width, canvas.height);
+    const w = Math.max(8, Math.round(canvas.width * sc)), h = Math.max(8, Math.round(canvas.height * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(canvas, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data, L = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255;
+    const r = Math.max(3, Math.round(w * 0.045)), n = w * h, eps = 0.015;
+    const tmp = new Float32Array(n), m = new Float32Array(n), v = new Float32Array(n), t1 = new Float32Array(n), mA = new Float32Array(n), mB = new Float32Array(n);
+    boxF(L, w, h, r, m, tmp);
+    for (let i = 0; i < n; i++) t1[i] = L[i] * L[i];
+    boxF(t1, w, h, r, v, tmp);
+    for (let i = 0; i < n; i++) { const vv = v[i] - m[i] * m[i], a = vv / (vv + eps); t1[i] = a; v[i] = m[i] * (1 - a); }
+    boxF(t1, w, h, r, mA, tmp); boxF(v, w, h, r, mB, tmp);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) out[i] = mA[i] * L[i] + mB[i];
+    return { d: out, w, h };
+  }
+
+  function makeDetail(d, w, h) {
+    const n = w * h, Y = new Float32Array(n), tmp = new Float32Array(n), ys = new Float32Array(n), ym = new Float32Array(n);
+    for (let i = 0; i < n; i++) Y[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255;
+    boxF(Y, w, h, Math.max(1, Math.round(w * 0.0012)), ys, tmp);
+    boxF(Y, w, h, Math.max(2, Math.round(w * 0.006)), ym, tmp);
+    let bl = null;
+    return { Y0: Y, ys, ym, get bl() {
+      if (!bl) {
+        const r = Math.max(3, Math.round(w * 0.02)), t2 = new Float32Array(n);
+        bl = [0, 1, 2].map(k => { const a = new Float32Array(n), o = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = d[i * 4 + k] / 255; boxF(a, w, h, r, o, tmp); boxF(o, w, h, r, t2, tmp); return t2.slice(); });
+      }
+      return bl;
+    } };
+  }
+
+  /* ---------- motor de render ---------- */
+  function render(src, w, h, p, m, hist, sg, sk, bg, fc, bd, dt, lc) {
+    const d = src.data, out = new ImageData(w, h), o = out.data;
+    if (p.faceEnh > 0) { const fe = p.faceEnh; p = Object.assign({}, p, { skinSmooth: Math.min(1, p.skinSmooth + 0.5 * fe), skinEven: Math.min(1, p.skinEven + 0.4 * fe), eyeWhite: Math.min(1, p.eyeWhite + 0.5 * fe), eyeIris: Math.min(1, p.eyeIris + 0.5 * fe), teethWhite: Math.min(1, p.teethWhite + 0.5 * fe), faceLight: p.faceLight + 0.35 * fe }); }
+    const LL = lc && lc.list.length ? lc : null;
+    let lxi = null, lxf = null;
+    if (LL) { lxi = new Int32Array(w); lxf = new Float32Array(w); for (let x = 0; x < w; x++) { const f = x / Math.max(1, w - 1) * (LL.w - 1); lxi[x] = Math.min(LL.w - 2, f | 0); lxf[x] = f - lxi[x]; } }
+    const lensOn = p.lensBlur > 0 && !!dt, lbl = lensOn ? dt.bl : null, mnd = Math.min(w, h), bwv = BWW[Math.round(p.bwFilter)] || BWW[2];
+    const ex = Math.pow(2, p.ev * 0.45), inv = 1 / Math.max(0.05, p.wp - p.bp), expo = Math.pow(2, -p.mid);
+    const kr = 1 + 0.18 * p.temp, kb = 1 - 0.18 * p.temp, kg = 1 + 0.1 * p.tint;
+    const mw = m.w, mh = m.h, md = m.d;
+    const xi = new Int32Array(w), xf = new Float32Array(w);
+    for (let x = 0; x < w; x++) { const f = x / Math.max(1, w - 1) * (mw - 1); xi[x] = Math.min(mw - 2, f | 0); xf[x] = f - xi[x]; }
+    if (hist) hist.fill(0);
+    let sxi = null, c0, c1, c2, c3, c4, sw = 0, sh2 = 0;
+    const bil = (a, j, tx, ty, bw) => (a[j] * (1 - tx) + a[j + 1] * tx) * (1 - ty) + (a[j + bw] * (1 - tx) + a[j + bw + 1] * tx) * ty;
+    let bxi = null, bxf = null, bW = 0, bH = 0;
+    if (bg) { bW = bg.w; bH = bg.h; bxi = new Int32Array(w); bxf = new Float32Array(w); for (let x = 0; x < w; x++) { const f = x / Math.max(1, w - 1) * (bW - 1); bxi[x] = Math.min(bW - 2, f | 0); bxf[x] = f - bxi[x]; } }
+    const sstep = (e0, e1, v) => { const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+    let fxi = null, fw = 0, fh = 0;
+    if (fc) { fw = fc.w; fh = fc.h; fxi = new Int32Array(w); for (let x = 0; x < w; x++) fxi[x] = Math.min(fw - 1, (x * fw / w) | 0); }
+    let kxi = null, kw = 0, kh = 0;
+    if (sg && sk) { kw = sk.w; kh = sk.h; kxi = new Int32Array(w); for (let x = 0; x < w; x++) kxi[x] = Math.min(kw - 1, (x * kw / w) | 0); }
+    if (sg) { sw = sg.w; sh2 = sg.h; c0 = sg.cls[0]; c1 = sg.cls[1]; c2 = sg.cls[2]; c3 = sg.cls[3]; c4 = sg.cls[4]; sxi = new Int32Array(w); for (let x = 0; x < w; x++) sxi[x] = Math.min(sw - 1, (x * sw / w) | 0); }
+    for (let y = 0; y < h; y++) {
+      const fy = y / Math.max(1, h - 1) * (mh - 1), y0 = Math.min(mh - 2, fy | 0), ty = fy - y0;
+      const dy = (y / h - 0.5) * 2 * (h / w > 1 ? 1 : h / w) ;
+      let ly0 = 0, lty = 0; if (LL) { const f = y / Math.max(1, h - 1) * (LL.h - 1); ly0 = Math.min(LL.h - 2, f | 0); lty = f - ly0; }
+      let y0b = 0, tyb = 0; if (bg) { const f = y / Math.max(1, h - 1) * (bH - 1); y0b = Math.min(bH - 2, f | 0); tyb = f - y0b; }
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        let bgw = 0, skw = 0, hrw = 0, clw = 0, fcw = 0;
+        if (sg) { const q = Math.min(sh2 - 1, (y * sh2 / h) | 0) * sw + sxi[x]; bgw = c0[q] / 255; hrw = c1[q] / 255; skw = Math.min(1, (c2[q] + c3[q]) / 255); clw = c4[q] / 255; fcw = c3[q] / 255; }
+        const sub = sg ? Math.min(1, Math.max(0, ((1 - bgw) - 0.5) / 0.4)) : 0;
+        const rg = sg ? Math.pow(2, 0.45 * (p.bgLight * (1 - sub) + p.subjLight * sub + p.faceLight * fcw)) * (1 - 0.22 * p.hairDepth * hrw) : 1;
+        let r0 = d[i] / 255, g0 = d[i + 1] / 255, b0 = d[i + 2] / 255;
+        if (kxi && skw > 0.02 && (p.skinSmooth > 0 || p.skinEven > 0)) {
+          const q2 = Math.min(kh - 1, (y * kh / h) | 0) * kw + kxi[x], wS = skw * sk.prot[q2];
+          if (wS > 0.01) {
+            const BR = sk.B[0][q2], BG = sk.B[1][q2], BB = sk.B[2][q2], YB = 0.2126 * BR + 0.7152 * BG + 0.0722 * BB;
+            const sm = p.skinSmooth * wS, ev = p.skinEven * wS * 0.8;
+            r0 += (BR - r0) * sm + ev * (sk.E[0][q2] - (BR - YB));
+            g0 += (BG - g0) * sm + ev * (sk.E[1][q2] - (BG - YB));
+            b0 += (BB - b0) * sm + ev * (sk.E[2][q2] - (BB - YB));
+          }
+        }
+        if (p.clothSmooth > 0 && kxi && clw > 0.02 && sk.B2) {
+          const q3 = Math.min(kh - 1, (y * kh / h) | 0) * kw + kxi[x], cw = clw * p.clothSmooth;
+          r0 += (sk.B2[0][q3] - r0) * cw; g0 += (sk.B2[1][q3] - g0) * cw; b0 += (sk.B2[2][q3] - b0) * cw;
+        }
+        if (fxi && (p.teethWhite > 0 || p.eyeWhite > 0 || p.eyeIris > 0)) {
+          const fq = Math.min(fh - 1, (y * fh / h) | 0) * fw + fxi[x], tw0 = fc.teeth[fq], sc0 = fc.sclera[fq], ir0 = fc.iris[fq];
+          if (tw0 > 0.02 || sc0 > 0.02 || ir0 > 0.02) {
+            const Yv = 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0, chv = Math.max(r0, g0, b0) - Math.min(r0, g0, b0);
+            if (tw0 > 0.02 && p.teethWhite > 0) {
+              const t = p.teethWhite * tw0 * sstep(0.3, 0.5, Yv) * (1 - sstep(0.1, 0.24, r0 - g0)), k4 = 1 + 0.1 * t;
+              r0 = (r0 + (Yv - r0) * 0.75 * t) * k4; g0 = (g0 + (Yv - g0) * 0.75 * t) * k4; b0 = (b0 + (Yv - b0) * 0.6 * t) * k4;
+            }
+            if (sc0 > 0.02 && p.eyeWhite > 0) {
+              const t = p.eyeWhite * sc0 * sstep(0.3, 0.5, Yv) * (1 - sstep(0.12, 0.3, chv)), k5 = 1 + 0.08 * t;
+              r0 = (r0 + (Yv - r0) * 0.7 * t) * k5; g0 = (g0 + (Yv - g0) * 0.7 * t) * k5; b0 = (b0 + (Yv - b0) * 0.7 * t) * k5;
+            }
+            if (ir0 > 0.02 && p.eyeIris > 0) {
+              const t = p.eyeIris * ir0, k6 = 1 + 0.6 * t, k7 = 1 + 0.25 * t;
+              r0 = (Yv + (r0 - Yv) * k6) * k7; g0 = (Yv + (g0 - Yv) * k6) * k7; b0 = (Yv + (b0 - Yv) * k6) * k7;
+            }
+          }
+        }
+        let bdw = 0;
+        if (kxi && hrw > 0.02 && (p.hairSmooth > 0 || p.hairVolume > 0)) {
+          const q4 = Math.min(kh - 1, (y * kh / h) | 0) * kw + kxi[x], BR = sk.B[0][q4], BG = sk.B[1][q4], BB = sk.B[2][q4];
+          const sm2 = p.hairSmooth * hrw * 0.35, vk = 1 + 2.4 * p.hairVolume * hrw;
+          r0 += (BR - r0) * sm2; g0 += (BG - g0) * sm2; b0 += (BB - b0) * sm2;
+          r0 = BR + (r0 - BR) * vk; g0 = BG + (g0 - BG) * vk; b0 = BB + (b0 - BB) * vk;
+        }
+        if (kxi && bd && p.beardDef > 0) {
+          const q5 = Math.min(kh - 1, (y * kh / h) | 0) * kw + kxi[x]; bdw = bd[q5];
+          if (bdw > 0.02 && sk.B2) {
+            const BR = sk.B[0][q5], BG = sk.B[1][q5], BB = sk.B[2][q5];
+            const ev2 = 0.6 * p.beardDef * bdw, vk2 = 1 + 2.2 * p.beardDef * bdw, dk = 1 - 0.1 * p.beardDef * bdw;
+            r0 = (BR + (sk.B2[0][q5] - BR) * ev2 + (r0 - BR) * vk2) * dk;
+            g0 = (BG + (sk.B2[1][q5] - BG) * ev2 + (g0 - BG) * vk2) * dk;
+            b0 = (BB + (sk.B2[2][q5] - BB) * ev2 + (b0 - BB) * vk2) * dk;
+          }
+        }
+        if (bg && p.bgBlur > 0 && bgw > 0.02) {
+          const j0 = y0b * bW + bxi[x], m2 = p.bgBlur * bgw;
+          r0 += (bil(bg.R, j0, bxf[x], tyb, bW) - r0) * m2; g0 += (bil(bg.G, j0, bxf[x], tyb, bW) - g0) * m2; b0 += (bil(bg.B, j0, bxf[x], tyb, bW) - b0) * m2;
+        }
+        if (lensOn) {
+          const ld = Math.hypot(x - p.lensX * w, y - p.lensY * h) / mnd, lt = sstep(p.lensSize, p.lensSize + 0.3, ld) * p.lensBlur, pi2 = y * w + x;
+          if (lt > 0.01) { r0 += (lbl[0][pi2] - r0) * lt; g0 += (lbl[1][pi2] - g0) * lt; b0 += (lbl[2][pi2] - b0) * lt; }
+        }
+        if (p.skyDeep > 0) {
+          const bl2 = b0 - Math.max(r0, g0);
+          if (bl2 > 0.02) {
+            const vy = Math.min(1, Math.max(0, (0.75 - y / h) / 0.35)), kk = p.skyDeep * Math.min(1, (bl2 - 0.02) / 0.08) * vy * (sg ? bgw : 1);
+            r0 *= 1 - 0.3 * kk; g0 *= 1 - 0.2 * kk; b0 *= 1 - 0.06 * kk;
+          }
+        }
+        if (LL) {
+          const lj = ly0 * LL.w + lxi[x], ltx = lxf[x];
+          for (const L of LL.list) {
+            const mm2 = L.m, mv = (mm2[lj] * (1 - ltx) + mm2[lj + 1] * ltx) * (1 - lty) + (mm2[lj + LL.w] * (1 - ltx) + mm2[lj + LL.w + 1] * ltx) * lty;
+            if (mv < 0.005) continue; const a = L.adj;
+            if (a.ev) { const gk = Math.pow(2, 0.45 * a.ev * mv); r0 *= gk; g0 *= gk; b0 *= gk; }
+            if (a.warm) { r0 *= 1 + 0.16 * a.warm * mv; b0 *= 1 - 0.16 * a.warm * mv; }
+            if (a.sat) { const yy = 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0, fs = Math.max(0, 1 + a.sat * mv); r0 = yy + (r0 - yy) * fs; g0 = yy + (g0 - yy) * fs; b0 = yy + (b0 - yy) * fs; }
+            if (a.con) { const cc = 1 + a.con * mv; r0 = Math.max(0, (r0 - 0.5) * cc + 0.5); g0 = Math.max(0, (g0 - 0.5) * cc + 0.5); b0 = Math.max(0, (b0 - 0.5) * cc + 0.5); }
+            if (a.str && dt) { const pi = y * w + x, dd = (dt.Y0[pi] - dt.ym[pi]) * a.str * 1.6 * mv; r0 += dd; g0 += dd; b0 += dd; }
+          }
+        }
+        let r = r0 * kr * ex * rg, g = g0 * kg * ex * rg, b = b0 * kb * ex * rg;
+        r = Math.max(0, (r - p.bp) * inv); g = Math.max(0, (g - p.bp) * inv); b = Math.max(0, (b - p.bp) * inv);
+        if (p.mid !== 0) { const Yg = 0.2126 * r + 0.7152 * g + 0.0722 * b; if (Yg > 0.002) { const kq = Math.min(3, Math.pow(Yg, expo) / Yg); r *= kq; g *= kq; b *= kq; } }
+        let Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        // máscara suavizada da luz da região (dodge/burn)
+        const j = y0 * mw + xi[x], tx = xf[x];
+        let mm = (md[j] * (1 - tx) + md[j + 1] * tx) * (1 - ty) + (md[j + mw] * (1 - tx) + md[j + mw + 1] * tx) * ty;
+        mm = clamp((mm * ex - p.bp) * inv, 0, 1);
+        if (p.mid !== 0) mm = Math.pow(mm, expo);
+        mm = Math.min(Y + 0.2, Math.max(Y - 0.2, mm));
+        const lift = p.shadows * (1 - mm) * (1 - mm), pull = p.highlights * mm * mm;
+        const gn = 1 + lift * 0.9 - pull * 0.5, ad = lift * 0.12 * (1 - Math.min(1, Y));
+        const tcw = p.tcLow * (1 - Y) * (1 - Y) + p.tcMid * 4 * Y * (1 - Y) + p.tcHigh * Y * Y, cl = (p.clarity * (1 - 1.6 * skw + 1.5 * p.hairVolume * hrw + 0.8 * p.beardDef * bdw) + tcw * 1.6 * (1 - 0.6 * skw)) * (Y - mm) * 1.2 * 4 * Math.min(1, Y) * (1 - Math.min(1, Y));
+        r = r * gn + ad + cl; g = g * gn + ad + cl; b = b * gn + ad + cl;
+        if (dt && (p.structure !== 0 || p.sharpen > 0)) {
+          const pi = y * w + x, y0v = dt.Y0[pi], yc = Math.min(1, Math.max(0, Y));
+          const dl = p.structure * 1.3 * (y0v - dt.ym[pi]) * (0.5 + 2 * yc * (1 - yc)) * (1 - 0.7 * skw) + p.sharpen * 1.6 * (y0v - dt.ys[pi]) * (1 - 0.5 * skw);
+          r += dl; g += dl; b += dl;
+        }
+        r = clamp(r, 0, 1); g = clamp(g, 0, 1); b = clamp(b, 0, 1);
+        // curva em S
+        const c = p.contrast * 3.5;
+        // 60% pela luminosidade (mantém a cor), 40% por canal (dá punch)
+        const Yc = 0.2126 * r + 0.7152 * g + 0.0722 * b, kY = Yc > 0.002 ? clamp((Yc + c * Yc * (1 - Yc) * (Yc - 0.5)) / Yc, 0.5, 2) : 1;
+        r = (r + c * r * (1 - r) * (r - 0.5)) * 0.4 + clamp(r * kY, 0, 1) * 0.6;
+        g = (g + c * g * (1 - g) * (g - 0.5)) * 0.4 + clamp(g * kY, 0, 1) * 0.6;
+        b = (b + c * b * (1 - b) * (b - 0.5)) * 0.4 + clamp(b * kY, 0, 1) * 0.6;
+        const cL = p.curveLut;
+        if (cL) {
+          const at = (l, v) => { const t = Math.min(1, Math.max(0, v)) * 255, i0 = t | 0, f = t - i0; return l[i0] * (1 - f) + l[Math.min(255, i0 + 1)] * f; };
+          r = at(cL.R, r); g = at(cL.G, g); b = at(cL.B, b);
+        }
+        Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        if (p.skinShine > 0 && skw > 0.02) { const t = Math.min(1, Math.max(0, (Y - 0.6) / 0.3)), k2 = 1 - p.skinShine * skw * t * 0.25; r *= k2; g *= k2; b *= k2; Y *= k2; }
+        if (p.hairShine > 0 && hrw > 0.02) { const t = Math.min(1, Math.max(0, (Y - 0.3) / 0.4)), k3 = 1 + p.hairShine * hrw * t * 0.5; r *= k3; g *= k3; b *= k3; Y *= k3; }
+        if (p.glow > 0 && dt) {
+          const gb = dt.bl, pg = y * w + x, gy2 = (0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hw = p.glowRange > 0 ? sstep(p.glowRange * 0.5, p.glowRange * 0.5 + 0.4, gy2) : 1, gk = Math.min(1, p.glow * hw * 0.5) * (0.35 + 0.65 * Math.min(1, gy2 * 1.6));
+          r = 1 - (1 - r) * (1 - Math.min(1, gb[0][pg] * ex) * gk); g = 1 - (1 - g) * (1 - Math.min(1, gb[1][pg] * ex) * gk); b = 1 - (1 - b) * (1 - Math.min(1, gb[2][pg] * ex) * gk);
+        }
+        if (p.fade > 0) { r = r * (1 - p.fade * 0.6) + p.fade * 0.14; g = g * (1 - p.fade * 0.6) + p.fade * 0.13; b = b * (1 - p.fade * 0.6) + p.fade * 0.16; }
+        if (p.leak > 0) { const lx = 1 - x / w, lk = p.leak * lx * lx * lx * lx * (0.65 + 0.35 * Math.sin(y / h * 3.2 + 0.6)); r += lk * 0.9; g += lk * 0.32; b += lk * 0.04; }
+        // saturação, vibração (poupa pele) e meios-tons calmos
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), s = mx > 0 ? (mx - mn) / mx : 0;
+        const skinish = (r > g && g > b && (g - b) / (r - b + 1e-4) > 0.25 && (g - b) / (r - b + 1e-4) < 0.8) ? 1 : 0;
+        const skinP = sg ? skw : skinish * 0.6, vib = (p.vibrance * (1 - skinP) * (1 - 0.7 * hrw) + p.clothVib * clw) * (1 - s);
+        let f = (1 + p.sat * (1 - 0.6 * skinP) + p.bgSat * bgw + p.hairDepth * 0.2 * hrw + vib) * (1 - p.midDesat * 4 * Y * (1 - Y)); if (f < 0) f = 0;
+        r = Y + (r - Y) * f; g = Y + (g - Y) * f; b = Y + (b - Y) * f;
+        // divisão de tons
+        const sh = (1 - Y) * (1 - Y) * (1 - 0.7 * skinP), hi = Y * Y;
+        r += -0.06 * p.teal * sh + 0.04 * p.warm * hi;
+        g += 0.018 * p.teal * sh + 0.015 * p.warm * hi;
+        b += 0.042 * p.teal * sh - 0.04 * p.warm * hi;
+        // preto e branco com mistura tipo filtro vermelho
+        if (p.bw > 0) { const gr = bwv[0] * r + bwv[1] * g + bwv[2] * b; r += (gr - r) * p.bw; g += (gr - g) * p.bw; b += (gr - b) * p.bw; }
+        // vinheta
+        if (p.vignette > 0) {
+          const dx = (x / w - 0.5) * 2 * (w / h > 1 ? 1 : w / h), d2 = (dx * dx + dy * dy) / 2, vs = p.vigSize * 0.7, vv = Math.max(0, d2 - vs) / (1 - vs);
+          const v = 1 - p.vignette * Math.pow(vv, 1.4) * 1.6; r *= v; g *= v; b *= v;
+        }
+        if (p.grain > 0) {
+          const gx = (x * 1000 / w) | 0, gy = (y * 1000 / w) | 0; let hh = Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663);
+          hh = Math.imul(hh ^ (hh >>> 13), 1274126177); hh ^= hh >>> 16;
+          const nz = ((hh & 1023) / 1023 - 0.5) * 2 * p.grain * 0.16 * (1 - Math.abs(Y - 0.5) * 1.2); r += nz; g += nz; b += nz;
+        }
+        r = clamp(r, 0, 1); g = clamp(g, 0, 1); b = clamp(b, 0, 1);
+        o[i] = r * 255; o[i + 1] = g * 255; o[i + 2] = b * 255; o[i + 3] = 255;
+        if (hist) hist[Math.min(255, ((0.2126 * r + 0.7152 * g + 0.0722 * b) * 255) | 0)]++;
+      }
+    }
+    return out;
+  }
+
+  /* ---------- parâmetros efetivos ---------- */
+  function effective(full) {
+    const p = {};
+    for (const k in NEUTRAL) p[k] = (k in S.manual) ? S.manual[k] : NEUTRAL[k] + (S.target[k] - NEUTRAL[k]) * S.k;
+    if (full) {
+      const F = S.filter && FILTERS[S.filter];
+      if (F) for (const k in F.d) {
+        if (k === "bw") { p.bw = Math.max(p.bw, F.d.bw * Math.min(1, S.filterK)); continue; }
+        const v = p[k] + F.d[k] * S.filterK, sd = SD[k];
+        p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v;
+      }
+      p.curveLut = S.curveLut;
+    }
+    return p;
+  }
+
+  /* ---------- geometria: girar, endireitar, cortar ---------- */
+  const view = $("view"), vctx = view.getContext("2d");
+  const rc = document.createElement("canvas"), rcx = rc.getContext("2d", { willReadFrequently: true });
+  const FULLC = { x: 0, y: 0, w: 1, h: 1 };
+  const ASPECTS = { free: null, original: "orig", "1:1": 1, "4:3": 4 / 3, "3:4": 3 / 4, "3:2": 3 / 2, "2:3": 2 / 3, "16:9": 16 / 9, "9:16": 9 / 16, "5:4": 5 / 4, "4:5": 4 / 5 };
+  const newGeo = () => ({ rot: 0, flip: false, angle: 0, crop: { x: 0, y: 0, w: 1, h: 1 }, aspect: "free" });
+  const geoIsId = g => !g.rot && !g.flip && g.angle === 0 && g.crop.x === 0 && g.crop.y === 0 && g.crop.w === 1 && g.crop.h === 1;
+  function geoDims(W, H, g) {
+    const k = g.rot % 2, Aw = k ? H : W, Ah = k ? W : H, t = Math.abs(g.angle) * Math.PI / 180, c = Math.cos(t), sn = Math.sin(t);
+    const sc = Math.min(Aw / (Aw * c + Ah * sn), Ah / (Aw * sn + Ah * c));
+    return { Aw, Ah, Fw: Aw * sc, Fh: Ah * sc, sc };
+  }
+  function buildA(src, g) {
+    if (!g.rot && !g.flip) return src;
+    const W = src.width, H = src.height, k = g.rot % 2, Aw = k ? H : W, Ah = k ? W : H, a = document.createElement("canvas"); a.width = Aw; a.height = Ah;
+    const x = a.getContext("2d"); x.translate(Aw / 2, Ah / 2); x.rotate(g.rot * Math.PI / 2); if (g.flip) x.scale(-1, 1); x.drawImage(src, -W / 2, -H / 2);
+    return a;
+  }
+  function geoRender(src, g, crop, maxSide) {
+    const A = buildA(src, g), d = geoDims(src.width, src.height, g), cr = crop || g.crop;
+    let ow = Math.max(1, Math.round(cr.w * d.Fw)), oh = Math.max(1, Math.round(cr.h * d.Fh));
+    const sc = Math.min(1, maxSide / Math.max(ow, oh)); ow = Math.max(1, Math.round(ow * sc)); oh = Math.max(1, Math.round(oh * sc));
+    const o = document.createElement("canvas"); o.width = ow; o.height = oh; const x = o.getContext("2d"); x.imageSmoothingQuality = "high";
+    x.scale(ow / (cr.w * d.Fw), oh / (cr.h * d.Fh)); x.translate(-cr.x * d.Fw, -cr.y * d.Fh); x.translate(d.Fw / 2, d.Fh / 2);
+    x.rotate(g.angle * Math.PI / 180); x.translate(-d.Aw / 2, -d.Ah / 2); x.drawImage(A, 0, 0);
+    return o;
+  }
+  // ponto da tela (0..1 na imagem exibida) para ponto da foto original (0..1)
+  function viewToSource(u, v) {
+    const g = S.geo, d = geoDims(rc.width, rc.height, g), cr = (S.tool === "crop" || S.tool === "rotate") ? FULLC : g.crop, t = g.angle * Math.PI / 180;
+    const fx = (cr.x + u * cr.w) * d.Fw - d.Fw / 2, fy = (cr.y + v * cr.h) * d.Fh - d.Fh / 2;
+    let x = (fx * Math.cos(t) + fy * Math.sin(t) + d.Aw / 2) / d.Aw, y = (-fx * Math.sin(t) + fy * Math.cos(t) + d.Ah / 2) / d.Ah;
+    for (let i = 0; i < g.rot; i++) { const nx = y, ny = 1 - x; x = nx; y = ny; }
+    if (g.flip) x = 1 - x;
+    return [x, y];
+  }
+  function sourceToFrame(x, y) {
+    const g = S.geo, d = geoDims(rc.width, rc.height, g);
+    if (g.flip) x = 1 - x;
+    for (let i = 0; i < g.rot; i++) { const nx = 1 - y, ny = x; x = nx; y = ny; }
+    return [(x - 0.5) / d.sc + 0.5, (y - 0.5) / d.sc + 0.5];
+  }
+  function present() {
+    const g = S.geo, frame = S.tool === "crop" || S.tool === "rotate";
+    if (!frame && geoIsId(g)) { if (view.width !== rc.width || view.height !== rc.height) { view.width = rc.width; view.height = rc.height; } vctx.drawImage(rc, 0, 0); return; }
+    const o = geoRender(rc, g, frame ? FULLC : null, 1600);
+    if (view.width !== o.width || view.height !== o.height) { view.width = o.width; view.height = o.height; }
+    vctx.drawImage(o, 0, 0);
+    const W = view.width, H = view.height;
+    if (S.tool === "crop") {
+      const c = g.crop, x0 = c.x * W, y0 = c.y * H, w0 = c.w * W, h0 = c.h * H;
+      vctx.save(); vctx.fillStyle = "rgba(0,0,0,.55)";
+      vctx.fillRect(0, 0, W, y0); vctx.fillRect(0, y0 + h0, W, H - y0 - h0); vctx.fillRect(0, y0, x0, h0); vctx.fillRect(x0 + w0, y0, W - x0 - w0, h0);
+      vctx.strokeStyle = "rgba(255,255,255,.95)"; vctx.lineWidth = 2; vctx.strokeRect(x0, y0, w0, h0);
+      vctx.lineWidth = 1; vctx.strokeStyle = "rgba(255,255,255,.5)"; vctx.beginPath();
+      for (let i = 1; i < 3; i++) { vctx.moveTo(x0 + w0 * i / 3, y0); vctx.lineTo(x0 + w0 * i / 3, y0 + h0); vctx.moveTo(x0, y0 + h0 * i / 3); vctx.lineTo(x0 + w0, y0 + h0 * i / 3); }
+      vctx.stroke(); vctx.fillStyle = "#fff";
+      for (const [cx, cy] of [[x0, y0], [x0 + w0, y0], [x0, y0 + h0], [x0 + w0, y0 + h0]]) { vctx.beginPath(); vctx.arc(cx, cy, Math.max(6, W * 0.012), 0, 7); vctx.fill(); }
+      vctx.restore();
+    } else if (S.tool === "rotate") {
+      vctx.save(); vctx.strokeStyle = "rgba(255,255,255,.45)"; vctx.lineWidth = 1; vctx.beginPath();
+      for (let i = 1; i < 8; i++) { vctx.moveTo(W * i / 8, 0); vctx.lineTo(W * i / 8, H); vctx.moveTo(0, H * i / 8); vctx.lineTo(W, H * i / 8); }
+      vctx.stroke(); vctx.restore();
+    }
+  }
+  function aspectKr() {
+    const a = S.geo.aspect, v = ASPECTS[a]; if (v == null) return null;
+    const d = geoDims(rc.width, rc.height, S.geo), rp = v === "orig" ? d.Aw / d.Ah : v;
+    return rp * d.Fh / d.Fw;
+  }
+  function applyAspect() {
+    const kr = aspectKr(), c = S.geo.crop; if (kr == null) return;
+    let w, h; if (kr >= 1) { w = 1; h = 1 / kr; } else { h = 1; w = kr; }
+    const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+    S.geo.crop = { x: Math.min(1 - w, Math.max(0, cx - w / 2)), y: Math.min(1 - h, Math.max(0, cy - h / 2)), w, h };
+  }
+  function detectTilt() {
+    const src = S.prev, sc = 420 / Math.max(src.width, src.height), w = Math.max(16, Math.round(src.width * sc)), h = Math.max(16, Math.round(src.height * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(src, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data, Y = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) Y[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2];
+    const bins = new Float64Array(97), mags = []; let n = 0;
+    const gm = new Float32Array(w * h), ga = new Float32Array(w * h);
+    for (let yy = 1; yy < h - 1; yy++) for (let xx = 1; xx < w - 1; xx++) {
+      const i = yy * w + xx, gx = (Y[i - w + 1] + 2 * Y[i + 1] + Y[i + w + 1]) - (Y[i - w - 1] + 2 * Y[i - 1] + Y[i + w - 1]), gy = (Y[i + w - 1] + 2 * Y[i + w] + Y[i + w + 1]) - (Y[i - w - 1] + 2 * Y[i - w] + Y[i - w + 1]);
+      gm[i] = Math.hypot(gx, gy); ga[i] = Math.atan2(gy, gx); mags.push(gm[i]);
+    }
+    mags.sort((a, b) => a - b); const th = mags[Math.floor(mags.length * 0.85)];
+    for (let i = 0; i < w * h; i++) {
+      if (gm[i] < th || gm[i] === 0) continue;
+      const deg = (ga[i] + Math.PI / 2) * 180 / Math.PI, t = (((deg % 90) + 135) % 90) - 45;
+      if (t < -12 || t > 12) continue;
+      bins[Math.round((t + 12) * 4)] += gm[i]; n++;
+    }
+    const sm = new Float64Array(97); for (let i = 0; i < 97; i++) { let a = 0, k = 0; for (let j = -2; j <= 2; j++) if (i + j >= 0 && i + j < 97) { a += bins[i + j]; k++; } sm[i] = a / k; }
+    let pk = 0; for (let i = 1; i < 97; i++) if (sm[i] > sm[pk]) pk = i;
+    const mean = sm.reduce((a, b) => a + b, 0) / 97;
+    TM.tilt = JSON.stringify({ n, pk: pk / 4 - 12, ratio: +(sm[pk] / mean).toFixed(2) });
+    if (n < 300 || sm[pk] < 1.7 * mean) return null;
+    let num = 0, den = 0; for (let i = Math.max(0, pk - 4); i <= Math.min(96, pk + 4); i++) { num += bins[i] * (i / 4 - 12); den += bins[i]; }
+    let tilt = den ? num / den : pk / 4 - 12; if (S.geo.flip) tilt = -tilt;
+    return tilt;
+  }
+  function autoStraighten() {
+    const t = detectTilt();
+    if (t == null) return "Não achei linhas de horizonte ou de prédios confiáveis. Ajuste o ângulo à mão.";
+    if (Math.abs(t) < 0.3) { S.geo.angle = 0; return "A foto já está reta."; }
+    S.geo.angle = Math.max(-45, Math.min(45, -t)); return `Inclinação de ${t.toFixed(1).replace(".", ",")}° detectada e corrigida.`;
+  }
+  function suggestCrop() {
+    const sg = S.seg; if (!sg) return "Ainda estou analisando a foto. Tente de novo em instantes.";
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0, cnt = 0;
+    for (let y = 0; y < sg.h; y++) for (let x = 0; x < sg.w; x++) if (sg.cls[0][y * sg.w + x] < 110) { cnt++; x0 = Math.min(x0, x / sg.w); x1 = Math.max(x1, (x + 1) / sg.w); y0 = Math.min(y0, y / sg.h); y1 = Math.max(y1, (y + 1) / sg.h); }
+    if (cnt < sg.w * sg.h * 0.02) return "Não achei um sujeito claro para enquadrar.";
+    const P = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(q => sourceToFrame(q[0], q[1]));
+    let bx0 = Math.min(...P.map(q => q[0])), bx1 = Math.max(...P.map(q => q[0])), by0 = Math.min(...P.map(q => q[1])), by1 = Math.max(...P.map(q => q[1]));
+    const d = geoDims(rc.width, rc.height, S.geo), bw = bx1 - bx0, bh = by1 - by0;
+    bx0 = Math.max(0, bx0 - bw * 0.12); bx1 = Math.min(1, bx1 + bw * 0.12); by0 = Math.max(0, by0 - bh * 0.14); by1 = Math.min(1, by1 + bh * 0.06);
+    let kr = aspectKr();
+    if (kr == null) { const rp = (bw * d.Fw) / (bh * d.Fh), opts = [0.8, 1, 1.25, 1.5], rp2 = opts.reduce((a, b) => Math.abs(b - rp) < Math.abs(a - rp) ? b : a); kr = rp2 * d.Fh / d.Fw; S.geo.aspect = rp2 === 0.8 ? "4:5" : rp2 === 1 ? "1:1" : rp2 === 1.25 ? "5:4" : "3:2"; }
+    let w = Math.max(bx1 - bx0, (by1 - by0) * kr), h = w / kr;
+    if (h > 1) { h = 1; w = kr; } if (w > 1) { w = 1; h = 1 / kr; }
+    let cx = (bx0 + bx1) / 2; const small = (bx1 - bx0) * (by1 - by0) < 0.18 && w < 0.95;
+    if (small) cx = cx < 0.5 ? cx + w / 6 : cx - w / 6;
+    const top = by0 - (h - (by1 - by0)) * 0.3;
+    S.geo.crop = { x: Math.min(1 - w, Math.max(0, cx - w / 2)), y: Math.min(1 - h, Math.max(0, top)), w, h };
+    return small ? "Enquadrei o sujeito num terço da foto, com espaço para respirar." : "Enquadrei o sujeito com espaço acima da cabeça.";
+  }
+  function buildCropPane(pane, rotate) {
+    const note = document.createElement("p"); note.className = "tnote"; note.id = rotate ? "geoMsgR" : "geoMsgC"; note.textContent = ""; note.style.color = "var(--accent)";
+    if (!rotate) {
+      const chips = document.createElement("div"); chips.className = "chips";
+      for (const k in ASPECTS) { const c = document.createElement("button"); c.type = "button"; c.className = "chip achip"; c.dataset.a = k; c.textContent = k === "free" ? "Livre" : k === "original" ? "Original" : k; c.addEventListener("click", () => { S.geo.aspect = k; applyAspect(); markCustom(); schedule(); syncGeo(); }); chips.appendChild(c); }
+      pane.appendChild(chips);
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Sugerir corte"; b.addEventListener("click", () => { note.textContent = suggestCrop(); markCustom(); schedule(); syncGeo(); }); pane.appendChild(b);
+      pane.appendChild(note);
+    } else {
+      const row = document.createElement("div"); row.className = "chips";
+      [["↺ 90°", () => { S.geo.rot = (S.geo.rot + 3) % 4; S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; }], ["↻ 90°", () => { S.geo.rot = (S.geo.rot + 1) % 4; S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; }], ["Espelhar", () => { S.geo.flip = !S.geo.flip; S.geo.angle = -S.geo.angle; }]].forEach(([n, f]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = n; c.addEventListener("click", () => { f(); note.textContent = ""; markCustom(); schedule(); syncGeo(); }); row.appendChild(c); });
+      pane.appendChild(row);
+      const f = document.createElement("div"); f.className = "field";
+      f.innerHTML = '<label for="geoAngle">Ângulo</label><input type="range" id="geoAngle" min="-45" max="45" step="0.1" value="0"><output>0,0°</output>';
+      f.querySelector("input").addEventListener("input", e => { S.geo.angle = parseFloat(e.target.value); note.textContent = ""; markCustom(); schedule(); syncGeo(); });
+      pane.appendChild(f);
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Endireitar automático"; b.style.marginTop = "10px"; b.addEventListener("click", () => { note.textContent = autoStraighten(); markCustom(); schedule(); syncGeo(); }); pane.appendChild(b);
+      pane.appendChild(note);
+    }
+  }
+  function syncGeo() {
+    const g = S.geo, ai = document.getElementById("geoAngle");
+    if (ai) { if (document.activeElement !== ai) ai.value = g.angle; ai.parentNode.querySelector("output").textContent = g.angle.toFixed(1).replace(".", ",") + "°"; }
+    document.querySelectorAll(".achip").forEach(c => c.setAttribute("aria-pressed", String(g.aspect === c.dataset.a)));
+  }
+  function resetGeo() { S.geo = newGeo(); syncGeo(); }
+
+  // arrastar o corte
+  let cdrag = null;
+  view.addEventListener("pointerdown", e => {
+    if (S.tool !== "crop") return;
+    const r = view.getBoundingClientRect(), k = view.width / r.width, px = (e.clientX - r.left) * k, py = (e.clientY - r.top) * k, c = S.geo.crop;
+    const cr = { x: c.x * view.width, y: c.y * view.height, w: c.w * view.width, h: c.h * view.height }, hr = 24 * k; let hit = null;
+    for (const [nm, cx, cy] of [["nw", cr.x, cr.y], ["ne", cr.x + cr.w, cr.y], ["sw", cr.x, cr.y + cr.h], ["se", cr.x + cr.w, cr.y + cr.h]]) if (Math.hypot(px - cx, py - cy) < hr) hit = nm;
+    if (!hit && px > cr.x && px < cr.x + cr.w && py > cr.y && py < cr.y + cr.h) hit = "move";
+    if (!hit) return; cdrag = { hit, px, py, s: { ...c } }; view.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  view.addEventListener("pointermove", e => {
+    if (!cdrag) return;
+    const r = view.getBoundingClientRect(), k = view.width / r.width, px = (e.clientX - r.left) * k, py = (e.clientY - r.top) * k, dx = (px - cdrag.px) / view.width, dy = (py - cdrag.py) / view.height, s0 = cdrag.s;
+    if (cdrag.hit === "move") { S.geo.crop = { x: Math.min(1 - s0.w, Math.max(0, s0.x + dx)), y: Math.min(1 - s0.h, Math.max(0, s0.y + dy)), w: s0.w, h: s0.h }; }
+    else {
+      const west = cdrag.hit.includes("w"), north = cdrag.hit.includes("n"), ax = west ? s0.x + s0.w : s0.x, ay = north ? s0.y + s0.h : s0.y;
+      let mx = Math.min(1, Math.max(0, (west ? s0.x : s0.x + s0.w) + dx)), my = Math.min(1, Math.max(0, (north ? s0.y : s0.y + s0.h) + dy));
+      let w = Math.max(0.05, Math.abs(mx - ax)), h = Math.max(0.05, Math.abs(my - ay)); const kr = aspectKr();
+      if (kr != null) { if (w / h > kr) w = h * kr; else h = w / kr; const mw = mx > ax ? 1 - ax : ax, mh = my > ay ? 1 - ay : ay, f = Math.min(1, mw / w, mh / h); w *= f; h *= f; }
+      S.geo.crop = { x: mx > ax ? ax : ax - w, y: my > ay ? ay : ay - h, w, h };
+    }
+    markCustom(); schedule();
+  });
+  ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, () => { cdrag = null; }));
+
+  /* ---------- ajustes locais: seletivo e pincel ---------- */
+  const lmDims = () => ({ w: S.prevData.width, h: S.prevData.height });
+  function localsForRender() { return { w: S.prevData.width, h: S.prevData.height, list: S.locals.filter(L => L.m) }; }
+  function clsMask(idx) {
+    const sg = S.segRef || S.seg; if (!sg) return null; const { w, h } = lmDims();
+    const a = sg.cls[idx];
+    if (sg.w === w && sg.h === h) { const o = new Float32Array(w * h); for (let i = 0; i < o.length; i++) o[i] = a[i] / 255; return o; }
+    return upsample(a, sg.w, sg.h, w, h);
+  }
+  function addMasks(list) { const o = new Float32Array(list[0].length); for (const a of list) for (let i = 0; i < o.length; i++) o[i] = Math.min(1, o[i] + a[i]); return o; }
+  function regionMask(name) {
+    if (S.rm[name]) return S.rm[name];
+    const { w, h } = lmDims(), n = w * h; let m = null;
+    if (name === "skin") { const a = clsMask(2), b = clsMask(3); if (a && b) m = addMasks([a, b]); }
+    else if (name === "face") m = clsMask(3);
+    else if (name === "hair") m = clsMask(1);
+    else if (name === "cloth") m = clsMask(4);
+    else if (name === "bg") m = clsMask(0);
+    else if (name === "people") { const b = clsMask(0); if (b) { m = new Float32Array(n); for (let i = 0; i < n; i++) m[i] = 1 - b[i]; } }
+    else if (name === "sky") {
+      const b = clsMask(0), d = S.prevData.data; if (b) {
+        m = new Float32Array(n);
+        // horizonte: a linha com maior mudança vertical de luz entre 20% e 75% da altura
+        const rowE = new Float32Array(h); let tot = 0;
+        for (let y = 3; y < h - 3; y++) { let a = 0; for (let x = 0; x < w; x += 3) { const i0 = ((y - 3) * w + x) * 4, i1 = ((y + 3) * w + x) * 4; a += Math.abs((d[i1] + d[i1 + 1] + d[i1 + 2]) - (d[i0] + d[i0 + 1] + d[i0 + 2])); } rowE[y] = a; tot += a; }
+        let hy = 0.85 * h, best = 0; for (let y = Math.round(h * 0.2); y < Math.round(h * 0.75); y++) { const v = (rowE[y - 1] + rowE[y] + rowE[y + 1]) / 3; if (v > best) { best = v; hy = y; } }
+        if (best < 1.6 * tot / h) hy = 0.85 * h;
+        for (let y = 0; y < h; y++) { const tw = Math.min(1, Math.max(0, (hy - y) / (0.03 * h) + 0.15)); for (let x = 0; x < w; x++) { const i = y * w + x, r = d[i * 4] / 255, g = d[i * 4 + 1] / 255, bl = d[i * 4 + 2] / 255, Y = 0.2126 * r + 0.7152 * g + 0.0722 * bl, ch = Math.max(r, g, bl) - Math.min(r, g, bl);
+          const blue = Math.min(1, Math.max(0, (bl - Math.max(r, g)) / 0.06)), cloud = (Y > 0.72 && ch < 0.12 && y < h * 0.55) ? 0.8 : 0; m[i] = b[i] * Math.max(blue, cloud) * tw; } }
+        const t = new Float32Array(n), o = new Float32Array(n); boxF(m, w, h, 2, o, t); m = o;
+      }
+    }
+    else if (name === "eyes" && S.face && S.face.w === w && S.face.h === h) { m = new Float32Array(n); for (let i = 0; i < n; i++) m[i] = Math.min(1, S.face.sclera[i] + S.face.iris[i]); }
+    else if (name === "eyes" && S.face) { m = new Float32Array(n); const f = S.face; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const q = Math.min(f.h - 1, (y * f.h / h) | 0) * f.w + Math.min(f.w - 1, (x * f.w / w) | 0); m[y * w + x] = Math.min(1, f.sclera[q] + f.iris[q]); } }
+    else if (name === "teeth" && S.face) { m = new Float32Array(n); const f = S.face; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const q = Math.min(f.h - 1, (y * f.h / h) | 0) * f.w + Math.min(f.w - 1, (x * f.w / w) | 0); m[y * w + x] = f.teeth[q]; } }
+    if (m) S.rm[name] = m; return m;
+  }
+  const REGNAMES = { skin: "Pele", face: "Rosto", hair: "Cabelo", cloth: "Roupa", bg: "Fundo", people: "Pessoas", sky: "Céu", eyes: "Olhos", teeth: "Dentes" };
+  function combine(L) {
+    const n = L.raw.length, lk = L.lock ? regionMask(L.lock) : null, m = L.m && L.m.length === n ? L.m : new Float32Array(n);
+    for (let i = 0; i < n; i++) m[i] = lk ? L.raw[i] * lk[i] : L.raw[i];
+    L.m = m;
+  }
+  function avgColor(cx, cy) {
+    const { w, h } = lmDims(), d = S.prevData.data; let r = 0, g = 0, b = 0, k = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = Math.min(w - 1, Math.max(0, Math.round(cx * w) + dx)), y = Math.min(h - 1, Math.max(0, Math.round(cy * h) + dy)), i = (y * w + x) * 4; r += d[i]; g += d[i + 1]; b += d[i + 2]; k++; }
+    return [r / k / 255, g / k / 255, b / k / 255];
+  }
+  function buildPointRaw(L) {
+    const { w, h } = lmDims(), d = S.prevData.data, raw = L.raw || new Float32Array(w * h), c = avgColor(L.cx, L.cy), mn = Math.min(w, h), R = L.rad * mn, sig = 0.12;
+    const cxp = L.cx * w, cyp = L.cy * h, x0 = Math.max(0, Math.floor(cxp - R)), x1 = Math.min(w - 1, Math.ceil(cxp + R)), y0 = Math.max(0, Math.floor(cyp - R)), y1 = Math.min(h - 1, Math.ceil(cyp + R));
+    raw.fill(0);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const t = Math.hypot(x - cxp, y - cyp) / R; if (t >= 1) continue;
+      const u = Math.min(1, Math.max(0, (t - 0.3) / 0.7)), fall = 1 - u * u * (3 - 2 * u), i = (y * w + x) * 4;
+      const dr = d[i] / 255 - c[0], dg = d[i + 1] / 255 - c[1], db = d[i + 2] / 255 - c[2], sim = Math.exp(-((dr * dr + dg * dg + db * db) / (sig * sig)));
+      raw[y * w + x] = fall * (1 - L.follow + L.follow * sim);
+    }
+    L.raw = raw; combine(L);
+  }
+  const newAdj = () => ({ ev: 0, con: 0, sat: 0, warm: 0, str: 0 });
+  function addLayer(L) { if (S.locals.length >= 8) S.locals.shift(); S.locals.push(L); S.sel = S.locals.length - 1; renderLocalBox(); schedule(); return L; }
+  function addPoint(cx, cy) {
+    const L = { type: "point", name: "Ponto " + (S.locals.filter(z => z.type === "point").length + 1), cx, cy, rad: 0.18, follow: 0.7, lock: null, adj: newAdj() };
+    L.adj.ev = 0.25; buildPointRaw(L); return addLayer(L);
+  }
+  function addRegion(name) {
+    const m = regionMask(name); if (!m) { $("lclNote").textContent = "Essa região ainda não foi detectada. " + (S.seg ? "Não há " + REGNAMES[name].toLowerCase() + " nesta foto." : "Aguarde a análise terminar."); return; }
+    let sum = 0; for (let i = 0; i < m.length; i += 7) sum += m[i]; if (sum < 20) { $("lclNote").textContent = "Não achei " + REGNAMES[name].toLowerCase() + " nesta foto."; return; }
+    $("lclNote").textContent = "";
+    const L = { type: "region", name: REGNAMES[name], region: name, raw: m.slice(), lock: null, adj: newAdj() }; L.m = new Float32Array(m.length); combine(L); return addLayer(L);
+  }
+  function addBrush() {
+    const { w, h } = lmDims(), L = { type: "brush", name: "Pincel " + (S.locals.filter(z => z.type === "brush").length + 1), raw: new Float32Array(w * h), lock: null, adj: newAdj() };
+    L.adj.ev = 0.3; L.m = new Float32Array(w * h); return addLayer(L);
+  }
+  function stamp(L, sx, sy) {
+    const { w, h } = lmDims(), d = S.prevData.data, B = S.brush, mn = Math.min(w, h), R = B.size * mn, c = avgColor(sx, sy), sig = 0.14, lk = L.lock ? regionMask(L.lock) : null;
+    const cxp = sx * w, cyp = sy * h, x0 = Math.max(0, Math.floor(cxp - R)), x1 = Math.min(w - 1, Math.ceil(cxp + R)), y0 = Math.max(0, Math.floor(cyp - R)), y1 = Math.min(h - 1, Math.ceil(cyp + R));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const t = Math.hypot(x - cxp, y - cyp) / R; if (t >= 1) continue;
+      const u = Math.min(1, Math.max(0, (t - B.hard) / Math.max(0.05, 1 - B.hard))), fall = 1 - u * u * (3 - 2 * u), i = y * w + x, q = i * 4;
+      const dr = d[q] / 255 - c[0], dg = d[q + 1] / 255 - c[1], db = d[q + 2] / 255 - c[2], sim = Math.exp(-((dr * dr + dg * dg + db * db) / (sig * sig))), wt = fall * (1 - B.edge + B.edge * sim);
+      if (B.erase) L.raw[i] = Math.max(0, L.raw[i] - wt * 0.8); else L.raw[i] = Math.min(1, L.raw[i] + wt * 0.6);
+      L.m[i] = lk ? L.raw[i] * lk[i] : L.raw[i];
+    }
+  }
+  function drawLocalOverlay() {
+    const L = S.locals[S.sel]; if (!L || !L.m) return; const { w, h } = lmDims();
+    const o = document.createElement("canvas"); o.width = w; o.height = h; const x = o.getContext("2d"), im = x.createImageData(w, h);
+    for (let i = 0; i < w * h; i++) { const v = L.m[i]; if (v > 0.01) { im.data[i * 4] = 255; im.data[i * 4 + 1] = 50; im.data[i * 4 + 2] = 70; im.data[i * 4 + 3] = v * 140; } }
+    x.putImageData(im, 0, 0); rcx.drawImage(o, 0, 0);
+    if (L.type === "point") { rcx.save(); rcx.strokeStyle = "rgba(255,255,255,.95)"; rcx.lineWidth = 2; rcx.beginPath(); rcx.arc(L.cx * w, L.cy * h, 9, 0, 7); rcx.stroke(); rcx.beginPath(); rcx.arc(L.cx * w, L.cy * h, L.rad * Math.min(w, h), 0, 7); rcx.setLineDash([6, 6]); rcx.stroke(); rcx.restore(); }
+    for (const z of S.locals) if (z.type === "point" && z !== L) { rcx.save(); rcx.strokeStyle = "rgba(255,255,255,.7)"; rcx.lineWidth = 2; rcx.beginPath(); rcx.arc(z.cx * w, z.cy * h, 8, 0, 7); rcx.stroke(); rcx.restore(); }
+  }
+  function renderLocalBox() {
+    const box = $("localBox"); if (!box) return;
+    const L = S.locals[S.sel], mode = S.tool === "brush" ? "brush" : "point";
+    box.querySelectorAll("[data-mode]").forEach(e => { e.hidden = e.dataset.mode !== "all" && e.dataset.mode !== mode; });
+    const list = $("lyrList"); list.innerHTML = "";
+    S.locals.forEach((z, i) => { const b = document.createElement("span"); b.className = "lyr"; b.setAttribute("role", "button"); b.setAttribute("aria-pressed", String(i === S.sel)); b.innerHTML = `<span>${z.name}</span><b title="Remover">×</b>`;
+      b.addEventListener("click", ev => { if (ev.target.tagName === "B") { S.locals.splice(i, 1); S.sel = Math.min(S.sel, S.locals.length - 1); renderLocalBox(); schedule(); } else { S.sel = i; renderLocalBox(); schedule(); } }); list.appendChild(b); });
+    $("lyrEmpty").hidden = S.locals.length > 0;
+    $("lyrCtl").hidden = !L;
+    if (L) {
+      ["ev", "con", "sat", "warm", "str"].forEach(k => { const el = $("ly_" + k); el.value = L.adj[k]; el.parentNode.querySelector("output").textContent = sgn(L.adj[k], 2); });
+      $("ly_rad").parentNode.hidden = L.type !== "point"; $("ly_follow").parentNode.hidden = L.type !== "point";
+      if (L.type === "point") { $("ly_rad").value = L.rad; $("ly_rad").parentNode.querySelector("output").textContent = pct(L.rad); $("ly_follow").value = L.follow; $("ly_follow").parentNode.querySelector("output").textContent = pct(L.follow); }
+      $("lockChips").hidden = L.type === "region";
+      document.querySelectorAll(".lockchip").forEach(c => c.setAttribute("aria-pressed", String((L.lock || "") === c.dataset.k)));
+    }
+    document.querySelectorAll(".modechip").forEach(c => c.setAttribute("aria-pressed", String((S.brush.erase ? "erase" : "paint") === c.dataset.k)));
+    $("br_size").parentNode.querySelector("output").textContent = pct(S.brush.size); $("br_hard").parentNode.querySelector("output").textContent = pct(S.brush.hard); $("br_edge").parentNode.querySelector("output").textContent = pct(S.brush.edge);
+  }
+  function buildLocalBox() {
+    const box = document.createElement("div"); box.id = "localBox";
+    const fld = (id, label, min, max, step) => `<div class="field"><label for="${id}">${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="0"><output></output></div>`;
+    box.innerHTML = `
+      <p class="tnote" id="lclNote" style="color:var(--accent);margin-top:0"></p>
+      <div class="lsec" data-mode="point"><h4>Escolher uma região com um toque</h4><div class="chips" id="regChips"></div></div>
+      <div class="lsec" data-mode="brush"><h4>Pincel</h4>
+        <div class="chips"><button type="button" class="chip modechip" data-k="paint">Pintar</button><button type="button" class="chip modechip" data-k="erase">Apagar</button><button type="button" class="chip" id="brUndo">Desfazer traço</button></div>
+        ${fld("br_size", "Tamanho", 0.01, 0.25, 0.005)}${fld("br_hard", "Dureza", 0, 0.95, 0.01)}${fld("br_edge", "Respeitar bordas", 0, 1, 0.01)}
+        <button type="button" class="btn" id="brNew" style="margin-top:8px">Nova camada de pincel</button>
+      </div>
+      <div class="lsec" data-mode="all"><h4>Camadas</h4><div class="lyrs" id="lyrList"></div><p class="tnote" id="lyrEmpty" style="margin:0">Nenhuma ainda.</p></div>
+      <div id="lyrCtl" hidden>
+        <div class="lsec" data-mode="all" id="lockChips"><h4>Limitar a</h4><div class="chips" id="lockRow"></div></div>
+        <div class="lsec" data-mode="all"><h4>Ajustes</h4>
+          ${fld("ly_ev", "Brilho", -1.5, 1.5, 0.01)}${fld("ly_con", "Contraste", -1, 1, 0.01)}${fld("ly_sat", "Saturação", -1, 1, 0.01)}${fld("ly_warm", "Calor", -1, 1, 0.01)}${fld("ly_str", "Estrutura", -1, 1, 0.01)}
+          ${fld("ly_rad", "Tamanho do ponto", 0.03, 0.6, 0.005)}${fld("ly_follow", "Seguir a cor", 0, 1, 0.01)}
+        </div>
+      </div>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="lyMask" checked> Ver a máscara (vermelho)</label>`;
+    const rc2 = box.querySelector("#regChips");
+    Object.keys(REGNAMES).forEach(k => { const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = REGNAMES[k]; c.addEventListener("click", () => addRegion(k)); rc2.appendChild(c); });
+    const lr = box.querySelector("#lockRow");
+    [["", "Tudo"], ...Object.keys(REGNAMES).map(k => [k, REGNAMES[k]])].forEach(([k, n]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip lockchip"; c.dataset.k = k; c.textContent = n; c.addEventListener("click", () => { const L = S.locals[S.sel]; if (!L) return; if (k && !regionMask(k)) { $("lclNote").textContent = "Essa região não foi detectada nesta foto."; return; } $("lclNote").textContent = ""; L.lock = k || null; combine(L); renderLocalBox(); schedule(); }); lr.appendChild(c); });
+    ["ev", "con", "sat", "warm", "str"].forEach(k => box.querySelector("#ly_" + k).addEventListener("input", e => { const L = S.locals[S.sel]; if (!L) return; L.adj[k] = parseFloat(e.target.value); e.target.parentNode.querySelector("output").textContent = sgn(L.adj[k], 2); markCustom(); schedule(); }));
+    box.querySelector("#ly_rad").addEventListener("input", e => { const L = S.locals[S.sel]; if (!L || L.type !== "point") return; L.rad = parseFloat(e.target.value); buildPointRaw(L); e.target.parentNode.querySelector("output").textContent = pct(L.rad); schedule(); });
+    box.querySelector("#ly_follow").addEventListener("input", e => { const L = S.locals[S.sel]; if (!L || L.type !== "point") return; L.follow = parseFloat(e.target.value); buildPointRaw(L); e.target.parentNode.querySelector("output").textContent = pct(L.follow); schedule(); });
+    box.querySelector("#br_size").addEventListener("input", e => { S.brush.size = parseFloat(e.target.value); renderLocalBox(); });
+    box.querySelector("#br_hard").addEventListener("input", e => { S.brush.hard = parseFloat(e.target.value); renderLocalBox(); });
+    box.querySelector("#br_edge").addEventListener("input", e => { S.brush.edge = parseFloat(e.target.value); renderLocalBox(); });
+    box.querySelectorAll(".modechip").forEach(c => c.addEventListener("click", () => { S.brush.erase = c.dataset.k === "erase"; renderLocalBox(); }));
+    box.querySelector("#brNew").addEventListener("click", () => addBrush());
+    box.querySelector("#brUndo").addEventListener("click", () => { const u = S.undo.pop(); if (!u || !S.locals.includes(u.L)) return; u.L.raw.set(u.raw); combine(u.L); schedule(); });
+    box.querySelector("#lyMask").addEventListener("change", e => { S.showMask = e.target.checked; schedule(); });
+    return box;
+  }
+
+  // toque e pincel na foto
+  let bdrag = null;
+  view.addEventListener("pointerdown", e => {
+    if (S.tool !== "brush" && S.tool !== "selective") return;
+    const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height), { w, h } = lmDims();
+    if (q[0] < 0 || q[0] > 1 || q[1] < 0 || q[1] > 1) return;
+    if (S.tool === "selective") {
+      const hit = S.locals.findIndex(z => z.type === "point" && Math.hypot((z.cx - q[0]) * w, (z.cy - q[1]) * h) < 0.03 * Math.min(w, h) + 8);
+      if (hit >= 0) { S.sel = hit; bdrag = { move: true }; renderLocalBox(); view.setPointerCapture(e.pointerId); schedule(); return; }
+      addPoint(q[0], q[1]); markCustom(); return;
+    }
+    let L = S.locals[S.sel]; if (!L || L.type !== "brush") L = addBrush();
+    S.undo.push({ L, raw: L.raw.slice() }); if (S.undo.length > 10) S.undo.shift();
+    bdrag = { last: q }; S.painting = true; stamp(L, q[0], q[1]); view.setPointerCapture(e.pointerId); markCustom(); schedule(); e.preventDefault();
+  });
+  view.addEventListener("pointermove", e => {
+    if (!bdrag) return;
+    const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height), L = S.locals[S.sel];
+    if (bdrag.move && L && L.type === "point") { L.cx = Math.min(1, Math.max(0, q[0])); L.cy = Math.min(1, Math.max(0, q[1])); buildPointRaw(L); schedule(); return; }
+    if (!L || L.type !== "brush") return;
+    const { w, h } = lmDims(), step = Math.max(1, S.brush.size * Math.min(w, h) * 0.3), dist = Math.hypot((q[0] - bdrag.last[0]) * w, (q[1] - bdrag.last[1]) * h), n = Math.max(1, Math.ceil(dist / step));
+    for (let i = 1; i <= n; i++) stamp(L, bdrag.last[0] + (q[0] - bdrag.last[0]) * i / n, bdrag.last[1] + (q[1] - bdrag.last[1]) * i / n);
+    bdrag.last = q; schedule();
+  });
+  const bend = () => { if (!bdrag) return; bdrag = null; if (S.painting) { S.painting = false; schedule(); } };
+  ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, bend));
+
+  /* ---------- melhor rosto entre várias fotos ---------- */
+  const BT = { photos: [], persons: [], base: 0, busy: false, ready: false };
+  const OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+  const STABLE = [33, 133, 362, 263, 1, 168, 10, 234, 454, 50, 280, 205, 425];
+  const btMsg = t => { $("btMsg").textContent = t; };
+
+  function fitCanvas(src, long) {
+    const sc = Math.min(1, long / Math.max(src.width, src.height)), c = document.createElement("canvas"); c.width = Math.round(src.width * sc); c.height = Math.round(src.height * sc);
+    const x = c.getContext("2d", { willReadFrequently: true }); x.imageSmoothingQuality = "high"; x.drawImage(src, 0, 0, c.width, c.height); return c;
+  }
+  async function ensureFaceLm2() {
+    if (faceLm2) return faceLm2;
+    if (!mpVision) throw new Error("os modelos ainda estão carregando");
+    for (const delegate of ["GPU", "CPU"]) {
+      try { faceLm2 = await mpVision.FaceLandmarker.createFromOptions(mpFileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 10, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true, minFaceDetectionConfidence: 0.4, minFacePresenceConfidence: 0.4 }); break; } catch (e) { faceLm2 = null; }
+    }
+    if (!faceLm2) throw new Error("o detector de rostos não iniciou");
+    return faceLm2;
+  }
+  function detectBT(ana, lm) {
+    const W = ana.width, H = ana.height, out = [];
+    const push = (res, ox, oy, cw, ch) => {
+      (res.faceLandmarks || []).forEach((l, k) => {
+        const m = l.map(q => ({ x: (ox + q.x * cw) / W, y: (oy + q.y * ch) / H })), bs = {};
+        ((res.faceBlendshapes && res.faceBlendshapes[k] && res.faceBlendshapes[k].categories) || []).forEach(c => { bs[c.categoryName] = c.score; });
+        const md = res.facialTransformationMatrixes && res.facialTransformationMatrixes[k] ? res.facialTransformationMatrixes[k].data : null;
+        const yaw = md ? Math.atan2(-md[2], md[10]) * 180 / Math.PI : 0;
+        const nose = [m[1].x, m[1].y], wd = Math.hypot((m[454].x - m[234].x) * W, (m[454].y - m[234].y) * H);
+        if (wd < 14) return;
+        if (out.some(d => Math.hypot((d.nose[0] - nose[0]) * W, (d.nose[1] - nose[1]) * H) < 0.5 * d.wd)) return;
+        out.push({ lm: m, bs, yaw, nose, wd });
+      });
+    };
+    push(lm.detect(ana), 0, 0, W, H);
+    const cw = Math.round(W * 0.6), ch = Math.round(H * 0.6), tc = document.createElement("canvas"); tc.width = cw; tc.height = ch; const tx = tc.getContext("2d");
+    for (const [fx, fy] of [[0, 0], [0.4, 0], [0, 0.4], [0.4, 0.4]]) { const ox = Math.round(W * fx), oy = Math.round(H * fy); tx.clearRect(0, 0, cw, ch); tx.drawImage(ana, ox, oy, cw, ch, 0, 0, cw, ch); push(lm.detect(tc), ox, oy, cw, ch); }
+    return out;
+  }
+  function grayThumb(ana) {
+    const w = 160, h = Math.max(8, Math.round(ana.height * 160 / ana.width)), c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(ana, 0, 0, w, h); const d = x.getImageData(0, 0, w, h).data, g = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    return { g, w, h };
+  }
+  function estimateShift(a, b) {
+    const M = 14, R = 10; let best = 1e18, bx = 0, by = 0;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      let sad = 0;
+      for (let y = M; y < a.h - M; y += 2) { const ra = y * a.w, rb = (y + dy) * a.w + dx; for (let x = M; x < a.w - M; x += 2) sad += Math.abs(a.g[ra + x] - b.g[rb + x]); }
+      if (sad < best) { best = sad; bx = dx; by = dy; }
+    }
+    return [bx / a.w, by / a.h];
+  }
+  function sharpOf(ana, f) {
+    const W = ana.width, H = ana.height; let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (const q of f.lm) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+    const bx = Math.max(0, Math.floor(x0 * W)), by = Math.max(0, Math.floor(y0 * H)), bw = Math.max(8, Math.min(W - bx, Math.ceil((x1 - x0) * W))), bh = Math.max(8, Math.min(H - by, Math.ceil((y1 - y0) * H)));
+    const c = document.createElement("canvas"); c.width = 64; c.height = 64; const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(ana, bx, by, bw, bh, 0, 0, 64, 64);
+    const d = x.getImageData(0, 0, 64, 64).data, g = new Float32Array(4096); for (let i = 0; i < 4096; i++) g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    let s1 = 0, s2 = 0, n = 0; for (let yy = 1; yy < 63; yy++) for (let xx = 1; xx < 63; xx++) { const i = yy * 64 + xx, l = 4 * g[i] - g[i - 1] - g[i + 1] - g[i - 64] - g[i + 64]; s1 += l; s2 += l * l; n++; }
+    return s2 / n - (s1 / n) * (s1 / n);
+  }
+  function faceScore(f, sharpRel) {
+    const b = f.bs, g = k => b[k] || 0, blink = Math.max(g("eyeBlinkLeft"), g("eyeBlinkRight")), smile = (g("mouthSmileLeft") + g("mouthSmileRight")) / 2, jaw = g("jawOpen");
+    const eyes = 1 - Math.min(1, blink / 0.5), sm = Math.min(1, smile / 0.6), talk = Math.min(1, Math.max(0, (jaw - 0.25) / 0.4)), odd = Math.min(1, (g("mouthPucker") + g("mouthFunnel")) / 1.2), side = Math.min(1, Math.abs(f.yaw) / 40);
+    const sc = 0.5 * eyes * eyes + 0.3 * sm + 0.15 * sharpRel + 0.05 - 0.15 * talk - 0.1 * odd - 0.15 * side;
+    return { score: Math.max(0, Math.min(1, sc)), blink, smile, jaw, yaw: f.yaw };
+  }
+  const faceTags = sc => { const t = []; if (sc.blink > 0.5) t.push("olhos fechados"); else t.push("olhos abertos"); if (sc.smile > 0.35) t.push("sorrindo"); if (sc.jaw > 0.35) t.push("boca aberta"); if (Math.abs(sc.yaw) > 25) t.push("de lado"); return t.join(", "); };
+
+  async function btAddFiles(files) {
+    const list = Array.from(files).filter(f => f.type.startsWith("image/"));
+    if (!list.length) return;
+    for (const f of list) {
+      if (BT.photos.length >= 6) { btMsg("O máximo é 6 fotos."); break; }
+      try { const bm = await createImageBitmap(f), full = fitCanvas(bm, 3000); bm.close(); BT.photos.push({ name: f.name, full, ana: fitCanvas(full, 1400), faces: null }); } catch (e) { btMsg("Não consegui abrir " + f.name + "."); }
+    }
+    BT.ready = false; renderBT(); if (BT.photos.length >= 2) btAnalyze(); else btMsg("Adicione mais uma foto, pelo menos.");
+  }
+  async function btAnalyze() {
+    if (BT.busy) return; BT.busy = true; BT.ready = false; renderBT();
+    try {
+      btMsg("Carregando o detector de rostos…"); const lm = await ensureFaceLm2();
+      for (let j = 0; j < BT.photos.length; j++) { btMsg(`Procurando rostos na foto ${j + 1} de ${BT.photos.length}…`); await new Promise(r => setTimeout(r, 20)); const ph = BT.photos[j]; ph.faces = detectBT(ph.ana, lm); ph.gray = grayThumb(ph.ana); }
+      let ref = 0; BT.photos.forEach((ph, j) => { if (ph.faces.length > BT.photos[ref].faces.length) ref = j; });
+      if (!BT.photos[ref].faces.length) { btMsg("Não achei rostos nessas fotos."); BT.busy = false; return; }
+      const W = BT.photos[ref].ana.width, H = BT.photos[ref].ana.height, R = BT.photos[ref];
+      BT.photos.forEach((ph, j) => { ph.shift = j === ref ? [0, 0] : estimateShift(R.gray, ph.gray); ph.used = new Set(); });
+      BT.persons = R.faces.map(rf => ({ cands: BT.photos.map((ph, j) => {
+        if (j === ref) { ph.used.add(rf); return rf; }
+        let best = null, bd = 1e9;
+        ph.faces.forEach(g => { if (ph.used.has(g)) return; const d = Math.hypot((g.nose[0] - ph.shift[0] - rf.nose[0]) * W, (g.nose[1] - ph.shift[1] - rf.nose[1]) * H); if (d < bd) { bd = d; best = g; } });
+        if (best && bd < 0.7 * rf.wd) { ph.used.add(best); return best; } return null;
+      }) }));
+      for (const pr of BT.persons) {
+        const sh = pr.cands.map((f, j) => f ? sharpOf(BT.photos[j].ana, f) : 0), mx = Math.max(1e-6, ...sh);
+        pr.sc = pr.cands.map((f, j) => f ? faceScore(f, sh[j] / mx) : null);
+        pr.pick = 0; pr.sc.forEach((z, j) => { if (z && (!pr.sc[pr.pick] || z.score > pr.sc[pr.pick].score)) pr.pick = j; });
+      }
+      const votes = BT.photos.map(() => 0), sums = BT.photos.map(() => 0);
+      BT.persons.forEach(pr => { votes[pr.pick]++; pr.sc.forEach((z, j) => { if (z) sums[j] += z.score; }); });
+      BT.base = 0; votes.forEach((v, j) => { if (v > votes[BT.base] || (v === votes[BT.base] && sums[j] > sums[BT.base])) BT.base = j; });
+      BT.ready = true; btMsg(`${BT.persons.length} ${BT.persons.length === 1 ? "pessoa encontrada" : "pessoas encontradas"}. Confira a escolha de cada rosto e toque em Montar foto.`);
+    } catch (e) { btMsg("Não deu para analisar: " + (e.message || e)); }
+    BT.busy = false; renderBT();
+  }
+  function faceThumb(ph, f) {
+    const W = ph.ana.width, H = ph.ana.height; let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (const q of f.lm) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+    const cx = (x0 + x1) / 2 * W, cy = (y0 + y1) / 2 * H, sz = Math.max((x1 - x0) * W, (y1 - y0) * H) * 1.3, c = document.createElement("canvas"); c.width = 72; c.height = 72;
+    c.getContext("2d").drawImage(ph.ana, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, 72, 72); return c;
+  }
+  function renderBT() {
+    const th = $("btThumbs"); th.innerHTML = "";
+    BT.photos.forEach((ph, j) => {
+      const d = document.createElement("div"); d.className = "bthumb"; d.dataset.base = BT.ready && j === BT.base ? "1" : "0";
+      const c = document.createElement("canvas"); c.width = 72; c.height = 54; c.getContext("2d").drawImage(ph.ana, 0, 0, 72, 54); d.appendChild(c);
+      const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.title = "Remover"; x.addEventListener("click", () => { BT.photos.splice(j, 1); BT.ready = false; renderBT(); if (BT.photos.length >= 2) btAnalyze(); else btMsg(""); }); d.appendChild(x);
+      const l = document.createElement("span"); l.textContent = "Foto " + (j + 1) + (BT.ready && j === BT.base ? " (base)" : ""); d.appendChild(l); th.appendChild(d);
+    });
+    $("btBaseWrap").hidden = !BT.ready;
+    if (!BT.ready) return;
+    const bb = $("btBase"); bb.innerHTML = "";
+    BT.photos.forEach((ph, j) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = "Foto " + (j + 1); c.setAttribute("aria-pressed", String(j === BT.base)); c.addEventListener("click", () => { BT.base = j; renderBT(); }); bb.appendChild(c); });
+    const pe = $("btPersons"); pe.innerHTML = "";
+    BT.persons.forEach((pr, k) => {
+      const d = document.createElement("div"); d.className = "bp"; d.innerHTML = `<h4>Pessoa ${k + 1}</h4>`;
+      const row = document.createElement("div"); row.className = "bpfaces";
+      pr.cands.forEach((f, j) => {
+        if (!f) return; const z = pr.sc[j], b = document.createElement("button"); b.type = "button"; b.className = "bface"; b.setAttribute("aria-pressed", String(pr.pick === j));
+        b.appendChild(faceThumb(BT.photos[j], f)); const sm = document.createElement("small"); sm.textContent = `Foto ${j + 1}: ${faceTags(z)}`; b.appendChild(sm);
+        const bar = document.createElement("div"); bar.className = "bar"; bar.innerHTML = `<i style="width:${Math.round(z.score * 100)}%"></i>`; b.appendChild(bar);
+        b.addEventListener("click", () => { pr.pick = j; renderBT(); }); row.appendChild(b);
+      });
+      d.appendChild(row); pe.appendChild(d);
+    });
+  }
+
+  // alinha e mistura um rosto de outra foto sobre a foto base
+  function fitSimilarity(P, Q) {
+    let px = 0, py = 0, qx = 0, qy = 0; const n = P.length;
+    for (let i = 0; i < n; i++) { px += P[i][0]; py += P[i][1]; qx += Q[i][0]; qy += Q[i][1]; } px /= n; py /= n; qx /= n; qy /= n;
+    let num1 = 0, num2 = 0, den = 0;
+    for (let i = 0; i < n; i++) { const ax = P[i][0] - px, ay = P[i][1] - py, bx = Q[i][0] - qx, by = Q[i][1] - qy; num1 += ax * bx + ay * by; num2 += ax * by - ay * bx; den += ax * ax + ay * ay; }
+    const a = num1 / den, b = num2 / den; return { a, b, tx: qx - (a * px - b * py), ty: qy - (b * px + a * py) };
+  }
+  function blendFace(baseCv, srcCv, fSrc, fDst) {
+    const BW = baseCv.width, BH = baseCv.height, SW = srcCv.width, SH = srcCv.height;
+    if (Math.abs(fSrc.yaw) > 28 || Math.abs(fDst.yaw) > 28 || Math.abs(fSrc.yaw - fDst.yaw) > 14) return "lado";
+    const P = STABLE.map(i => [fSrc.lm[i].x * SW, fSrc.lm[i].y * SH]), Q = STABLE.map(i => [fDst.lm[i].x * BW, fDst.lm[i].y * BH]), T = fitSimilarity(P, Q);
+    let rss = 0; for (let i = 0; i < P.length; i++) { const ex = T.a * P[i][0] - T.b * P[i][1] + T.tx - Q[i][0], ey = T.b * P[i][0] + T.a * P[i][1] + T.ty - Q[i][1]; rss += ex * ex + ey * ey; }
+    const wdD = Math.hypot((fDst.lm[454].x - fDst.lm[234].x) * BW, (fDst.lm[454].y - fDst.lm[234].y) * BH);
+    if (Math.sqrt(rss / P.length) > 0.06 * wdD) return "alinhamento";
+    const poly = OVAL.map(i => [fDst.lm[i].x * BW, fDst.lm[i].y * BH]); let cx = 0, cy = 0; poly.forEach(q => { cx += q[0]; cy += q[1]; }); cx /= poly.length; cy /= poly.length;
+    const wd = Math.hypot(poly[8][0] - poly[28][0], poly[8][1] - poly[28][1]), grow = 0.98;
+    const pg = poly.map(q => [cx + (q[0] - cx) * grow, cy + (q[1] - cy) * grow]);
+    const pad = Math.ceil(wd * 0.35), x0 = Math.max(0, Math.floor(Math.min(...pg.map(q => q[0])) - pad)), y0 = Math.max(0, Math.floor(Math.min(...pg.map(q => q[1])) - pad));
+    const x1 = Math.min(BW, Math.ceil(Math.max(...pg.map(q => q[0])) + pad)), y1 = Math.min(BH, Math.ceil(Math.max(...pg.map(q => q[1])) + pad)), w = x1 - x0, h = y1 - y0, n = w * h;
+    // origem deformada
+    const tc = document.createElement("canvas"); tc.width = w; tc.height = h; const tx = tc.getContext("2d", { willReadFrequently: true }); tx.imageSmoothingQuality = "high";
+    tx.setTransform(T.a, T.b, -T.b, T.a, T.tx - x0, T.ty - y0); tx.drawImage(srcCv, 0, 0); tx.setTransform(1, 0, 0, 1, 0, 0);
+    const S2 = tx.getImageData(0, 0, w, h).data;
+    // máscara oval suavizada
+    const mc = document.createElement("canvas"); mc.width = w; mc.height = h; const mx = mc.getContext("2d", { willReadFrequently: true }); mx.fillStyle = "#fff"; mx.beginPath(); pg.forEach((q, i) => { i ? mx.lineTo(q[0] - x0, q[1] - y0) : mx.moveTo(q[0] - x0, q[1] - y0); }); mx.closePath(); mx.fill();
+    const md = mx.getImageData(0, 0, w, h).data, a0 = new Float32Array(n), tmp = new Float32Array(n), a1 = new Float32Array(n), a2 = new Float32Array(n);
+    for (let i = 0; i < n; i++) a0[i] = md[i * 4] / 255 * (S2[i * 4 + 3] / 255 > 0.98 ? 1 : 0);
+    const rb = Math.max(2, Math.round(wd * 0.06)); boxF(a0, w, h, rb, a1, tmp); boxF(a1, w, h, rb, a2, tmp);
+    const bx = baseCv.getContext("2d", { willReadFrequently: true }), B = bx.getImageData(x0, y0, w, h), Bd = B.data;
+    // diferença de cor na faixa de borda
+    const off = [0, 0, 0]; let cnt = 0;
+    for (let i = 0; i < n; i++) { const al = a2[i]; if (al > 0.35 && al < 0.85) { for (let k = 0; k < 3; k++) off[k] += Bd[i * 4 + k] - S2[i * 4 + k]; cnt++; } }
+    if (cnt > 50) for (let k = 0; k < 3; k++) off[k] = Math.max(-28, Math.min(28, off[k] / cnt)); else off[0] = off[1] = off[2] = 0;
+    for (let i = 0; i < n; i++) {
+      let al = Math.min(1, Math.max(0, (a2[i] - 0.12) / 0.7)); if (al <= 0) continue;
+      for (let k = 0; k < 3; k++) { const sv = Math.min(255, Math.max(0, S2[i * 4 + k] + off[k])); Bd[i * 4 + k] = Bd[i * 4 + k] * (1 - al) + sv * al; }
+    }
+    bx.putImageData(B, x0, y0); return "ok";
+  }
+  async function btMake() {
+    if (!BT.ready || BT.busy) return; BT.busy = true; $("btMake").disabled = true;
+    try {
+      const base = BT.photos[BT.base], out = document.createElement("canvas"); out.width = base.full.width; out.height = base.full.height; const ox = out.getContext("2d", { willReadFrequently: true }); ox.drawImage(base.full, 0, 0);
+      let swapped = 0, skipped = 0, refused = [];
+      for (let k = 0; k < BT.persons.length; k++) {
+        const pr = BT.persons[k]; if (pr.pick === BT.base) continue;
+        const fs = pr.cands[pr.pick], fd = pr.cands[BT.base]; if (!fs || !fd) { skipped++; continue; }
+        btMsg(`Trocando o rosto da pessoa ${k + 1}…`); await new Promise(r => setTimeout(r, 20));
+        const rs = blendFace(out, BT.photos[pr.pick].full, fs, fd); if (rs === "ok") swapped++; else refused.push(k + 1);
+      }
+      btMsg(swapped ? `Pronto: ${swapped} ${swapped === 1 ? "rosto trocado" : "rostos trocados"} na foto ${BT.base + 1}.` + (skipped ? ` ${skipped} não tinha rosto na foto base.` : "") + (refused.length ? ` Não troquei a pessoa ${refused.join(", ")}: o rosto está de lado ou muito diferente entre as fotos, e a troca ficaria com emenda.` : "") : (refused.length ? `Não troquei a pessoa ${refused.join(", ")}: o rosto está de lado ou muito diferente entre as fotos, e a troca ficaria com emenda.` : "A foto base já tem o melhor rosto de todos. Nada a trocar."));
+      load(out, "Melhor rosto (" + BT.photos.length + " fotos)"); setTab("estilos");
+    } catch (e) { btMsg("Não deu para montar: " + (e.message || e)); }
+    BT.busy = false; $("btMake").disabled = false;
+  }
+
+  /* ---------- interface ---------- */
+  let raf = 0, comparing = false;
+  function schedule() { if (!raf) raf = requestAnimationFrame(draw); }
+
+  function draw() {
+    raf = 0;
+    if (!S.prevData) return;
+    const t0 = performance.now();
+    if (rc.width !== S.prevData.width || rc.height !== S.prevData.height) { rc.width = S.prevData.width; rc.height = S.prevData.height; }
+    if (comparing) { rcx.putImageData(S.prevData, 0, 0); present(); return; }
+    const h = new Float64Array(256);
+    const img = (S.painting && S.lastRender) ? S.lastRender : render(S.prevData, S.prevData.width, S.prevData.height, effective(true), S.mask, h, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, S.detail || (S.detail = makeDetail(S.prevData.data, S.prevData.width, S.prevData.height)), localsForRender());
+    S.lastRender = img; rcx.putImageData(img, 0, 0);
+    if (S.tool === "lens") { const e = effective(), m2 = Math.min(rc.width, rc.height); rcx.save(); rcx.strokeStyle = "rgba(255,255,255,.9)"; rcx.lineWidth = 2; rcx.setLineDash([8, 6]); rcx.beginPath(); rcx.arc(e.lensX * rc.width, e.lensY * rc.height, e.lensSize * m2, 0, 7); rcx.stroke(); rcx.restore(); }
+    if ((S.tool === "selective" || S.tool === "brush") && S.showMask) drawLocalOverlay();
+    if (S.overlay && S.ov) rcx.drawImage(S.ov, 0, 0, rc.width, rc.height);
+    if (S.overlay && S.ovFace) rcx.drawImage(S.ovFace, 0, 0, rc.width, rc.height);
+    present();
+    drawHist(h);
+    TM.render = Math.round(performance.now() - t0);
+    $("capTime").textContent = "render " + Math.round(performance.now() - t0) + " ms";
+    syncSliders();
+  }
+
+  function drawHist(h1) {
+    const c = $("hist"), x = c.getContext("2d"), W = c.width, H = c.height;
+    const cs = getComputedStyle(document.documentElement);
+    x.clearRect(0, 0, W, H);
+    const norm = h => { let m = 0; for (let i = 0; i < 256; i++) m = Math.max(m, h[i]); return i => Math.sqrt(h[i] / m); };
+    const f1 = norm(h1), f0 = norm(S.hist0);
+    x.fillStyle = cs.getPropertyValue("--accent").trim(); x.globalAlpha = 0.55;
+    x.beginPath(); x.moveTo(0, H);
+    for (let i = 0; i < 256; i++) x.lineTo(i / 255 * W, H - f1(i) * (H - 4));
+    x.lineTo(W, H); x.fill();
+    x.globalAlpha = 1; x.strokeStyle = cs.getPropertyValue("--mute").trim(); x.lineWidth = 1.2;
+    x.beginPath();
+    for (let i = 0; i < 256; i++) { const px = i / 255 * W, py = H - f0(i) * (H - 4); i ? x.lineTo(px, py) : x.moveTo(px, py); }
+    x.stroke();
+  }
+
+  function buildSliders() {
+    const grid = $("toolGrid"), panes = $("toolPanes"); grid.innerHTML = ""; panes.innerHTML = "";
+    for (const t of TOOLS) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "tool"; b.dataset.tool = t.id;
+      b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[t.id]}</svg><span>${t.name}</span>`;
+      b.addEventListener("click", () => openTool(t.id)); grid.appendChild(b);
+      const pane = document.createElement("div"); pane.className = "toolpane"; pane.dataset.tool = t.id; pane.hidden = true;
+      pane.innerHTML = `<div class="toolhead"><h3>${t.name}</h3></div><p class="tnote">${t.note}</p>`;
+      if (t.chips) {
+        const c = document.createElement("div"); c.className = "chips";
+        BWN.forEach((n, k) => { const ch = document.createElement("button"); ch.type = "button"; ch.className = "chip"; ch.dataset.i = k; ch.textContent = n; ch.addEventListener("click", () => { S.manual.bwFilter = k; if (!(effective().bw > 0)) S.manual.bw = 1; markCustom(); schedule(); }); c.appendChild(ch); });
+        pane.appendChild(c);
+      }
+      if (t.custom === "local") { pane.dataset.local = "1"; }
+      if (t.custom === "curves") buildCurves(pane);
+      if (t.custom === "crop") buildCropPane(pane, false);
+      if (t.custom === "rotate") buildCropPane(pane, true);
+      if (t.custom === "filters") buildFilters(pane);
+      for (const key of t.keys) {
+        const [, label, min, max, step] = SD[key];
+        const row = document.createElement("div"); row.className = "field"; row.dataset.key = key;
+        row.innerHTML = `<label for="sl_${key}">${label}</label><input type="range" id="sl_${key}" min="${min}" max="${max}" step="${step}"><output></output>`;
+        row.querySelector("input").addEventListener("input", e => { S.manual[key] = parseFloat(e.target.value); markCustom(); schedule(); });
+        pane.appendChild(row);
+      }
+      const z = document.createElement("p"); z.style.margin = "14px 0 0";
+      z.innerHTML = '<button class="linkbtn" type="button">Zerar esta ferramenta</button>';
+      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } markCustom(); schedule(); });
+      pane.appendChild(z); panes.appendChild(pane);
+    }
+  }
+  /* ---------- filtros ---------- */
+  function buildFilters(pane) {
+    const g = document.createElement("div"); g.className = "fgrid";
+    const none = document.createElement("button"); none.type = "button"; none.className = "fchip"; none.dataset.f = ""; none.textContent = "Nenhum"; g.appendChild(none);
+    for (const k in FILTERS) { const b = document.createElement("button"); b.type = "button"; b.className = "fchip"; b.dataset.f = k; b.textContent = FILTERS[k].name; g.appendChild(b); }
+    g.addEventListener("click", e => { const b = e.target.closest(".fchip"); if (!b) return; S.filter = b.dataset.f || null; markCustom(); schedule(); });
+    pane.appendChild(g);
+    const row = document.createElement("div"); row.className = "field";
+    row.innerHTML = '<label for="filterK">Intensidade</label><input type="range" id="filterK" min="0" max="120" step="1" value="100"><output>100%</output>';
+    row.querySelector("input").addEventListener("input", e => { S.filterK = e.target.value / 100; row.querySelector("output").textContent = e.target.value + "%"; schedule(); });
+    pane.appendChild(row);
+  }
+
+  /* ---------- curvas ---------- */
+  const CH_COL = { L: "#888", R: "#e5484d", G: "#3fb950", B: "#4c8dff" };
+  function splineLut(pts) {
+    const P = pts.slice().sort((a, b) => a[0] - b[0]), n = P.length, xs = P.map(q => q[0]), ys = P.map(q => q[1]), d = [], m = [];
+    for (let i = 0; i < n - 1; i++) d[i] = (ys[i + 1] - ys[i]) / Math.max(1e-6, xs[i + 1] - xs[i]);
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+    for (let i = 0; i < n - 1; i++) { if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; } else { const a = m[i] / d[i], b = m[i + 1] / d[i], q = a * a + b * b; if (q > 9) { const t = 3 / Math.sqrt(q); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; } } }
+    const lut = new Float32Array(256);
+    for (let k = 0; k < 256; k++) {
+      const x = k / 255; let y;
+      if (x <= xs[0]) y = ys[0]; else if (x >= xs[n - 1]) y = ys[n - 1];
+      else { let i = 0; while (i < n - 2 && x > xs[i + 1]) i++; const h = xs[i + 1] - xs[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+        y = (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1]; }
+      lut[k] = Math.min(1, Math.max(0, y));
+    }
+    return lut;
+  }
+  const isId = pts => pts.length === 2 && pts[0][0] === 0 && pts[0][1] === 0 && pts[1][0] === 1 && pts[1][1] === 1;
+  function rebuildCurve() {
+    const c = S.curves;
+    if (["L", "R", "G", "B"].every(k => isId(c[k]))) { S.curveLut = null; return; }
+    const L = splineLut(c.L), lut = k => { const l2 = splineLut(c[k]), o = new Float32Array(256); for (let i = 0; i < 256; i++) { const t = L[i] * 255, i0 = t | 0, f = t - i0; o[i] = l2[i0] * (1 - f) + l2[Math.min(255, i0 + 1)] * f; } return o; };
+    S.curveLut = { R: lut("R"), G: lut("G"), B: lut("B") };
+  }
+  function resetCurves() { for (const k of ["L", "R", "G", "B"]) S.curves[k] = [[0, 0], [1, 1]]; rebuildCurve(); drawCurve(); }
+  function suggestCurve() {
+    const a = S.an; if (!a) return;
+    const mid = a.med + (0.5 - a.med) * 0.5, pts = [[0, 0]];
+    if (a.p05 > 0.02 && a.p05 < a.med - 0.05) pts.push([a.p05, 0.04]);
+    pts.push([a.med, mid]);
+    if (a.p95 < 0.98 && a.p95 > a.med + 0.05) pts.push([a.p95, 0.96]);
+    pts.push([1, 1]);
+    S.curves.L = pts; rebuildCurve(); drawCurve(); schedule();
+  }
+  function drawCurve() {
+    const cv = $("curveCv"); if (!cv) return;
+    const W = cv.width, H = cv.height, x = cv.getContext("2d"), cs = getComputedStyle(document.documentElement);
+    x.clearRect(0, 0, W, H);
+    x.strokeStyle = cs.getPropertyValue("--line").trim(); x.lineWidth = 1;
+    for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(i * W / 4, 0); x.lineTo(i * W / 4, H); x.moveTo(0, i * H / 4); x.lineTo(W, i * H / 4); x.stroke(); }
+    if (S.hist0) { let mx = 0; for (let i = 0; i < 256; i++) mx = Math.max(mx, S.hist0[i]); x.fillStyle = cs.getPropertyValue("--mute").trim(); x.globalAlpha = 0.25; for (let i = 0; i < 256; i++) { const hh = Math.sqrt(S.hist0[i] / mx) * H * 0.6; x.fillRect(i / 256 * W, H - hh, W / 256 + 0.5, hh); } x.globalAlpha = 1; }
+    const ch = S.curveCh, lut = splineLut(S.curves[ch]);
+    x.strokeStyle = ch === "L" ? cs.getPropertyValue("--fg").trim() : CH_COL[ch]; x.lineWidth = 2; x.beginPath();
+    for (let i = 0; i < 256; i++) { const px = i / 255 * W, py = H - lut[i] * H; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke();
+    x.fillStyle = cs.getPropertyValue("--bg").trim(); x.strokeStyle = x.strokeStyle;
+    for (const q of S.curves[ch]) { x.beginPath(); x.arc(q[0] * W, H - q[1] * H, 5.5, 0, 7); x.fill(); x.stroke(); }
+  }
+  function buildCurves(pane) {
+    const chips = document.createElement("div"); chips.className = "chips";
+    [["L", "RGB"], ["R", "Vermelho"], ["G", "Verde"], ["B", "Azul"]].forEach(([k, n]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip cchip"; c.dataset.c = k; c.textContent = n; c.addEventListener("click", () => { S.curveCh = k; document.querySelectorAll(".cchip").forEach(z => z.setAttribute("aria-pressed", String(z.dataset.c === k))); drawCurve(); }); chips.appendChild(c); });
+    pane.appendChild(chips);
+    const cv = document.createElement("canvas"); cv.id = "curveCv"; cv.width = 300; cv.height = 300; pane.appendChild(cv);
+    const pre = document.createElement("div"); pre.className = "chips";
+    [["Sugerida", null], ["Contraste", [[0, 0], [0.25, 0.16], [0.75, 0.86], [1, 1]]], ["Suave", [[0, 0], [0.25, 0.21], [0.75, 0.79], [1, 1]]], ["Fosco", [[0, 0.08], [1, 0.94]]], ["Claro", [[0, 0], [0.5, 0.62], [1, 1]]], ["Escuro", [[0, 0], [0.5, 0.4], [1, 1]]]].forEach(([n, pts]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = n; c.setAttribute("aria-pressed", "false"); c.addEventListener("click", () => { if (!pts) suggestCurve(); else { S.curves[S.curveCh] = pts.map(q => q.slice()); rebuildCurve(); drawCurve(); schedule(); } }); pre.appendChild(c); });
+    pane.appendChild(pre);
+    let drag = -1;
+    const pos = e => { const r = cv.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height))]; };
+    cv.addEventListener("pointerdown", e => {
+      const pts = S.curves[S.curveCh], [px, py] = pos(e), r = cv.getBoundingClientRect(); let best = -1, bd = 1e9;
+      pts.forEach((q, i) => { const dd = Math.hypot((q[0] - px) * r.width, (q[1] - py) * r.height); if (dd < bd) { bd = dd; best = i; } });
+      if (bd > 14) { pts.push([px, py]); pts.sort((a, b) => a[0] - b[0]); best = pts.findIndex(q => q[0] === px && q[1] === py); }
+      drag = best; cv.setPointerCapture(e.pointerId); markCustom(); rebuildCurve(); drawCurve(); schedule();
+    });
+    cv.addEventListener("pointermove", e => {
+      if (drag < 0) return; const pts = S.curves[S.curveCh], [px, py] = pos(e), last = pts.length - 1;
+      if (drag === 0 || drag === last) pts[drag][1] = py; else { pts[drag][0] = Math.min(pts[drag + 1][0] - 0.01, Math.max(pts[drag - 1][0] + 0.01, px)); pts[drag][1] = py; }
+      rebuildCurve(); drawCurve(); schedule();
+    });
+    ["pointerup", "pointercancel"].forEach(ev => cv.addEventListener(ev, () => { drag = -1; }));
+    cv.addEventListener("dblclick", e => {
+      const pts = S.curves[S.curveCh], [px, py] = pos(e), r = cv.getBoundingClientRect();
+      const i = pts.findIndex((q, k) => k > 0 && k < pts.length - 1 && Math.hypot((q[0] - px) * r.width, (q[1] - py) * r.height) < 14);
+      if (i > 0) { pts.splice(i, 1); rebuildCurve(); drawCurve(); schedule(); }
+    });
+    setTimeout(() => { document.querySelector('.cchip[data-c="L"]').setAttribute("aria-pressed", "true"); drawCurve(); }, 0);
+  }
+
+  function openTool(id) {
+    S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens"].includes(id) ? "none" : ""; $("toolList").hidden = true;
+    if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false;
+    document.querySelectorAll(".toolpane").forEach(p2 => { p2.hidden = p2.dataset.tool !== id; });
+    if (id === "selective" || id === "brush") { const pane = document.querySelector(`.toolpane[data-tool="${id}"]`); if (!S.lbox) S.lbox = buildLocalBox(); pane.insertBefore(S.lbox, pane.querySelector("p:last-child")); renderLocalBox(); }
+    schedule();
+  }
+  function closeTool() { S.tool = null; S.painting = false; view.style.touchAction = ""; $("toolList").hidden = false; $("toolView").hidden = true; schedule(); }
+  function setTab(t) {
+    document.querySelectorAll(".tabbtn").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+    document.querySelectorAll(".tab").forEach(x => { x.hidden = x.dataset.tab !== t; });
+    if (t !== "ferramentas" && S.tool) closeTool();
+  }
+  function syncSliders() {
+    const p = effective();
+    for (const key in SD) {
+      const row = document.querySelector(`.field[data-key="${key}"]`); if (!row) continue;
+      const inp = row.querySelector("input");
+      if (document.activeElement !== inp) inp.value = p[key];
+      row.querySelector("output").textContent = SD[key][5](p[key]);
+      row.classList.toggle("changed", key in S.manual);
+    }
+    document.querySelectorAll(".chip[data-i]").forEach(c => c.setAttribute("aria-pressed", String(Math.round(p.bwFilter) === +c.dataset.i)));
+    document.querySelectorAll(".fchip").forEach(c => c.setAttribute("aria-pressed", String((S.filter || "") === c.dataset.f)));
+    for (const t of TOOLS) { const b = document.querySelector(`.tool[data-tool="${t.id}"]`); if (b) b.dataset.dirty = (t.keys.some(k => Math.abs(p[k] - NEUTRAL[k]) > 0.005) || (t.custom === "filters" && S.filter) || (t.custom === "curves" && S.curveLut) || (t.custom === "local" && S.locals.length) || ((t.custom === "crop" || t.custom === "rotate") && !geoIsId(S.geo))) ? "1" : "0"; }
+  }
+  function markCustom() { $("reset").hidden = false; }
+
+  function buildStyleCards() {
+    const box = $("styles"); box.innerHTML = "";
+    for (const key of ["natural", "adams", "leib", "mccurry"]) {
+      const st = STYLES[key], b = document.createElement("button");
+      b.type = "button"; b.className = "style"; b.dataset.key = key;
+      b.innerHTML = `<div class="row"><b>${st.name}</b><span class="kind">${st.kind}</span><span class="tag" hidden>sugerido</span></div><p>${st.desc}</p><div class="meter"><i></i></div>`;
+      b.addEventListener("click", () => { S.style = key; S.userPicked = true; S.manual = {}; applyStyle(); });
+      box.appendChild(b);
+    }
+  }
+  function refreshStyleCards() {
+    document.querySelectorAll(".style").forEach(b => {
+      const k = b.dataset.key;
+      b.setAttribute("aria-pressed", String(S.style === k));
+      b.querySelector(".tag").hidden = S.suggested !== k;
+      b.querySelector(".meter i").style.width = Math.round((S.an.scores[k]) * 100) + "%";
+    });
+  }
+  function applyStyle() {
+    const r = autoParams(S.style, S.an);
+    S.target = r.P; S.notes = r.notes;
+    $("notes").innerHTML = ""; r.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
+    $("reset").hidden = Object.keys(S.manual).length === 0;
+    refreshStyleCards(); schedule();
+  }
+  function showStats(a) {
+    const warm = a.avgR / Math.max(0.02, a.avgB);
+    const tone = warm > 1.12 ? "quente" : warm < 0.9 ? "fria" : "neutra";
+    const rows = [["Cena", a.scene], ["Luz mediana", Math.round(a.med * 100) + "%"], ["Faixa (5–95%)", Math.round(a.p05 * 100) + "–" + Math.round(a.p95 * 100) + "%"],
+      ["Tom dominante", tone], ["Pele", Math.round(a.skinFrac * 100) + "%"], ["Céu", Math.round(a.skyFrac * 100) + "%"],
+      ["Saturação média", Math.round(a.satMean * 100) + "%"], ["Sombras afundadas", Math.round(a.fracDark * 100) + "%"], ["Regiões", S.seg ? "detectadas" : "não detectadas"], ["Rostos", S.face ? S.face.n + " (olhos e dentes)" : (S.an && S.an.face === null && S.seg ? "nenhum" : "–")], ["Detalhe do fundo", S.an && S.an.seg ? String(Math.round(S.an.seg.bgGrad * 1000) / 10) : "–"], ["Vinheta existente", a.vig < 0.6 ? "sim" : "não"], ["Pretos levantados", a.p005 > 0.07 ? "sim" : "não"]];
+    $("stats").innerHTML = rows.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join("");
+  }
+
+  /* ---------- carregar foto ---------- */
+  function load(canvas, name) {
+    S.orig = canvas; S.name = name; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
+    const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
+    const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
+    const px = pc.getContext("2d", { willReadFrequently: true });
+    px.imageSmoothingQuality = "high"; px.drawImage(canvas, 0, 0, pw, ph);
+    S.prev = pc; S.prevData = px.getImageData(0, 0, pw, ph);
+    rc.width = pw; rc.height = ph; S.geo = newGeo(); syncGeo();
+    S.mask = tm("mask", () => buildMask(pc)); S.an = tm("analyze", () => analyze(pc));
+    const h0 = new Float64Array(256), d = S.prevData.data;
+    for (let i = 0; i < d.length; i += 4) h0[Math.min(255, ((0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2])) | 0)]++;
+    S.hist0 = h0;
+    S.suggested = S.an.suggested; S.style = S.suggested;
+    $("capName").textContent = name; $("capSize").textContent = canvas.width + " × " + canvas.height + " px";
+    $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
+    showStats(S.an); applyStyle();
+    if (segState === "ready") { setSegStatus("Analisando a foto…", false); runSeg(); }
+  }
+
+  function loadFile(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    createImageBitmap(file).then(img => {
+      const long = 3000, sc = Math.min(1, long / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      img.close(); load(c, file.name);
+    }).catch(() => { $("capName").textContent = "Não consegui abrir esse arquivo. Tente JPG ou PNG."; });
+  }
+
+  /* ---------- fotos de exemplo (sintéticas, chapadas de propósito) ---------- */
+  function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+  function sampleLandscape() {
+    const c = document.createElement("canvas"); c.width = 1200; c.height = 800; const x = c.getContext("2d"), R = rnd(7);
+    let g = x.createLinearGradient(0, 0, 0, 470); g.addColorStop(0, "#8b9ea6"); g.addColorStop(1, "#c8c2b0"); x.fillStyle = g; x.fillRect(0, 0, 1200, 800);
+    g = x.createRadialGradient(820, 400, 10, 820, 400, 320); g.addColorStop(0, "rgba(255,240,205,.85)"); g.addColorStop(1, "rgba(255,240,205,0)"); x.fillStyle = g; x.fillRect(0, 0, 1200, 800);
+    for (let i = 0; i < 26; i++) { x.fillStyle = "rgba(255,255,255,.07)"; x.beginPath(); x.ellipse(R() * 1200, 60 + R() * 220, 90 + R() * 160, 14 + R() * 20, 0, 0, 7); x.fill(); }
+    const layers = [["#7b8a8a", 400, 60], ["#617468", 450, 50], ["#485c48", 500, 40]];
+    layers.forEach((L, li) => { x.fillStyle = L[0]; x.beginPath(); x.moveTo(0, 800); let yy = L[1];
+      for (let px = 0; px <= 1200; px += 20) { yy = L[1] - Math.abs(Math.sin(px / (110 + li * 40) + li * 2)) * L[2] - R() * 9; x.lineTo(px, yy); }
+      x.lineTo(1200, 800); x.fill(); });
+    g = x.createLinearGradient(0, 560, 0, 800); g.addColorStop(0, "#6a7a45"); g.addColorStop(1, "#4d5c33"); x.fillStyle = g; x.beginPath(); x.moveTo(0, 800); x.lineTo(0, 600);
+    for (let px = 0; px <= 1200; px += 30) x.lineTo(px, 585 + Math.sin(px / 140) * 22); x.lineTo(1200, 800); x.fill();
+    for (let i = 0; i < 1800; i++) { x.strokeStyle = `rgba(${60 + R() * 60},${80 + R() * 70},${30 + R() * 30},.5)`; x.lineWidth = 1.5; const px = R() * 1200, py = 600 + R() * 200; x.beginPath(); x.moveTo(px, py); x.lineTo(px + R() * 6 - 3, py - 8 - R() * 16); x.stroke(); }
+    x.fillStyle = "rgba(140,150,135,.16)"; x.fillRect(0, 0, 1200, 800);
+    return c;
+  }
+  function samplePortrait() {
+    const c = document.createElement("canvas"); c.width = 900; c.height = 1100; const x = c.getContext("2d");
+    let g = x.createLinearGradient(0, 0, 900, 1100); g.addColorStop(0, "#6c8380"); g.addColorStop(1, "#3e5152"); x.fillStyle = g; x.fillRect(0, 0, 900, 1100);
+    x.fillStyle = "#2b2f36"; x.beginPath(); x.ellipse(450, 1180, 420, 330, 0, 0, 7); x.fill();
+    x.fillStyle = "#c48e6c"; x.fillRect(395, 640, 110, 200);
+    g = x.createRadialGradient(390, 430, 20, 450, 470, 260); g.addColorStop(0, "#e2ad8a"); g.addColorStop(1, "#b17c5c"); x.fillStyle = g;
+    x.beginPath(); x.ellipse(450, 470, 190, 250, 0, 0, 7); x.fill();
+    x.fillStyle = "#2a1c15"; x.beginPath(); x.ellipse(450, 320, 205, 170, 0, Math.PI, 0); x.fill(); x.fillRect(245, 300, 40, 150); x.fillRect(615, 300, 40, 150);
+    x.fillStyle = "#3a2419"; [[390, 470], [510, 470]].forEach(p => { x.beginPath(); x.ellipse(p[0], p[1], 20, 10, 0, 0, 7); x.fill(); });
+    x.fillStyle = "#9a5a4c"; x.beginPath(); x.ellipse(450, 610, 42, 13, 0, 0, 7); x.fill();
+    x.fillStyle = "rgba(0,0,0,.22)"; x.fillRect(0, 0, 900, 1100);
+    x.fillStyle = "rgba(120,130,125,.10)"; x.fillRect(0, 0, 900, 1100);
+    return c;
+  }
+
+  /* ---------- eventos ---------- */
+  document.querySelectorAll(".tabbtn").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+  $("toolBack").addEventListener("click", closeTool);
+  view.addEventListener("click", e => {
+    if (S.tool !== "lens") return;
+    const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); S.manual.lensX = Math.min(1, Math.max(0, q[0])); S.manual.lensY = Math.min(1, Math.max(0, q[1]));
+    if (!(effective().lensBlur > 0)) S.manual.lensBlur = 0.6;
+    markCustom(); schedule();
+  });
+  $("btAdd").addEventListener("click", () => $("btFiles").click());
+  $("btFiles").addEventListener("change", e => { btAddFiles(e.target.files); e.target.value = ""; });
+  $("btMake").addEventListener("click", btMake);
+  $("k").addEventListener("input", e => { S.k = e.target.value / 100; $("kOut").textContent = e.target.value + "%"; schedule(); });
+  $("reset").addEventListener("click", () => { S.manual = {}; $("reset").hidden = true; schedule(); });
+  $("openBtn").addEventListener("click", () => $("file").click());
+  $("galBtn").addEventListener("click", () => $("file").click());
+  $("camBtn").addEventListener("click", () => $("cam").click());
+  $("cam").addEventListener("change", e => { loadFile(e.target.files[0]); e.target.value = ""; });
+  $("exBtn").addEventListener("click", () => load(sampleLandscape(), "Exemplo: paisagem"));
+  $("shareBtn").addEventListener("click", async () => {
+    if (!S.lastBlob) return;
+    try { await navigator.share({ files: [new File([S.lastBlob], "revela.jpg", { type: "image/jpeg" })], title: "Revela" }); } catch (e) { /* o usuário cancelou */ }
+  });
+  $("file").addEventListener("change", e => { loadFile(e.target.files[0]); e.target.value = ""; });
+  $("sLand").addEventListener("click", () => load(sampleLandscape(), "Exemplo: paisagem"));
+  $("sPort").addEventListener("click", () => load(samplePortrait(), "Exemplo: retrato"));
+  const cmp = on => { comparing = on; $("flag").hidden = !on; $("cmpBtn").classList.toggle("on", on); schedule(); };
+  const cb = $("cmpBtn");
+  cb.addEventListener("pointerdown", e => { e.preventDefault(); cmp(true); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(ev => cb.addEventListener(ev, () => cmp(false)));
+  cb.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); cmp(true); } });
+  cb.addEventListener("keyup", () => cmp(false));
+
+  const wrap = $("wrap");
+  ["dragenter", "dragover"].forEach(ev => wrap.addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("show"); }));
+  ["dragleave", "drop"].forEach(ev => wrap.addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("show"); }));
+  wrap.addEventListener("drop", e => { const fl = e.dataTransfer.files; if (fl.length > 1) { setTab("rosto"); btAddFiles(fl); } else loadFile(fl[0]); });
+
+  $("saveBtn").addEventListener("click", () => {
+    if (!S.orig) return;
+    const w = S.orig.width, h = S.orig.height, src = S.orig.getContext("2d").getImageData(0, 0, w, h);
+    const out = render(src, w, h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
+    const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").putImageData(out, 0, 0);
+    (geoIsId(S.geo) ? c : geoRender(c, S.geo, null, 6000)).toBlob(b => {
+      S.lastBlob = b; try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); $("shareBtn").hidden = !(navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { $("shareBtn").hidden = true; }
+      const url = URL.createObjectURL(b); $("finalImg").src = url; $("final").classList.add("show");
+      $("final").scrollIntoView({ block: "nearest" });
+      const a = document.createElement("a"); a.href = url; a.download = "revela-" + STYLES[S.style].name.toLowerCase() + ".jpg"; try { a.click(); } catch (e) { /* segue o aviso na tela */ }
+    }, "image/jpeg", 0.93);
+  });
+
+  $("refine").addEventListener("change", e => { if (!S.segRaw) return; S.seg = e.target.checked ? S.segRef : S.segRaw; onSeg(S.segMs); });
+  $("ovl").addEventListener("change", e => { S.overlay = e.target.checked; schedule(); });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", schedule);
+
+  buildStyleCards(); buildSliders();
+  initSegmenter();
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
