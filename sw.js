@@ -1,5 +1,5 @@
 /* Revela: cache do app e dos modelos para funcionar sem internet depois da primeira abertura. */
-const VERSION = "revela-v2";
+const VERSION = "revela-v3";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 // bibliotecas e modelos, para o app funcionar sem internet desde a primeira instalação
 const HEAVY = ["vendor/mediapipe/vision_bundle.mjs", "vendor/mediapipe/wasm/vision_wasm_internal.js", "vendor/mediapipe/wasm/vision_wasm_internal.wasm", "vendor/models/selfie_multiclass_256x256.tflite", "vendor/models/face_landmarker.task"];

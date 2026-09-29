@@ -182,6 +182,59 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
 }
 @media (prefers-reduced-motion: no-preference) { .meter i { transition: width .3s; } }
 </style>
+<style id="theme2">
+:root:root:root { --bg: #0b0b0d; --stage: #050506; --panel: #141417; --line: #26262b; --fg: #f2f0ec; --mute: #9a97a0; --accent: #ff6a55; --accent-fg: #1b0905; --ok: #5ed39a; color-scheme: dark; }
+body { background: var(--bg); }
+.top { border-bottom: 1px solid var(--line); background: var(--bg); padding: 10px 14px; }
+.brand { font-size: 21px; }
+.btn { border-radius: 999px; background: #1c1c21; border-color: #2c2c33; padding: 8px 16px; }
+.btn:hover { border-color: #55555f; }
+.btn.primary { background: linear-gradient(135deg, #ff8a4c, #ff4d7e); border: 0; color: #fff; font-weight: 600; }
+.chip, .fchip { border-radius: 999px; }
+.stage { background: var(--stage); }
+#view { box-shadow: 0 8px 40px rgba(0,0,0,.6); border-radius: 4px; }
+.panel { display: flex; flex-direction: column; overflow: hidden; padding: 0; background: var(--panel); border-left: 1px solid var(--line); }
+.panes { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 22px; overscroll-behavior: contain; }
+.tabs { order: 2; position: static; margin: 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); border-bottom: 0; background: var(--panel); gap: 2px; }
+.tabbtn { display: grid; justify-items: center; gap: 3px; padding: 7px 2px 5px; border: 0; border-radius: 10px; font-size: 11.5px; font-weight: 500; color: var(--mute); }
+.tabbtn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tabbtn[aria-selected="true"] { color: var(--accent); background: rgba(255,106,85,.09); border: 0; }
+.mini { margin: 16px 0 8px; font-family: var(--font-data); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .09em; color: var(--mute); }
+.looks { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 12px; scroll-snap-type: x proximity; scrollbar-width: none; }
+.looks::-webkit-scrollbar { display: none; }
+.look { flex: none; width: 84px; background: none; border: 0; padding: 0; cursor: pointer; text-align: center; position: relative; scroll-snap-align: start; }
+.look canvas { width: 84px; height: 112px; border-radius: 14px; display: block; border: 2px solid transparent; background: #000; }
+.look[aria-pressed="true"] canvas { border-color: var(--accent); }
+.look span { display: block; font-size: 12px; margin-top: 6px; color: var(--mute); }
+.look[aria-pressed="true"] span { color: var(--fg); font-weight: 600; }
+.look .star { position: absolute; top: 6px; right: 6px; font-size: 11px; background: rgba(0,0,0,.65); color: #ffcf6a; border-radius: 999px; padding: 1px 6px; font-style: normal; }
+.field.lookk { margin-top: 4px; }
+.field.big label { font-size: 15px; font-weight: 600; }
+input[type="range"] { -webkit-appearance: none; appearance: none; height: 30px; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #34343b; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; margin-top: -9px; box-shadow: 0 1px 6px rgba(0,0,0,.6); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: #34343b; }
+input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 0; }
+.chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+.chips.scroll::-webkit-scrollbar { display: none; }
+.chips.scroll .chip { flex: none; }
+.chip.q[aria-pressed="true"] { background: rgba(255,106,85,.14); }
+.why { margin-top: 14px; color: var(--mute); font-size: 13px; }
+.why summary { cursor: pointer; padding: 6px 0; }
+.fmtgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fmt { display: grid; justify-items: center; align-content: end; gap: 6px; padding: 12px 6px 10px; border: 1px solid var(--line); border-radius: 14px; background: transparent; cursor: pointer; min-height: 104px; }
+.fmt[aria-pressed="true"] { border-color: var(--accent); background: rgba(255,106,85,.08); }
+.fmt .box { display: block; width: 40px; border: 2px solid var(--fg); border-radius: 4px; max-height: 52px; }
+.fmt b { font-size: 13px; font-weight: 600; }
+.fmt small { color: var(--mute); font-size: 11px; margin-top: -4px; }
+.backlink { margin: 0 0 8px; display: block; }
+.tool { border-radius: 14px; background: rgba(255,255,255,.02); }
+@media (max-width: 860px) {
+  .main { grid-template-rows: minmax(0, 1fr) minmax(290px, 44%); }
+  .panel { border-radius: 18px 18px 0 0; }
+  .btn { padding: 8px 13px; }
+}
+</style>
 
 <div class="app">
   <header class="top">
@@ -221,13 +274,41 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
 
     <aside class="panel">
       <div class="tabs" role="tablist">
-        <button class="tabbtn" role="tab" data-tab="estilos" type="button" aria-selected="true">Estilos</button>
-        <button class="tabbtn" role="tab" data-tab="ferramentas" type="button" aria-selected="false">Ferramentas</button>
-        <button class="tabbtn" role="tab" data-tab="rosto" type="button" aria-selected="false">Melhor rosto</button>
-        <button class="tabbtn" role="tab" data-tab="analise" type="button" aria-selected="false">Análise</button>
+        <button class="tabbtn" role="tab" data-tab="looks" type="button" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg><span>Looks</span></button>
+        <button class="tabbtn" role="tab" data-tab="ajustar" type="button" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.8" fill="currentColor"/><circle cx="15" cy="12" r="1.8" fill="currentColor"/><circle cx="8" cy="17" r="1.8" fill="currentColor"/></svg><span>Ajustar</span></button>
+        <button class="tabbtn" role="tab" data-tab="formato" type="button" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14"/></svg><span>Formato</span></button>
+        <button class="tabbtn" role="tab" data-tab="ferramentas" type="button" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Ferramentas</span></button>
+      </div>
+      <div class="panes">
+
+      <div class="tab" data-tab="looks">
+        <div class="looks" id="looks"></div>
+        <div class="field lookk"><label for="lookK">Intensidade</label><input type="range" id="lookK" min="0" max="120" step="1" value="100"><output id="lookKOut">100%</output></div>
+        <h3 class="mini">Retoques em 1 toque</h3>
+        <div class="chips" id="quick"></div>
+        <p class="bmsg" id="quickMsg" style="margin:6px 0 0"></p>
+        <details class="why"><summary>O que o app fez nesta foto</summary><ul class="notes" id="notes"></ul></details>
       </div>
 
-      <div class="tab" data-tab="estilos">
+      <div class="tab" data-tab="ajustar" hidden>
+        <div class="chips scroll" id="adjChips"></div>
+        <div class="field big" style="margin-top:8px"><label id="adjLbl" for="adjRange">Brilho</label><input type="range" id="adjRange" min="-1" max="1" step="0.01" value="0"><output id="adjOut"></output></div>
+        <p style="margin:10px 0 0"><button class="linkbtn" id="adjReset" type="button">Voltar ao automático</button></p>
+      </div>
+
+      <div class="tab" data-tab="formato" hidden>
+        <h3 class="mini" style="margin-top:2px">Formato para postar</h3>
+        <div class="fmtgrid" id="fmtGrid"></div>
+        <p class="bmsg" id="fmtMsg"></p>
+        <div class="chips">
+          <button class="chip" id="fmtStraight" type="button">Endireitar</button>
+          <button class="chip" id="fmtRot" type="button">Girar 90°</button>
+          <button class="chip" id="fmtManual" type="button">Ajustar à mão</button>
+        </div>
+      </div>
+
+      <div class="tab" data-tab="estilos" hidden>
+        <button class="linkbtn backlink" type="button" data-back="1">‹ Ferramentas</button>
         <div class="sec">
           <h2>Estilo</h2>
           <div class="styles" id="styles"></div>
@@ -237,10 +318,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
           <div class="field"><label for="k">Edição</label><input type="range" id="k" min="0" max="120" step="1" value="100"><output id="kOut">100%</output></div>
           <p style="margin:12px 0 0"><button class="linkbtn" id="reset" type="button">Voltar ao automático</button></p>
         </div>
-        <div class="sec">
-          <h2>Por que essa edição</h2>
-          <ul class="notes" id="notes"></ul>
-        </div>
+
       </div>
 
       <div class="tab" data-tab="ferramentas" hidden>
@@ -254,6 +332,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
       </div>
 
       <div class="tab" data-tab="rosto" hidden>
+        <button class="linkbtn backlink" type="button" data-back="1">‹ Ferramentas</button>
         <div class="sec">
           <h2>Melhor rosto entre várias fotos</h2>
           <p class="tnote" style="margin-top:0">Escolha de 2 a 6 fotos seguidas da mesma cena, tiradas do mesmo lugar. O app acha cada pessoa, compara os rostos (olhos abertos, sorriso, boca fechada, de frente) e monta uma foto só com o melhor de cada um.</p>
@@ -272,6 +351,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
       </div>
 
       <div class="tab" data-tab="analise" hidden>
+        <button class="linkbtn backlink" type="button" data-back="1">‹ Ferramentas</button>
         <div class="sec">
           <h2>Regiões</h2>
           <p class="segstat" id="segStat">Carregando o modelo de segmentação…</p>
@@ -292,6 +372,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
         <img id="finalImg" alt="Foto editada em resolução final">
         <p>Se o download não começar, clique com o botão direito na imagem (ou segure o dedo sobre ela) e escolha salvar.</p>
       </div>
+      </div>
     </aside>
   </div>
 </div>
@@ -307,6 +388,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
     skinSmooth: 0, skinEven: 0, skinShine: 0,
     bgBlur: 0, skyDeep: 0, clothSmooth: 0, hairShine: 0, hairVolume: 0, hairSmooth: 0, beardDef: 0, mid: 0,
     teethWhite: 0, eyeWhite: 0, eyeIris: 0,
+    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0,
     tcLow: 0, tcMid: 0, tcHigh: 0, glow: 0, glowRange: 0, fade: 0, leak: 0,
     structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0 };
   const BWW = [[0.3, 0.59, 0.11], [0.5, 0.45, 0.05], [0.6, 0.3, 0.1], [0.8, 0.18, 0.02], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6]];
@@ -450,7 +532,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
     { k: "cloth", name: "Roupa", rgb: [40, 200, 120] },
     { k: "other", name: "Acessórios", rgb: [240, 210, 40] }
   ];
-  const S = { locals: [], sel: -1, showMask: true, lmode: "point", rm: {}, painting: false, undo: [], brush: { size: 0.06, hard: 0.5, edge: 0.6, erase: false }, geo: { rot: 0, flip: false, angle: 0, crop: { x: 0, y: 0, w: 1, h: 1 }, aspect: "free" }, filter: null, filterK: 1, curves: { L: [[0, 0], [1, 1]], R: [[0, 0], [1, 1]], G: [[0, 0], [1, 1]], B: [[0, 0], [1, 1]] }, curveCh: "L", curveLut: null, seg: null, overlay: false, orig: null, prev: null, prevData: null, mask: null, an: null,
+  const S = { look: null, lookK: 1, adj: "ev", fmt: "orig", locals: [], sel: -1, showMask: true, lmode: "point", rm: {}, painting: false, undo: [], brush: { size: 0.06, hard: 0.5, edge: 0.6, erase: false }, geo: { rot: 0, flip: false, angle: 0, crop: { x: 0, y: 0, w: 1, h: 1 }, aspect: "free" }, filter: null, filterK: 1, curves: { L: [[0, 0], [1, 1]], R: [[0, 0], [1, 1]], G: [[0, 0], [1, 1]], B: [[0, 0], [1, 1]] }, curveCh: "L", curveLut: null, seg: null, overlay: false, orig: null, prev: null, prevData: null, mask: null, an: null,
     style: "natural", suggested: "natural", k: 1, target: { ...NEUTRAL }, manual: {}, name: "", notes: [], hist0: null };
 
   /* ---------- análise ---------- */
@@ -1259,6 +1341,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
         r += -0.06 * p.teal * sh + 0.04 * p.warm * hi;
         g += 0.018 * p.teal * sh + 0.015 * p.warm * hi;
         b += 0.042 * p.teal * sh - 0.04 * p.warm * hi;
+        r += p.shR * sh + p.hiR * hi; g += p.shG * sh + p.hiG * hi; b += p.shB * sh + p.hiB * hi;
         // preto e branco com mistura tipo filtro vermelho
         if (p.bw > 0) { const gr = bwv[0] * r + bwv[1] * g + bwv[2] * b; r += (gr - r) * p.bw; g += (gr - g) * p.bw; b += (gr - b) * p.bw; }
         // vinheta
@@ -1280,16 +1363,34 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
   }
 
   /* ---------- parâmetros efetivos ---------- */
-  function effective(full) {
+  const LOOKS = {
+    dourado: { name: "Dourado", d: { temp: 0.22, warm: 0.45, contrast: 0.14, vibrance: 0.25, glow: 0.3, glowRange: 0.6, vignette: 0.14, shadows: 0.15, mid: 0.06, shR: 0.03, shB: -0.03, hiR: 0.1, hiG: 0.045, hiB: -0.08 } },
+    cinema: { name: "Cinema", d: { contrast: 0.32, sat: -0.05, vignette: 0.32, fade: 0.08, grain: 0.1, tcMid: 0.2, shR: -0.05, shG: 0.03, shB: 0.075, hiR: 0.09, hiG: 0.035, hiB: -0.07 } },
+    vibrante: { name: "Vibrante", d: { vibrance: 0.6, sat: 0.2, contrast: 0.24, structure: 0.3, clarity: 0.2, skyDeep: 0.45 } },
+    claro: { name: "Claro e limpo", d: { mid: 0.28, fade: 0.1, sat: -0.06, contrast: -0.1, glow: 0.3, highlights: -0.12, hiR: 0.02, hiG: 0.02, shR: 0.02, shG: 0.02, shB: 0.03 } },
+    moody: { name: "Moody", d: { mid: -0.22, contrast: 0.42, sat: -0.22, vignette: 0.45, tcLow: 0.3, shR: -0.03, shG: 0.015, shB: 0.06, hiR: 0.03, hiB: -0.03 } },
+    verao: { name: "Verão", d: { temp: 0.15, warm: 0.3, sat: 0.22, vibrance: 0.35, skyDeep: 0.55, glow: 0.18, contrast: 0.12, hiR: 0.07, hiG: 0.035, hiB: -0.05 } },
+    vintage: { name: "Vintage", d: { fade: 0.32, sat: -0.18, grain: 0.34, vignette: 0.28, leak: 0.32, contrast: 0.12, shR: 0.02, shG: 0.035, shB: 0.0, hiR: 0.07, hiG: 0.04, hiB: -0.05 } },
+    pb: { name: "P&B", d: { bw: 1, contrast: 0.42, structure: 0.28, vignette: 0.32, grain: 0.15, tcMid: 0.2 } },
+    pele: { name: "Pele glow", d: { glow: 0.45, glowRange: 0.5, skinSmooth: 0.32, skinEven: 0.28, faceEnh: 0.5, sat: 0.04, mid: 0.07, hiR: 0.06, hiG: 0.025, hiB: -0.02 } },
+    rosado: { name: "Rosado", d: { fade: 0.18, sat: -0.06, glow: 0.32, contrast: -0.05, shR: 0.035, shG: -0.01, shB: 0.04, hiR: 0.07, hiG: 0.005, hiB: 0.04 } },
+    urbano: { name: "Urbano", d: { contrast: 0.38, structure: 0.55, clarity: 0.32, sat: -0.25, vignette: 0.22, tcHigh: 0.18, shR: -0.02, shG: 0.01, shB: 0.045 } },
+    cafe: { name: "Café", d: { temp: 0.18, warm: 0.4, sat: -0.24, fade: 0.15, contrast: 0.22, vignette: 0.22, shR: 0.035, shG: 0.012, shB: -0.025, hiR: 0.07, hiG: 0.035, hiB: -0.04 } }
+  };
+  function overlayP(p, d, k) {
+    for (const key in d) {
+      if (key === "bw") { p.bw = Math.max(p.bw, d.bw * Math.min(1, k)); continue; }
+      const v = p[key] + d[key] * k, sd = SD[key]; p[key] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v;
+    }
+  }
+  function effective(full, lookId) {
     const p = {};
     for (const k in NEUTRAL) p[k] = (k in S.manual) ? S.manual[k] : NEUTRAL[k] + (S.target[k] - NEUTRAL[k]) * S.k;
     if (full) {
       const F = S.filter && FILTERS[S.filter];
-      if (F) for (const k in F.d) {
-        if (k === "bw") { p.bw = Math.max(p.bw, F.d.bw * Math.min(1, S.filterK)); continue; }
-        const v = p[k] + F.d[k] * S.filterK, sd = SD[k];
-        p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v;
-      }
+      if (F) overlayP(p, F.d, S.filterK);
+      const lid = lookId === undefined ? S.look : lookId, Lk = lid && LOOKS[lid];
+      if (Lk) overlayP(p, Lk.d, S.lookK * 1.35);
       p.curveLut = S.curveLut;
     }
     return p;
@@ -1852,12 +1953,26 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
   let raf = 0, comparing = false;
   function schedule() { if (!raf) raf = requestAnimationFrame(draw); }
 
+  // versão pequena para responder rápido enquanto o controle é arrastado
+  function getSmall() {
+    if (S.small && S.small.src === S.prevData) return S.small;
+    const W = S.prevData.width, H = S.prevData.height, sc = Math.min(1, 360 / Math.max(W, H)), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h); S.small = { src: S.prevData, c, cx, d, w, h, dt: makeDetail(d.data, w, h) }; return S.small;
+  }
+  function fastDraw() {
+    const t0 = performance.now(), sm = getSmall();
+    const img = render(sm.d, sm.w, sm.h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender());
+    sm.cx.putImageData(img, 0, 0); rcx.imageSmoothingEnabled = true; rcx.drawImage(sm.c, 0, 0, rc.width, rc.height);
+    present(); TM.fast = Math.round(performance.now() - t0);
+  }
   function draw() {
     raf = 0;
     if (!S.prevData) return;
     const t0 = performance.now();
     if (rc.width !== S.prevData.width || rc.height !== S.prevData.height) { rc.width = S.prevData.width; rc.height = S.prevData.height; }
     if (comparing) { rcx.putImageData(S.prevData, 0, 0); present(); return; }
+    if (S.fast && !S.painting) { fastDraw(); return; }
     const h = new Float64Array(256);
     const img = (S.painting && S.lastRender) ? S.lastRender : render(S.prevData, S.prevData.width, S.prevData.height, effective(true), S.mask, h, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, S.detail || (S.detail = makeDetail(S.prevData.data, S.prevData.width, S.prevData.height)), localsForRender());
     S.lastRender = img; rcx.putImageData(img, 0, 0);
@@ -2019,9 +2134,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
   }
   function closeTool() { S.tool = null; S.painting = false; view.style.touchAction = ""; $("toolList").hidden = false; $("toolView").hidden = true; schedule(); }
   function setTab(t) {
-    document.querySelectorAll(".tabbtn").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+    const hl = ["estilos", "rosto", "analise"].includes(t) ? "ferramentas" : t;
+    document.querySelectorAll(".tabbtn").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === hl)));
     document.querySelectorAll(".tab").forEach(x => { x.hidden = x.dataset.tab !== t; });
     if (t !== "ferramentas" && S.tool) closeTool();
+    if (t === "ajustar") syncAdjust();
   }
   function syncSliders() {
     const p = effective();
@@ -2062,6 +2179,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
     $("notes").innerHTML = ""; r.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
     $("reset").hidden = Object.keys(S.manual).length === 0;
     refreshStyleCards(); schedule();
+    renderQuick(); renderLooksState(); scheduleThumbs(); if ($("adjRange")) syncAdjust();
   }
   function showStats(a) {
     const warm = a.avgR / Math.max(0.02, a.avgB);
@@ -2072,9 +2190,102 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
     $("stats").innerHTML = rows.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join("");
   }
 
+  /* ---------- looks, retoques em 1 toque, ajustar e formato ---------- */
+  const LOOK_ORDER = ["dourado", "cinema", "vibrante", "claro", "moody", "verao", "vintage", "pb", "pele", "rosado", "urbano", "cafe"];
+  function buildLooksUI() {
+    const box = $("looks"); box.innerHTML = "";
+    [null, ...LOOK_ORDER].forEach(id => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "look"; b.dataset.id = id || "";
+      b.innerHTML = `<canvas width="168" height="224"></canvas><span>${id ? LOOKS[id].name : "Auto"}</span>`;
+      b.addEventListener("click", () => { S.look = id; renderLooksState(); schedule(); });
+      box.appendChild(b);
+    });
+    $("lookK").addEventListener("input", e => { S.lookK = e.target.value / 100; $("lookKOut").textContent = e.target.value + "%"; schedule(); });
+  }
+  function renderLooksState() {
+    document.querySelectorAll(".look").forEach(b => b.setAttribute("aria-pressed", String((S.look || "") === b.dataset.id)));
+    $("lookK").parentNode.hidden = !S.look;
+  }
+  function rankLooks() {
+    const a = S.an; if (!a) return [];
+    const portrait = a.skinFrac > 0.03 || (a.seg && a.seg.person > 0.3), land = a.skyFrac > 0.1 || a.greenFrac > 0.15;
+    if (portrait) return ["pele", "dourado", "claro", "cinema"];
+    if (a.med < 0.25) return ["moody", "cinema", "urbano"];
+    if (land) return ["dourado", "vibrante", "verao", "cinema"];
+    return ["vibrante", "cinema", "dourado", "urbano"];
+  }
+  function getThumb() {
+    if (S.thumb && S.thumb.src === S.prevData) return S.thumb;
+    const W = S.prevData.width, H = S.prevData.height, sc = 128 / Math.max(W, H), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h); S.thumb = { src: S.prevData, c, cx, d, w, h, dt: makeDetail(d.data, w, h) }; return S.thumb;
+  }
+  function refreshThumbs() {
+    if (!S.prevData || !S.an) return;
+    const t = getThumb(), rank = rankLooks(), box = $("looks"), items = [...box.querySelectorAll(".look")];
+    items.forEach(b => {
+      const id = b.dataset.id || null, p = effective(true, id), img = render(t.d, t.w, t.h, p, S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, t.dt, { w: 0, h: 0, list: [] });
+      t.cx.putImageData(img, 0, 0); const cv = b.querySelector("canvas"), x = cv.getContext("2d"), r = Math.max(cv.width / t.w, cv.height / t.h), dw = t.w * r, dh = t.h * r;
+      x.drawImage(t.c, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
+      const st = b.querySelector(".star"); const star = id && rank.slice(0, 2).includes(id);
+      if (star && !st) { const e = document.createElement("i"); e.className = "star"; e.textContent = "★"; b.appendChild(e); } else if (!star && st) st.remove();
+    });
+    // recomendados primeiro, logo depois do Auto
+    const auto = items[0], byId = Object.fromEntries(items.slice(1).map(b => [b.dataset.id, b])), order = [...rank.filter(k => byId[k]), ...LOOK_ORDER.filter(k => !rank.includes(k))];
+    if (box.dataset.order !== order.join()) { box.dataset.order = order.join(); order.forEach(k => box.appendChild(byId[k])); }
+  }
+  function scheduleThumbs() { clearTimeout(S.thumbT); S.thumbT = setTimeout(refreshThumbs, 350); }
+
+  const QUICK = [["faceEnh", "Rosto", 0.7], ["skyDeep", "Céu", 0.5], ["bgBlur", "Fundo suave", 0.6], ["sharpen", "Nitidez", 0.4]];
+  function buildQuick() {
+    const box = $("quick"); box.innerHTML = "";
+    QUICK.forEach(([k, n, v]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip q"; c.dataset.k = k; c.textContent = n;
+      c.addEventListener("click", () => {
+        const on = (effective()[k] || 0) > 0.05; $("quickMsg").textContent = "";
+        if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "bgBlur" && !(S.seg && S.an && S.an.seg && S.an.seg.person > 0.1)) $("quickMsg").textContent = "Precisa de uma pessoa na foto para separar o fundo."; }
+        markCustom(); renderQuick(); schedule(); scheduleThumbs();
+      }); box.appendChild(c); });
+  }
+  function renderQuick() { const p = effective(); document.querySelectorAll("#quick .chip").forEach(c => c.setAttribute("aria-pressed", String((p[c.dataset.k] || 0) > 0.05))); }
+
+  const ADJ = [["ev", "Brilho"], ["contrast", "Contraste"], ["sat", "Saturação"], ["vibrance", "Vibração"], ["temp", "Calor"], ["highlights", "Realces"], ["shadows", "Sombras"], ["sharpen", "Nitidez"], ["structure", "Estrutura"], ["clarity", "Ambiente"], ["faceEnh", "Rosto"], ["vignette", "Vinheta"]];
+  function buildAdjust() {
+    const box = $("adjChips"); box.innerHTML = "";
+    ADJ.forEach(([k, n]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.dataset.k = k; c.textContent = n; c.addEventListener("click", () => selectAdj(k)); box.appendChild(c); });
+    $("adjRange").addEventListener("input", e => { const k = S.adj, v = parseFloat(e.target.value); S.manual[k] = v; $("adjOut").textContent = SD[k][5](v); markCustom(); schedule(); });
+    $("adjReset").addEventListener("click", () => { S.manual = {}; $("reset").hidden = true; syncAdjust(); renderQuick(); schedule(); scheduleThumbs(); });
+    selectAdj("ev");
+  }
+  function selectAdj(k) { S.adj = k; syncAdjust(); }
+  function syncAdjust() {
+    const k = S.adj, sd = SD[k], r = $("adjRange"); if (!sd) return; const p = effective();
+    r.min = sd[2]; r.max = sd[3]; r.step = sd[4]; if (document.activeElement !== r) r.value = p[k];
+    $("adjLbl").textContent = (ADJ.find(a => a[0] === k) || [0, sd[1]])[1]; $("adjOut").textContent = sd[5](p[k]);
+    document.querySelectorAll("#adjChips .chip").forEach(c => { c.setAttribute("aria-pressed", String(c.dataset.k === k)); });
+  }
+
+  const FORMATS = [["orig", "Original", "", null, 0], ["feed", "Feed", "4:5", "4:5", 0.8], ["story", "Story e Reels", "9:16", "9:16", 0.5625], ["sq", "Quadrado", "1:1", "1:1", 1], ["wide", "Paisagem", "16:9", "16:9", 1.7778], ["port", "Retrato", "3:4", "3:4", 0.75]];
+  function buildFormats() {
+    const box = $("fmtGrid"); box.innerHTML = "";
+    FORMATS.forEach(f => { const b = document.createElement("button"); b.type = "button"; b.className = "fmt"; b.dataset.id = f[0];
+      const ar = f[4] || 1, w = ar >= 1 ? 44 : 44 * ar; b.innerHTML = `<span class="box" style="width:${Math.round(w)}px;aspect-ratio:${f[4] ? ar : 1.2}"></span><b>${f[1]}</b><small>${f[2] || "sem corte"}</small>`;
+      b.addEventListener("click", () => applyFormat(f[0])); box.appendChild(b); });
+    $("fmtStraight").addEventListener("click", () => { $("fmtMsg").textContent = autoStraighten(); markCustom(); syncGeo(); schedule(); });
+    $("fmtRot").addEventListener("click", () => { S.geo.rot = (S.geo.rot + 1) % 4; S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; S.geo.aspect = "free"; S.fmt = "orig"; renderFormats(); markCustom(); syncGeo(); schedule(); });
+    $("fmtManual").addEventListener("click", () => { setTab("ferramentas"); openTool("crop"); });
+    renderFormats();
+  }
+  function applyFormat(id) {
+    const f = FORMATS.find(x => x[0] === id), g = S.geo; S.fmt = id; g.crop = { x: 0, y: 0, w: 1, h: 1 };
+    if (id === "orig") { g.aspect = "free"; $("fmtMsg").textContent = ""; }
+    else { g.aspect = f[3]; applyAspect(); $("fmtMsg").textContent = suggestCrop(); }
+    renderFormats(); markCustom(); syncGeo(); schedule();
+  }
+  function renderFormats() { document.querySelectorAll(".fmt").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === S.fmt))); }
+
   /* ---------- carregar foto ---------- */
   function load(canvas, name) {
-    S.orig = canvas; S.name = name; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    S.orig = canvas; S.name = name; S.small = null; S.thumb = null; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
     const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
     const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
     const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
@@ -2137,6 +2348,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
 
   /* ---------- eventos ---------- */
   document.querySelectorAll(".tabbtn").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+  document.querySelector(".panel").addEventListener("input", e => {
+    if (!e.target || e.target.type !== "range") return;
+    S.fast = true; clearTimeout(S.fastT); S.fastT = setTimeout(() => { S.fast = false; schedule(); scheduleThumbs(); renderQuick(); }, 220);
+  }, true);
   $("toolBack").addEventListener("click", closeTool);
   view.addEventListener("click", e => {
     if (S.tool !== "lens") return;
@@ -2144,6 +2359,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
     if (!(effective().lensBlur > 0)) S.manual.lensBlur = 0.6;
     markCustom(); schedule();
   });
+  let lp = null;
+  view.addEventListener("pointerdown", e => { if (S.tool || !S.prevData || e.pointerType === "mouse" && e.button !== 0) return; lp = setTimeout(() => { lp = null; cmp(true); }, 280); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => view.addEventListener(ev, () => { if (lp) { clearTimeout(lp); lp = null; } if (comparing && !S.tool) cmp(false); }));
   $("btAdd").addEventListener("click", () => $("btFiles").click());
   $("btFiles").addEventListener("change", e => { btAddFiles(e.target.files); e.target.value = ""; });
   $("btMake").addEventListener("click", btMake);
@@ -2201,7 +2419,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
   $("ovl").addEventListener("change", e => { S.overlay = e.target.checked; schedule(); });
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", schedule);
 
-  buildStyleCards(); buildSliders();
+  buildStyleCards(); buildSliders(); buildLooksUI(); buildQuick(); buildAdjust(); buildFormats();
+  document.querySelectorAll("[data-back]").forEach(b => b.addEventListener("click", () => setTab("ferramentas")));
+  [["rosto", "Melhor rosto", "face"], ["analise", "Análise", "curves"], ["estilos", "Estilo base", "adjust"]].forEach(([tab, name, ic]) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "tool"; b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[ic]}</svg><span>${name}</span>`; b.addEventListener("click", () => setTab(tab)); $("toolGrid").appendChild(b);
+  });
+  renderLooksState();
   initSegmenter();
   if ("serviceWorker" in navigator && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
