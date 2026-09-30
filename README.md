@@ -23,6 +23,6 @@ Tudo é processado no seu aparelho. Nenhuma foto sai dele.
 
 A separação de pessoas e a leitura de rostos usam o [MediaPipe](https://ai.google.dev/edge/mediapipe) do Google, sob licença Apache 2.0. Os arquivos ficam na pasta `vendor/`.
 
-Modelos de IA que rodam no aparelho: Real-ESRGAN (BSD-3), RestoreFormer++ (Apache 2.0) e Depth Anything V2 Small (Apache 2.0), via ONNX Runtime Web (MIT).
+Modelos de IA que rodam no aparelho: Real-ESRGAN (BSD-3), RestoreFormer++ (Apache 2.0) e Depth Anything V2 Small (Apache 2.0), SegFormer B1 ADE20K (licença NVIDIA, só uso não comercial; trocar antes de uso comercial), via ONNX Runtime Web (MIT).
 
 Este é um protótipo em desenvolvimento.

@@ -436,7 +436,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     skinSmooth: 0, skinEven: 0, skinShine: 0,
     bgBlur: 0, skyDeep: 0, clothSmooth: 0, hairShine: 0, hairVolume: 0, hairSmooth: 0, beardDef: 0, mid: 0,
     teethWhite: 0, eyeWhite: 0, eyeIris: 0,
-    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0, dof: 0, rich: 0,
+    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0, dof: 0, rich: 0, scene: 0,
     tcLow: 0, tcMid: 0, tcHigh: 0, glow: 0, glowRange: 0, fade: 0, leak: 0,
     structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0 };
   const BWW = [[0.3, 0.59, 0.11], [0.5, 0.45, 0.05], [0.6, 0.3, 0.1], [0.8, 0.18, 0.02], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6]];
@@ -446,6 +446,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     ["ev", "Brilho", -2, 2, 0.05, v => sgn(v, 2) + " EV"],
     ["mid", "Tons médios", -1, 0.9, 0.01, v => sgn(v, 2)],
     ["rich", "Riqueza de cor", 0, 1, 0.01, pct],
+    ["scene", "IA de cena", 0, 1.5, 0.01, pct],
     ["contrast", "Contraste", -0.5, 1, 0.01, pct],
     ["sat", "Saturação", -0.6, 0.6, 0.01, pct],
     ["vibrance", "Vibração", -0.5, 1, 0.01, pct],
@@ -516,6 +517,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     tone: '<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="8" cy="17" r="1.6"/>',
     vignette: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
     bw: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    sceneai: '<circle cx="8" cy="8" r="3"/><path d="M3 20l6-7 4 4 3-3 5 6z"/><path d="M16 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>',
     depth: '<path d="M3 20h18"/><path d="M6 20V9M12 20V4M18 20v-7"/>',
     lens: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3"/>',
     grain: '<circle cx="6" cy="7" r=".8"/><circle cx="12" cy="5" r=".8"/><circle cx="18" cy="8" r=".8"/><circle cx="9" cy="12" r=".8"/><circle cx="16" cy="13" r=".8"/><circle cx="6" cy="17" r=".8"/><circle cx="12" cy="18" r=".8"/><circle cx="19" cy="18" r=".8"/>',
@@ -548,6 +550,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     { id: "tonal", name: "Contraste tonal", keys: ["tcLow", "tcMid", "tcHigh"], note: "Realça o detalhe só nas sombras, nos tons médios ou nos realces, sem estourar a foto." },
     { id: "vignette", name: "Vinheta", keys: ["vignette", "vigSize"], note: "Escurece as bordas para o olhar ir ao centro." },
     { id: "bw", name: "Preto e branco", keys: ["bw"], note: "O filtro de cor muda como cada cor vira cinza. Vermelho escurece o céu azul.", chips: true },
+    { id: "sceneai", name: "IA de cena", keys: ["scene"], note: "A IA reconhece o que há na foto (céu, árvores, água, prédios, comida, carros, roupas, luzes, texto) e trata cada parte do jeito certo.", custom: "sceneinfo" },
     { id: "depth", name: "Profundidade", keys: ["dof"], note: "A IA mede a distância de cada ponto da foto e desfoca o fundo como uma lente de cinema. Toque na foto para escolher o ponto de foco." },
     { id: "lens", name: "Desfoque de lente", keys: ["lensBlur", "lensSize"], note: "Toque na foto para mover o centro do foco.", lens: true },
     { id: "glow", name: "Brilho suave", keys: ["glow", "glowRange"], note: "Halo suave de luz. Com \"só nas partes claras\" vira um bloom." },
@@ -658,7 +661,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         } catch (e) { segmenter = null; }
       }
       if (!segmenter) throw new Error("modelo não iniciou");
-      segState = "ready"; if (S.prev) { showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Rosto", "Profundidade"], false); setLoading(0.12, null, 0); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
+      segState = "ready"; if (S.prev) { showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Objetos", "Profundidade"], false); setLoading(0.12, null, 0); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
       for (const delegate of ["GPU", "CPU"]) {
         try { faceLm = await vision.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 8, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 }); break; } catch (e) { faceLm = null; }
       }
@@ -1051,12 +1054,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     setSegStatus("Regiões prontas em " + ms + " ms.", true); setLoading(0.7, "Ajustando luz, cor e rosto…", 2);
     $("regs").innerHTML = REG.map((r, i) => `<span><i style="background:rgb(${r.rgb})"></i>${r.name}<b>${Math.round(fr[i] * 100)}%</b></span>`).join("");
     $("ovl").disabled = false; showStats(a); applyStyle();
-    runDepth();
+    runScene().then(runDepth);
   }
   async function runDepth() {
     const token = S.prev;
     try {
-      if (!(S.an && S.an.seg && S.an.seg.person > 0.06)) { setTimeout(hideLoading, 400); return; }
+      if (!(S.an && S.an.seg && S.an.seg.person > 0.06 && (S.an.seg.fr[3] > 0.004 || S.an.seg.person > 0.2))) { setTimeout(hideLoading, 400); return; }
       setLoading(0.82, "Medindo a profundidade da cena com IA…", 3); await nextTick();
       const D = await computeDepth(S.prev); if (token !== S.prev) return;
       S.depth = D; autoFocus(); S.rm = {};
@@ -1144,7 +1147,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       P.skyDeep = style === "mccurry" ? 0.4 : 0.3;
       notes.push(`Céu azul em ${Math.round(a.skyFrac * 100)}% da parte de cima: aprofundei o azul só nele, sem pintar nuvens nem pessoas.`);
     }
-    if (S.depth && a.seg && a.seg.person > 0.06 && a.seg.person < 0.8) { P.dof = (style === "adams" ? 0.35 : 0.6) * (a.seg.person < 0.12 ? 0.45 : 1); notes.push(`Profundidade medida pela IA: desfoquei o fundo como uma lente de cinema, com o foco ${S.dofWhy || "na pessoa"}.`); }
+    if (S.depth && a.seg && a.seg.person > 0.06 && a.seg.person < 0.8 && (a.seg.fr[3] > 0.004 || a.seg.person > 0.2) && !(S.sceneAI && S.sceneAI.found.some(z => z.n === "comida" && z.p > 0.04))) { P.dof = (style === "adams" ? 0.35 : 0.6) * (a.seg.person < 0.12 ? 0.45 : 1); notes.push(`Profundidade medida pela IA: desfoquei o fundo como uma lente de cinema, com o foco ${S.dofWhy || "na pessoa"}.`); }
     if (a.seg) {
       const q = a.seg;
       if (!S.depth && q.person > 0.12 && q.person < 0.7 && q.fr[3] > 0.005) {
@@ -1176,6 +1179,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (a.beard > 0.3) {
       P.beardDef = 0.7;
       notes.push(`Barba detectada (${Math.round(a.beard * 100)}% da metade de baixo do rosto): uniformizei o tom e realcei a definição dos fios, para parecer mais cheia e cuidada. Não muda o formato.`);
+    }
+    if (S.sceneAI && S.sceneAI.found.length) {
+      P.scene = 1; const top = S.sceneAI.found.slice(0, 4);
+      notes.unshift(`A IA reconheceu nesta foto: ${top.map(z => z.n + " (" + Math.round(z.p * 100) + "%)").join(", ")}. Cada parte recebeu um tratamento próprio: ${top.map(z => z.d).join("; ")}.`);
+      if (S.sceneAI.found.some(z => z.n === "céu")) P.skyDeep = Math.min(P.skyDeep, 0.15);
     }
     const hk = clamp((a.med - 0.45) / 0.2, 0, 1);
     if (hk > 0.3) {
@@ -1294,6 +1302,76 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     return dt.dof;
   }
 
+  /* ---------- IA de cena (SegFormer ADE20K, 150 tipos de coisa) ---------- */
+  const FAM = [
+    { k: "sky", n: "céu", c: [2], r: { exp: -0.12, vib: 0.35, str: 0.25, sat: 0.1, warm: -0.05 }, d: "céu mais profundo, nuvens com volume" },
+    { k: "green", n: "árvores e plantas", c: [4, 9, 17, 29, 72], r: { vib: 0.35, str: 0.3, shp: 0.2, exp: 0.03, green: 0.5 }, d: "verde vivo e com textura" },
+    { k: "flower", n: "flores", c: [66], r: { vib: 0.5, sat: 0.15, shp: 0.2 }, d: "flores com cor intensa" },
+    { k: "water", n: "água", c: [21, 26, 60, 128, 109, 113, 104], r: { vib: 0.35, str: 0.25, sat: 0.1, warm: -0.08 }, d: "água mais cristalina" },
+    { k: "terrain", n: "montanhas, pedras e terra", c: [16, 34, 68, 13, 46, 94, 91, 52], r: { str: 0.45, shp: 0.2, warm: 0.06, vib: 0.15 }, d: "relevo com mais textura" },
+    { k: "arch", n: "prédios e construções", c: [1, 25, 48, 84, 61, 42, 79, 86, 106, 32, 38, 53, 59], r: { str: 0.45, shp: 0.35 }, d: "linhas e texturas firmes" },
+    { k: "street", n: "rua e calçada", c: [6, 11, 54], r: { exp: -0.06, sat: -0.1, str: 0.15 }, d: "chão mais discreto, para o olhar ir ao que importa" },
+    { k: "food", n: "comida", c: [120], r: { exp: 0.08, vib: 0.45, sat: 0.12, shp: 0.4, warm: 0.08 }, d: "comida mais apetitosa" },
+    { k: "dish", n: "pratos, copos e garrafas", c: [142, 137, 147, 98, 125, 135], r: { exp: 0.06, sat: -0.15, shp: 0.2 }, d: "louça limpa e brilhante" },
+    { k: "vehicle", n: "veículos", c: [20, 80, 83, 102, 76, 103, 90, 116, 127], r: { str: 0.3, shp: 0.35, vib: 0.25 }, d: "pintura com brilho e contorno" },
+    { k: "fabric", n: "roupas e tecidos", c: [92, 18, 28, 39, 57, 131, 23, 30, 7], r: { str: 0.35, shp: 0.15 }, d: "tecido com textura" },
+    { k: "wood", n: "móveis", c: [15, 19, 33, 24, 10, 35, 44, 62, 64, 69, 110, 45, 70], r: { str: 0.3, warm: 0.06, vib: 0.15 }, d: "madeira e móveis com textura quente" },
+    { k: "light", n: "luzes", c: [82, 36, 85, 87, 134, 136], r: { glow: 0.6 }, d: "luzes com brilho suave" },
+    { k: "animal", n: "animais", c: [126], r: { shp: 0.5, str: 0.3 }, d: "pelos definidos" },
+    { k: "text", n: "placas e textos", c: [43, 123, 100, 144, 22], r: { shp: 0.5, str: 0.2 }, d: "letras nítidas" }
+  ];
+  const FIELDS = ["exp", "sat", "vib", "str", "shp", "warm", "green", "glow"];
+  async function sceneSession() {
+    if (AI.ssess) return AI.ssess; await aiSession();
+    AI.ssess = await AI.ort.InferenceSession.create(new URL("vendor/models/segformer_b1_ade_q.onnx", location.href).href, { executionProviders: ["wasm"] });
+    return AI.ssess;
+  }
+  async function computeScene(canvas) {
+    const sess = await sceneSession(), N = 512, c = document.createElement("canvas"); c.width = N; c.height = N;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(canvas, 0, 0, N, N);
+    const d = x.getImageData(0, 0, N, N).data, n = N * N, f = new Float32Array(3 * n), M = [0.485, 0.456, 0.406], SDv = [0.229, 0.224, 0.225];
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) f[k * n + i] = (d[i * 4 + k] / 255 - M[k]) / SDv[k];
+    const res = await sess.run({ [sess.inputNames[0]]: new AI.ort.Tensor("float32", f, [1, 3, N, N]) }), o = res[sess.outputNames[0]], C = o.dims[1], H = o.dims[2], W = o.dims[3], m = W * H;
+    // probabilidade de cada família em cada ponto
+    const fam = FAM.map(() => new Float32Array(m)), famOf = new Int16Array(C).fill(-1); FAM.forEach((F, j) => F.c.forEach(k => { famOf[k] = j; }));
+    const cover = new Float64Array(FAM.length), ex = new Float32Array(C);
+    for (let i = 0; i < m; i++) {
+      let mx = -1e9; for (let k = 0; k < C; k++) { const v = o.data[k * m + i]; if (v > mx) mx = v; }
+      let sum = 0; for (let k = 0; k < C; k++) { const e = Math.exp(o.data[k * m + i] - mx); ex[k] = e; sum += e; }
+      for (let k = 0; k < C; k++) { const j = famOf[k]; if (j >= 0) fam[j][i] += ex[k] / sum; }
+      for (let j = 0; j < FAM.length; j++) cover[j] += fam[j][i];
+    }
+    // campos de receita, refinados pelas bordas da imagem
+    const sc = Math.min(1, 480 / Math.max(canvas.width, canvas.height)), fw = Math.max(8, Math.round(canvas.width * sc)), fh = Math.max(8, Math.round(canvas.height * sc)), nn = fw * fh;
+    const g = document.createElement("canvas"); g.width = fw; g.height = fh; const gx = g.getContext("2d", { willReadFrequently: true }); gx.drawImage(canvas, 0, 0, fw, fh);
+    const gd = gx.getImageData(0, 0, fw, fh).data, I = new Float32Array(nn); for (let i = 0; i < nn; i++) I[i] = (0.2126 * gd[i * 4] + 0.7152 * gd[i * 4 + 1] + 0.0722 * gd[i * 4 + 2]) / 255;
+    const r = Math.max(3, Math.round(fw * 0.012)), eps = 0.002, tmp = new Float32Array(nn), mI = new Float32Array(nn), vI = new Float32Array(nn), t1 = new Float32Array(nn), mP = new Float32Array(nn), mIP = new Float32Array(nn), A = new Float32Array(nn), B = new Float32Array(nn), mA = new Float32Array(nn), mB = new Float32Array(nn);
+    boxF(I, fw, fh, r, mI, tmp); for (let i = 0; i < nn; i++) t1[i] = I[i] * I[i]; boxF(t1, fw, fh, r, vI, tmp); for (let i = 0; i < nn; i++) vI[i] -= mI[i] * mI[i];
+    const guided = P => { boxF(P, fw, fh, r, mP, tmp); for (let i = 0; i < nn; i++) t1[i] = I[i] * P[i]; boxF(t1, fw, fh, r, mIP, tmp); for (let i = 0; i < nn; i++) { const a = (mIP[i] - mI[i] * mP[i]) / (vI[i] + eps); A[i] = a; B[i] = mP[i] - a * mI[i]; } boxF(A, fw, fh, r, mA, tmp); boxF(B, fw, fh, r, mB, tmp); const out = new Float32Array(nn); for (let i = 0; i < nn; i++) out[i] = Math.max(0, Math.min(1, mA[i] * I[i] + mB[i])); return out; };
+    const F2 = {}; FIELDS.forEach(k => { F2[k] = new Float32Array(nn); });
+    const up = new Float32Array(nn), sgp = S.segRef || S.seg, notP = new Float32Array(nn).fill(1), cov2 = new Float64Array(FAM.length);
+    if (sgp) for (let y = 0; y < fh; y++) for (let x2 = 0; x2 < fw; x2++) notP[y * fw + x2] = Math.min(1, sgp.cls[0][Math.min(sgp.h - 1, (y * sgp.h / fh) | 0) * sgp.w + Math.min(sgp.w - 1, (x2 * sgp.w / fw) | 0)] / 255 * 1.3);
+    FAM.forEach((Fm, j) => {
+      if (cover[j] / m < 0.004) return;
+      for (let y = 0; y < fh; y++) { const sy = Math.min(H - 1.001, y / Math.max(1, fh - 1) * (H - 1)), y0 = sy | 0, ty = sy - y0; for (let x2 = 0; x2 < fw; x2++) { const sx = Math.min(W - 1.001, x2 / Math.max(1, fw - 1) * (W - 1)), x0 = sx | 0, tx = sx - x0, q = y0 * W + x0, a = fam[j]; up[y * fw + x2] = (a[q] * (1 - tx) + a[q + 1] * tx) * (1 - ty) + (a[q + W] * (1 - tx) + a[q + W + 1] * tx) * ty; } }
+      const msk = guided(up); for (let i = 0; i < nn; i++) { msk[i] *= notP[i]; cov2[j] += msk[i]; }
+      for (const key in Fm.r) { const v = Fm.r[key], dst = F2[key]; for (let i = 0; i < nn; i++) dst[i] += msk[i] * v; }
+    });
+    const found = FAM.map((F, j) => ({ n: F.n, d: F.d, p: cov2[j] / nn })).filter(z => z.p > 0.03).sort((a, b) => b.p - a.p);
+    return { w: fw, h: fh, f: F2, found };
+  }
+  async function runScene() {
+    const token = S.prev;
+    try {
+      setLoading(0.76, "Reconhecendo o que há na foto…", 3); await nextTick();
+      const R = await computeScene(S.prev); if (token !== S.prev) return;
+      S.sceneAI = R; S.an.scene2 = R.found;
+      const el = document.getElementById("sceneList");
+      if (el) el.textContent = R.found.length ? "Reconheci: " + R.found.map(z => `${z.n} (${Math.round(z.p * 100)}%)`).join(", ") + "." : "Não reconheci objetos específicos nesta foto.";
+      applyStyle();
+    } catch (e) { S.sceneAI = null; }
+  }
+
   /* ---------- motor de render ---------- */
   function render(src, w, h, p, m, hist, sg, sk, bg, fc, bd, dt, lc) {
     const d = src.data, out = new ImageData(w, h), o = out.data;
@@ -1302,6 +1380,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     let lxi = null, lxf = null;
     if (LL) { lxi = new Int32Array(w); lxf = new Float32Array(w); for (let x = 0; x < w; x++) { const f = x / Math.max(1, w - 1) * (LL.w - 1); lxi[x] = Math.min(LL.w - 2, f | 0); lxf[x] = f - lxi[x]; } }
     const DF = p.dof > 0.005 ? dofFor(dt) : null;
+    const SC = p.scene > 0.005 && S.sceneAI ? S.sceneAI : null, sk2 = p.scene;
+    let scx = null; if (SC) { scx = new Int32Array(w); for (let x = 0; x < w; x++) scx[x] = Math.min(SC.w - 1, (x * SC.w / w) | 0); }
+    const Fe = SC && SC.f.exp, Fs = SC && SC.f.sat, Fv = SC && SC.f.vib, Ft = SC && SC.f.str, Fh = SC && SC.f.shp, Fw = SC && SC.f.warm, Fg = SC && SC.f.green, Fl = SC && SC.f.glow;
     const lensOn = p.lensBlur > 0 && !!dt, lbl = lensOn ? dt.bl : null, mnd = Math.min(w, h), bwv = BWW[Math.round(p.bwFilter)] || BWW[2];
     const ex = Math.pow(2, p.ev * 0.45), inv = 1 / Math.max(0.05, p.wp - p.bp), expo = Math.pow(2, -p.mid);
     const kr = 1 + 0.18 * p.temp, kb = 1 - 0.18 * p.temp, kg = 1 + 0.1 * p.tint;
@@ -1326,7 +1407,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       let y0b = 0, tyb = 0; if (bg) { const f = y / Math.max(1, h - 1) * (bH - 1); y0b = Math.min(bH - 2, f | 0); tyb = f - y0b; }
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        let bgw = 0, skw = 0, hrw = 0, clw = 0, fcw = 0;
+        let bgw = 0, skw = 0, hrw = 0, clw = 0, fcw = 0, sq = 0, sE = 0, sS = 0, sV = 0, sT = 0, sH = 0, sW = 0, sG = 0, sL = 0;
+        if (SC) { sq = Math.min(SC.h - 1, (y * SC.h / h) | 0) * SC.w + scx[x]; sE = Fe[sq] * sk2; sS = Fs[sq] * sk2; sV = Fv[sq] * sk2; sT = Ft[sq] * sk2; sH = Fh[sq] * sk2; sW = Fw[sq] * sk2; sG = Fg[sq] * sk2; sL = Fl[sq] * sk2; }
         if (sg) { const q = Math.min(sh2 - 1, (y * sh2 / h) | 0) * sw + sxi[x]; bgw = c0[q] / 255; hrw = c1[q] / 255; skw = Math.min(1, (c2[q] + c3[q]) / 255); clw = c4[q] / 255; fcw = c3[q] / 255; }
         const sub = sg ? Math.min(1, Math.max(0, ((1 - bgw) - 0.5) / 0.4)) : 0;
         const rg = sg ? Math.pow(2, 0.45 * (p.bgLight * (1 - sub) + p.subjLight * sub + p.faceLight * fcw)) * (1 - 0.22 * p.hairDepth * hrw) : 1;
@@ -1418,7 +1500,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
             if (a.str && dt) { const pi = y * w + x, dd = (dt.Y0[pi] - dt.ym[pi]) * a.str * 1.6 * mv; r0 += dd; g0 += dd; b0 += dd; }
           }
         }
-        let r = r0 * kr * ex * rg, g = g0 * kg * ex * rg, b = b0 * kb * ex * rg;
+        if (SC) { if (sG > 0.01 && g0 > r0 && g0 > b0) { const gg = sG * 0.35 * (g0 - Math.max(r0, b0)); r0 -= gg; b0 -= gg * 0.4; g0 += gg * 0.2; } if (sW) { r0 *= 1 + 0.16 * sW; b0 *= 1 - 0.16 * sW; } }
+        const sgn2 = SC ? Math.pow(2, 0.45 * sE) : 1;
+        let r = r0 * kr * ex * rg * sgn2, g = g0 * kg * ex * rg * sgn2, b = b0 * kb * ex * rg * sgn2;
         r = Math.max(0, (r - p.bp) * inv); g = Math.max(0, (g - p.bp) * inv); b = Math.max(0, (b - p.bp) * inv);
         if (p.mid !== 0) { const Yg = 0.2126 * r + 0.7152 * g + 0.0722 * b; if (Yg > 0.002) { const kq = Math.min(3, Math.pow(Yg, expo) / Yg); r *= kq; g *= kq; b *= kq; } }
         let Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -1432,9 +1516,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         const gn = 1 + lift * 0.9 - pull * 0.5, ad = lift * 0.12 * (1 - Math.min(1, Y));
         const tcw = p.tcLow * (1 - Y) * (1 - Y) + p.tcMid * 4 * Y * (1 - Y) + p.tcHigh * Y * Y, cl = (p.clarity * (1 - 1.6 * skw + 0.9 * p.hairVolume * hrw + 0.8 * p.beardDef * bdw) + tcw * 1.6 * (1 - 0.6 * skw)) * (Y - mm) * 1.2 * 4 * Math.min(1, Y) * (1 - Math.min(1, Y));
         r = r * gn + ad + cl; g = g * gn + ad + cl; b = b * gn + ad + cl;
-        if (dt && (p.structure !== 0 || p.sharpen > 0 || p.beardDef > 0 || p.hairVolume > 0)) {
+        if (dt && (p.structure !== 0 || p.sharpen > 0 || p.beardDef > 0 || p.hairVolume > 0 || sT || sH)) {
           const pi = y * w + x, y0v = dt.Y0[pi], yc = Math.min(1, Math.max(0, Y));
-          const dl = p.structure * 1.3 * (y0v - dt.ym[pi]) * (0.5 + 2 * yc * (1 - yc)) * (1 - 0.7 * skw) + (p.sharpen * (1 - 0.5 * skw) + 0.9 * p.beardDef * bdw + 0.3 * p.hairVolume * hrw) * 1.6 * (y0v - dt.ys[pi]);
+          const dl = (p.structure + sT * (1 - 0.8 * skw)) * 1.3 * (y0v - dt.ym[pi]) * (0.5 + 2 * yc * (1 - yc)) * (1 - 0.7 * skw) + ((p.sharpen + sH) * (1 - 0.5 * skw) + 0.9 * p.beardDef * bdw + 0.3 * p.hairVolume * hrw) * 1.6 * (y0v - dt.ys[pi]);
           r += dl; g += dl; b += dl;
         }
         r = clamp(r, 0, 1); g = clamp(g, 0, 1); b = clamp(b, 0, 1);
@@ -1453,8 +1537,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
         if (p.skinShine > 0 && skw > 0.02) { const t = Math.min(1, Math.max(0, (Y - 0.6) / 0.3)), k2 = 1 - p.skinShine * skw * t * 0.25; r *= k2; g *= k2; b *= k2; Y *= k2; }
         if (p.hairShine > 0 && hrw > 0.02) { const t = Math.min(1, Math.max(0, (Y - 0.3) / 0.4)), k3 = 1 + p.hairShine * hrw * t * 0.5; r *= k3; g *= k3; b *= k3; Y *= k3; }
-        if (p.glow > 0 && dt) {
-          const gb = dt.bl, pg = y * w + x, gy2 = (0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hw = p.glowRange > 0 ? sstep(p.glowRange * 0.5, p.glowRange * 0.5 + 0.4, gy2) : 1, gk = Math.min(1, p.glow * hw * 0.5) * (0.35 + 0.65 * Math.min(1, gy2 * 1.6));
+        if ((p.glow > 0 || sL > 0.01) && dt) {
+          const gb = dt.bl, pg = y * w + x, gy2 = (0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hw = p.glowRange > 0 && !sL ? sstep(p.glowRange * 0.5, p.glowRange * 0.5 + 0.4, gy2) : 1, gk = Math.min(1, (p.glow + sL) * hw * 0.5) * (0.35 + 0.65 * Math.min(1, gy2 * 1.6));
           r = 1 - (1 - r) * (1 - Math.min(1, gb[0][pg] * ex) * gk); g = 1 - (1 - g) * (1 - Math.min(1, gb[1][pg] * ex) * gk); b = 1 - (1 - b) * (1 - Math.min(1, gb[2][pg] * ex) * gk);
         }
         if (p.fade > 0) { r = r * (1 - p.fade * 0.6) + p.fade * 0.14; g = g * (1 - p.fade * 0.6) + p.fade * 0.13; b = b * (1 - p.fade * 0.6) + p.fade * 0.16; }
@@ -1463,7 +1547,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         const mx = Math.max(r, g, b), mn = Math.min(r, g, b), s = mx > 0 ? (mx - mn) / mx : 0;
         const skinish = (r > g && g > b && (g - b) / (r - b + 1e-4) > 0.25 && (g - b) / (r - b + 1e-4) < 0.8) ? 1 : 0;
         const skinP = sg ? skw : skinish * 0.6, vib = (p.vibrance * (1 - skinP) * (1 - 0.7 * hrw) + p.clothVib * clw) * (1 - s);
-        let f = (1 + p.rich * 1.4 * (1 - 0.35 * skinP) * (sg ? 0.25 + 0.75 * (1 - bgw) : Math.min(1, s * 4)) - (sg ? p.rich * 0.25 * bgw * (1 - Math.min(1, s * 3)) : 0) + p.sat * (1 - 0.6 * skinP) + p.bgSat * bgw + p.hairDepth * 0.2 * hrw + vib) * (1 - p.midDesat * 4 * Y * (1 - Y)); if (f < 0) f = 0;
+        let f = (1 + (sS + sV * (1 - s)) * (1 - 0.7 * skinP) + p.rich * 1.4 * (1 - 0.35 * skinP) * (sg ? 0.25 + 0.75 * (1 - bgw) : Math.min(1, s * 4)) - (sg ? p.rich * 0.25 * bgw * (1 - Math.min(1, s * 3)) : 0) + p.sat * (1 - 0.6 * skinP) + p.bgSat * bgw + p.hairDepth * 0.2 * hrw + vib) * (1 - p.midDesat * 4 * Y * (1 - Y)); if (f < 0) f = 0;
         r = Y + (r - Y) * f; g = Y + (g - Y) * f; b = Y + (b - Y) * f;
         // divisão de tons
         const sh = (1 - Y) * (1 - Y) * (1 - 0.7 * skinP), hi = Y * Y;
@@ -1532,6 +1616,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (Lk) { overlayP(p, Lk.d, S.lookK); if (S.noGrain && Lk.d.grain) p.grain = Math.max(0, p.grain - Lk.d.grain * S.lookK); }
       if (S.tune) for (const k in S.tune) { if (k in S.manual) continue; const sd = SD[k], v = p[k] + S.tune[k]; p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v; }
       p.curveLut = S.curveLut;
+      if (S.an && S.an.satMean < 0.045 && !("bw" in S.manual)) p.bw = 1;
     }
     return p;
   }
@@ -2157,6 +2242,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         pane.appendChild(c);
       }
       if (t.custom === "local") { pane.dataset.local = "1"; }
+      if (t.custom === "sceneinfo") { const d = document.createElement("p"); d.className = "tnote"; d.id = "sceneList"; d.style.color = "var(--fg)"; d.textContent = "Abra uma foto para ver o que a IA reconheceu."; pane.appendChild(d); }
       if (t.custom === "curves") buildCurves(pane);
       if (t.custom === "crop") buildCropPane(pane, false);
       if (t.custom === "rotate") buildCropPane(pane, true);
@@ -2702,7 +2788,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- carregar foto ---------- */
   function load(canvas, name) {
-    S.orig = canvas; S.tune = {}; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    S.orig = canvas; S.tune = {}; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.sceneAI = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
     const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
     const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
     const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
