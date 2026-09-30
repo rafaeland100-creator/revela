@@ -323,7 +323,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         <div class="hero" id="hero"><b id="heroT">Preparando a produção…</b><span id="heroS">Escolhendo o visual de cinema para esta foto.</span><div class="chips"><button class="chip" id="barsChip" type="button" aria-pressed="true">Faixas de cinema</button><button class="chip" id="grainChip" type="button" aria-pressed="true">Grão de filme</button></div></div>
         <div class="hero ai" id="aiBox">
           <b>Melhoria com IA</b><span id="aiSub">Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho.</span>
-          <div class="chips"><button class="chip" id="aiFast" type="button">Rápido</button><button class="chip" id="aiBest" type="button">Melhor</button><button class="chip" id="aiUndo" type="button" hidden>Desfazer IA</button></div>
+          <div class="chips"><button class="chip" id="aiAll" type="button" style="border-color:rgba(255,106,85,.6)">Tudo · rosto + fundo</button><button class="chip" id="aiFace" type="button">Só rostos</button><button class="chip" id="aiFast" type="button">Só fundo</button><button class="chip" id="aiBest" type="button">Fundo (melhor)</button><button class="chip" id="aiUndo" type="button" hidden>Desfazer IA</button></div>
           <div class="chips" id="aiViewRow" hidden><button class="chip" id="aiSplit" type="button" aria-pressed="false">Antes / Depois</button><button class="chip" id="aiZoom" type="button">Ver detalhe 100%</button></div>
           <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
           <div class="chips" id="aiCancelRow" hidden><button class="chip" id="aiCancel" type="button">Cancelar</button></div>
@@ -436,7 +436,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     skinSmooth: 0, skinEven: 0, skinShine: 0,
     bgBlur: 0, skyDeep: 0, clothSmooth: 0, hairShine: 0, hairVolume: 0, hairSmooth: 0, beardDef: 0, mid: 0,
     teethWhite: 0, eyeWhite: 0, eyeIris: 0,
-    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0,
+    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0, dof: 0,
     tcLow: 0, tcMid: 0, tcHigh: 0, glow: 0, glowRange: 0, fade: 0, leak: 0,
     structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0 };
   const BWW = [[0.3, 0.59, 0.11], [0.5, 0.45, 0.05], [0.6, 0.3, 0.1], [0.8, 0.18, 0.02], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6]];
@@ -463,6 +463,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     ["vignette", "Intensidade", 0, 0.8, 0.01, pct],
     ["vigSize", "Tamanho do centro", 0, 1, 0.01, pct],
     ["bw", "Preto e branco", 0, 1, 0.01, pct],
+    ["dof", "Desfoque de cinema", 0, 1, 0.01, pct],
     ["lensBlur", "Desfoque", 0, 1, 0.01, pct],
     ["lensSize", "Tamanho do foco", 0.05, 0.8, 0.01, pct],
     ["grain", "Granulação", 0, 1, 0.01, pct],
@@ -514,6 +515,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     tone: '<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="8" cy="17" r="1.6"/>',
     vignette: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
     bw: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    depth: '<path d="M3 20h18"/><path d="M6 20V9M12 20V4M18 20v-7"/>',
     lens: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3"/>',
     grain: '<circle cx="6" cy="7" r=".8"/><circle cx="12" cy="5" r=".8"/><circle cx="18" cy="8" r=".8"/><circle cx="9" cy="12" r=".8"/><circle cx="16" cy="13" r=".8"/><circle cx="6" cy="17" r=".8"/><circle cx="12" cy="18" r=".8"/><circle cx="19" cy="18" r=".8"/>',
     face: '<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r=".8"/><circle cx="15" cy="10" r=".8"/><path d="M8.5 14.5c1 1.6 2.2 2.3 3.5 2.3s2.5-.7 3.5-2.3"/>',
@@ -545,6 +547,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     { id: "tonal", name: "Contraste tonal", keys: ["tcLow", "tcMid", "tcHigh"], note: "Realça o detalhe só nas sombras, nos tons médios ou nos realces, sem estourar a foto." },
     { id: "vignette", name: "Vinheta", keys: ["vignette", "vigSize"], note: "Escurece as bordas para o olhar ir ao centro." },
     { id: "bw", name: "Preto e branco", keys: ["bw"], note: "O filtro de cor muda como cada cor vira cinza. Vermelho escurece o céu azul.", chips: true },
+    { id: "depth", name: "Profundidade", keys: ["dof"], note: "A IA mede a distância de cada ponto da foto e desfoca o fundo como uma lente de cinema. Toque na foto para escolher o ponto de foco." },
     { id: "lens", name: "Desfoque de lente", keys: ["lensBlur", "lensSize"], note: "Toque na foto para mover o centro do foco.", lens: true },
     { id: "glow", name: "Brilho suave", keys: ["glow", "glowRange"], note: "Halo suave de luz. Com \"só nas partes claras\" vira um bloom." },
     { id: "film", name: "Filme", keys: ["fade", "leak"], note: "Pretos levantados e vazamento de luz laranja, como filme antigo." },
@@ -654,7 +657,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         } catch (e) { segmenter = null; }
       }
       if (!segmenter) throw new Error("modelo não iniciou");
-      segState = "ready"; if (S.prev) { showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Rosto", "Edição"], false); setLoading(0.12, null, 0); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
+      segState = "ready"; if (S.prev) { showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Rosto", "Profundidade"], false); setLoading(0.12, null, 0); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
       for (const delegate of ["GPU", "CPU"]) {
         try { faceLm = await vision.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 8, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 }); break; } catch (e) { faceLm = null; }
       }
@@ -904,6 +907,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   function buildFace(faces) {
     const a = S.an, P = S.prevData;
+    S.faceLms = faces; if (S.depth) { autoFocus(); if (S.detail) S.detail.dof = null; }
     if (!faces.length) { S.face = null; a.face = null; S.ovFace = null; showStats(a); applyStyle(); return; }
     const sc = Math.min(1, 1000 / Math.max(S.prev.width, S.prev.height));
     const tw = Math.round(S.prev.width * sc), th = Math.round(S.prev.height * sc), n = tw * th;
@@ -1045,7 +1049,20 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (S.autoFmt && S.fmt === "feed") { S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; applyAspect(); suggestCrop(); }
     setSegStatus("Regiões prontas em " + ms + " ms.", true); setLoading(0.7, "Ajustando luz, cor e rosto…", 2);
     $("regs").innerHTML = REG.map((r, i) => `<span><i style="background:rgb(${r.rgb})"></i>${r.name}<b>${Math.round(fr[i] * 100)}%</b></span>`).join("");
-    $("ovl").disabled = false; showStats(a); applyStyle(); setTimeout(hideLoading, 900);
+    $("ovl").disabled = false; showStats(a); applyStyle();
+    runDepth();
+  }
+  async function runDepth() {
+    const token = S.prev;
+    try {
+      if (!(S.an && S.an.seg && S.an.seg.person > 0.06)) { setTimeout(hideLoading, 400); return; }
+      setLoading(0.82, "Medindo a profundidade da cena com IA…", 3); await nextTick();
+      const D = await computeDepth(S.prev); if (token !== S.prev) return;
+      S.depth = D; autoFocus(); S.rm = {};
+      if (S.detail) S.detail.dof = null; if (S.small && S.small.dt) S.small.dt.dof = null;
+      applyStyle();
+    } catch (e) { S.depth = null; }
+    setTimeout(hideLoading, 400);
   }
 
   /* ---------- decisão automática ---------- */
@@ -1126,9 +1143,10 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       P.skyDeep = style === "mccurry" ? 0.4 : 0.3;
       notes.push(`Céu azul em ${Math.round(a.skyFrac * 100)}% da parte de cima: aprofundei o azul só nele, sem pintar nuvens nem pessoas.`);
     }
+    if (S.depth && a.seg && a.seg.person > 0.06 && a.seg.person < 0.8) { P.dof = (style === "adams" ? 0.35 : 0.6) * (a.seg.person < 0.12 ? 0.45 : 1); notes.push(`Profundidade medida pela IA: desfoquei o fundo como uma lente de cinema, com o foco ${S.dofWhy || "na pessoa"}.`); }
     if (a.seg) {
       const q = a.seg;
-      if (q.person > 0.12 && q.person < 0.7 && q.fr[3] > 0.005) {
+      if (!S.depth && q.person > 0.12 && q.person < 0.7 && q.fr[3] > 0.005) {
         P.bgBlur = clamp((q.bgGrad - 0.02) * 25, 0, 0.7);
         if (P.bgBlur > 0.1) notes.push(`O fundo tem muito detalhe e compete com as pessoas. Desfoquei ${Math.round(P.bgBlur * 100)}%, calculado só com as cores do fundo para não borrar o contorno.`);
       }
@@ -1137,8 +1155,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         notes.push(`Roupa em ${Math.round(q.cloth * 100)}% da foto: alisei amassados leves em ${Math.round(P.clothSmooth * 100)}%, mantendo estampas e costuras.`);
       }
       if (q.hair > 0.02 && style !== "adams") {
-        P.hairShine = style === "leib" ? 0.25 : 0.2;
-        P.hairVolume = 0.65; P.hairSmooth = 0.3;
+        P.hairShine = style === "leib" ? 0.18 : 0.12;
+        P.hairVolume = 0.42; P.hairSmooth = 0.3;
         notes.push("Cabelo: dei corpo aos fios (mais definição e luz e sombra entre as mechas, o que lê como mais volume), assentei fios soltos e realcei o brilho. Não muda o corte nem o penteado.");
       }
     }
@@ -1217,13 +1235,62 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     boxF(Y, w, h, Math.max(1, Math.round(w * 0.0012)), ys, tmp);
     boxF(Y, w, h, Math.max(2, Math.round(w * 0.006)), ym, tmp);
     let bl = null;
-    return { Y0: Y, ys, ym, get bl() {
+    return { src: d, w, h, Y0: Y, ys, ym, get bl() {
       if (!bl) {
         const r = Math.max(3, Math.round(w * 0.02)), t2 = new Float32Array(n);
         bl = [0, 1, 2].map(k => { const a = new Float32Array(n), o = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = d[i * 4 + k] / 255; boxF(a, w, h, r, o, tmp); boxF(o, w, h, r, t2, tmp); return t2.slice(); });
       }
       return bl;
     } };
+  }
+
+  /* ---------- profundidade (Depth Anything V2) e desfoque de cinema ---------- */
+  async function depthSession() {
+    if (AI.dsess) return AI.dsess; await aiSession();
+    AI.dsess = await AI.ort.InferenceSession.create(new URL("vendor/models/depth_anything_v2_small_int8.onnx", location.href).href, { executionProviders: ["wasm"] });
+    return AI.dsess;
+  }
+  async function computeDepth(canvas) {
+    const sess = await depthSession(), L = 308, ar = canvas.height / canvas.width, c = document.createElement("canvas");
+    if (ar > 1) { c.height = L; c.width = Math.max(14, Math.round(L / ar / 14) * 14); } else { c.width = L; c.height = Math.max(14, Math.round(L * ar / 14) * 14); }
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(canvas, 0, 0, c.width, c.height);
+    const d = x.getImageData(0, 0, c.width, c.height).data, n = c.width * c.height, f = new Float32Array(3 * n), M = [0.485, 0.456, 0.406], SDv = [0.229, 0.224, 0.225];
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) f[k * n + i] = (d[i * 4 + k] / 255 - M[k]) / SDv[k];
+    const res = await sess.run({ [sess.inputNames[0]]: new AI.ort.Tensor("float32", f, [1, 3, c.height, c.width]) }), o = res[sess.outputNames[0]], W = o.dims[o.dims.length - 1], H = o.dims[o.dims.length - 2];
+    const sorted = Float32Array.from(o.data).sort(), lo = sorted[Math.floor(sorted.length * 0.01)], hi = sorted[Math.floor(sorted.length * 0.99)], out = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) out[i] = Math.max(0, Math.min(1, (o.data[i] - lo) / Math.max(1e-6, hi - lo)));
+    return { w: W, h: H, d: out };
+  }
+  function depthAt(u, v) {
+    const D = S.depth; if (!D) return 0.5; const x = Math.min(D.w - 1, Math.max(0, u * (D.w - 1))), y = Math.min(D.h - 1, Math.max(0, v * (D.h - 1))), x0 = x | 0, y0 = y | 0, x1 = Math.min(D.w - 1, x0 + 1), y1 = Math.min(D.h - 1, y0 + 1), tx = x - x0, ty = y - y0;
+    return (D.d[y0 * D.w + x0] * (1 - tx) + D.d[y0 * D.w + x1] * tx) * (1 - ty) + (D.d[y1 * D.w + x0] * (1 - tx) + D.d[y1 * D.w + x1] * tx) * ty;
+  }
+  function autoFocus() {
+    if (!S.depth) return; const D = S.depth;
+    if (S.faceLms && S.faceLms.length) { let best = -1; for (const l of S.faceLms) best = Math.max(best, depthAt(l[1].x, l[1].y)); S.dofFocus = best; S.dofWhy = "no rosto"; return; }
+    const sg = S.segRef || S.seg;
+    if (sg && S.an && S.an.seg && S.an.seg.person > 0.06) {
+      const vals = []; for (let y = 0; y < D.h; y += 2) for (let x = 0; x < D.w; x += 2) { const q = Math.min(sg.h - 1, (y * sg.h / D.h) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / D.w) | 0); if (sg.cls[0][q] < 80) vals.push(D.d[y * D.w + x]); }
+      if (vals.length > 20) { vals.sort((a, b) => a - b); S.dofFocus = vals[vals.length >> 1]; S.dofWhy = "na pessoa"; return; }
+    }
+    const all = Float32Array.from(D.d).sort(); S.dofFocus = all[Math.floor(all.length * 0.9)]; S.dofWhy = "no que está mais perto";
+  }
+  function dofFor(dt) {
+    if (!S.depth || S.dofFocus == null || !dt || !dt.src) return null;
+    if (dt.dof && dt.dof.focus === S.dofFocus && dt.dof.D === S.depth) return dt.dof;
+    const w = dt.w, h = dt.h, s2 = Math.min(1, 1500 / Math.max(w, h)), dw = Math.max(8, Math.round(w * s2)), dh = Math.max(8, Math.round(h * s2)), n = dw * dh;
+    const full = document.createElement("canvas"); full.width = w; full.height = h; full.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(dt.src), w, h), 0, 0);
+    const cv = document.createElement("canvas"); cv.width = dw; cv.height = dh; const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(full, 0, 0, dw, dh);
+    const im = cx.getImageData(0, 0, dw, dh), px = im.data, amt = new Float32Array(n), sg = S.segRef || S.seg, person = !!(sg && S.an && S.an.seg && S.an.seg.person > 0.06), F = S.dofFocus;
+    for (let y = 0; y < dh; y++) for (let x = 0; x < dw; x++) {
+      const i = y * dw + x, dv = depthAt(x / (dw - 1), y / (dh - 1)); let far = Math.max(0, Math.min(1, (F - dv - 0.03) / 0.24));
+      if (person) { const bgw = sg.cls[0][Math.min(sg.h - 1, (y * sg.h / dh) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / dw) | 0)] / 255; far = bgw < 0.5 ? far * bgw * 2 * 0.5 : far; }
+      far = far * far * (3 - 2 * far); amt[i] = far; px[i * 4 + 3] = Math.max(2, far * 255);
+    }
+    cx.putImageData(im, 0, 0);
+    const mx = Math.max(dw, dh), R = [0.006, 0.014, 0.026, 0.042].map(r => Math.max(1, r * mx)), lv = R.map(r => { const c2 = document.createElement("canvas"); c2.width = dw; c2.height = dh; const x2 = c2.getContext("2d", { willReadFrequently: true }); x2.filter = "blur(" + r.toFixed(1) + "px)"; x2.drawImage(cv, 0, 0); return x2.getImageData(0, 0, dw, dh).data; });
+    dt.dof = { focus: S.dofFocus, D: S.depth, amt, lv, dw, dh, s: dw / w };
+    return dt.dof;
   }
 
   /* ---------- motor de render ---------- */
@@ -1233,6 +1300,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const LL = lc && lc.list.length ? lc : null;
     let lxi = null, lxf = null;
     if (LL) { lxi = new Int32Array(w); lxf = new Float32Array(w); for (let x = 0; x < w; x++) { const f = x / Math.max(1, w - 1) * (LL.w - 1); lxi[x] = Math.min(LL.w - 2, f | 0); lxf[x] = f - lxi[x]; } }
+    const DF = p.dof > 0.005 ? dofFor(dt) : null;
     const lensOn = p.lensBlur > 0 && !!dt, lbl = lensOn ? dt.bl : null, mnd = Math.min(w, h), bwv = BWW[Math.round(p.bwFilter)] || BWW[2];
     const ex = Math.pow(2, p.ev * 0.45), inv = 1 / Math.max(0.05, p.wp - p.bp), expo = Math.pow(2, -p.mid);
     const kr = 1 + 0.18 * p.temp, kb = 1 - 0.18 * p.temp, kg = 1 + 0.1 * p.tint;
@@ -1297,7 +1365,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         let bdw = 0;
         if (kxi && hrw > 0.02 && (p.hairSmooth > 0 || p.hairVolume > 0)) {
           const q4 = Math.min(kh - 1, (y * kh / h) | 0) * kw + kxi[x], BR = sk.B[0][q4], BG = sk.B[1][q4], BB = sk.B[2][q4];
-          const sm2 = p.hairSmooth * hrw * 0.35, vk = 1 + 2.4 * p.hairVolume * hrw;
+          const sm2 = p.hairSmooth * hrw * 0.35, vk = 1 + 1.6 * p.hairVolume * hrw;
           r0 += (BR - r0) * sm2; g0 += (BG - g0) * sm2; b0 += (BB - b0) * sm2;
           r0 = BR + (r0 - BR) * vk; g0 = BG + (g0 - BG) * vk; b0 = BB + (b0 - BB) * vk;
         }
@@ -1314,6 +1382,17 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         if (bg && p.bgBlur > 0 && bgw > 0.02) {
           const j0 = y0b * bW + bxi[x], m2 = p.bgBlur * bgw;
           r0 += (bil(bg.R, j0, bxf[x], tyb, bW) - r0) * m2; g0 += (bil(bg.G, j0, bxf[x], tyb, bW) - g0) * m2; b0 += (bil(bg.B, j0, bxf[x], tyb, bW) - b0) * m2;
+        }
+        if (DF) {
+          const q = Math.min(DF.dh - 1, (y * DF.s) | 0) * DF.dw + Math.min(DF.dw - 1, (x * DF.s) | 0), a = DF.amt[q] * p.dof;
+          if (a > 0.01) {
+            const L = DF.lv, t = Math.min(L.length - 1e-4, a * L.length), k = t | 0, f = t - k, U = L[k], qi = q * 4;
+            if (U[qi + 3] > 12) {
+              let lr = r0, lg = g0, lb = b0; if (k > 0 && L[k - 1][qi + 3] > 12) { const A2 = L[k - 1]; lr = A2[qi] / 255; lg = A2[qi + 1] / 255; lb = A2[qi + 2] / 255; }
+              r0 = lr + (U[qi] / 255 - lr) * f; g0 = lg + (U[qi + 1] / 255 - lg) * f; b0 = lb + (U[qi + 2] / 255 - lb) * f;
+              const dk = 1 - 0.1 * a; r0 *= dk; g0 *= dk; b0 *= dk;
+            }
+          }
         }
         if (lensOn) {
           const ld = Math.hypot(x - p.lensX * w, y - p.lensY * h) / mnd, lt = sstep(p.lensSize, p.lensSize + 0.3, ld) * p.lensBlur, pi2 = y * w + x;
@@ -1350,7 +1429,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         mm = Math.min(Y + 0.2, Math.max(Y - 0.2, mm));
         const lift = p.shadows * (1 - mm) * (1 - mm), pull = p.highlights * mm * mm;
         const gn = 1 + lift * 0.9 - pull * 0.5, ad = lift * 0.12 * (1 - Math.min(1, Y));
-        const tcw = p.tcLow * (1 - Y) * (1 - Y) + p.tcMid * 4 * Y * (1 - Y) + p.tcHigh * Y * Y, cl = (p.clarity * (1 - 1.6 * skw + 1.5 * p.hairVolume * hrw + 0.8 * p.beardDef * bdw) + tcw * 1.6 * (1 - 0.6 * skw)) * (Y - mm) * 1.2 * 4 * Math.min(1, Y) * (1 - Math.min(1, Y));
+        const tcw = p.tcLow * (1 - Y) * (1 - Y) + p.tcMid * 4 * Y * (1 - Y) + p.tcHigh * Y * Y, cl = (p.clarity * (1 - 1.6 * skw + 0.9 * p.hairVolume * hrw + 0.8 * p.beardDef * bdw) + tcw * 1.6 * (1 - 0.6 * skw)) * (Y - mm) * 1.2 * 4 * Math.min(1, Y) * (1 - Math.min(1, Y));
         r = r * gn + ad + cl; g = g * gn + ad + cl; b = b * gn + ad + cl;
         if (dt && (p.structure !== 0 || p.sharpen > 0)) {
           const pi = y * w + x, y0v = dt.Y0[pi], yc = Math.min(1, Math.max(0, Y));
@@ -1432,8 +1511,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     claro: { name: "Claro e limpo", tag: "Suave", d: { mid: 0.28, fade: 0.1, sat: -0.06, contrast: -0.1, glow: 0.3, highlights: -0.12, hiR: 0.02, hiG: 0.02, shR: 0.02, shG: 0.02, shB: 0.03 } }
   };
   function outPortrait() { const g = S.geo, d = geoDims(rc.width || 1, rc.height || 1, g); return g.crop.w * d.Fw < g.crop.h * d.Fh; }
+  const WARMK = new Set(["temp", "warm", "hiR", "shR", "halation"]);
   function overlayP(p, d, k) {
+    const hot = S.an && S.an.avgR / Math.max(0.02, S.an.avgB) > 1.1 && (S.an.skinFrac > 0.03);
     for (const key in d) {
+      if (hot && WARMK.has(key) && d[key] > 0) { const v = p[key] + d[key] * k * 0.35, sd = SD[key]; p[key] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v; continue; }
       if (key === "bars") { if (k > 0.5 && (S.noBars === undefined || S.noBars === null ? !outPortrait() : !S.noBars)) p.bars = d.bars; continue; }
       if (key === "bw") { p.bw = Math.max(p.bw, d.bw * Math.min(1, k)); continue; }
       const v = p[key] + d[key] * k, sd = SD[key]; p[key] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v;
@@ -2182,7 +2264,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
 
   function openTool(id) {
-    S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens"].includes(id) ? "none" : ""; $("toolList").hidden = true;
+    S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens", "depth"].includes(id) ? "none" : ""; $("toolList").hidden = true;
     if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false;
     document.querySelectorAll(".toolpane").forEach(p2 => { p2.hidden = p2.dataset.tool !== id; });
     if (id === "selective" || id === "brush") { const pane = document.querySelector(`.toolpane[data-tool="${id}"]`); if (!S.lbox) S.lbox = buildLocalBox(); pane.insertBefore(S.lbox, pane.querySelector("p:last-child")); renderLocalBox(); }
@@ -2305,7 +2387,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   async function aiEnhance(long) {
     if (AI.busy || !S.orig) return; AI.busy = true; AI.cancel = false;
-    $("aiFast").disabled = $("aiBest").disabled = true; $("aiSub").textContent = "Melhorando com IA…"; showLoading("Melhorando com IA", "Carregando a rede neural…", ["Carregar IA", "Reconstruir detalhe", "Misturar e finalizar"], true); setLoading(0.04, null, 0);
+    ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = true; }); $("aiSub").textContent = "Melhorando com IA…"; showLoading("Melhorando com IA", "Carregando a rede neural…", ["Carregar IA", "Reconstruir detalhe", "Misturar e finalizar"], true); setLoading(0.04, null, 0);
     const t0 = performance.now();
     try {
       if (!S.orig0) S.orig0 = S.orig;
@@ -2320,7 +2402,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false; $("aiViewRow").hidden = false;
       $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s. A foto agora tem ${fw} × ${fh} px, com detalhe reconstruído. ${S.orig0.width * S.orig0.height > fw * fh * 0.9 ? "Esta foto já tinha muitos pixels, então o ganho é principalmente limpeza de ruído e bordas." : ""} Se ficar com cara de pintura, baixe a força.`;
     } catch (e) { $("aiSub").textContent = e.message === "cancelado" ? "Cancelado. A foto continua como estava." : "Não deu para rodar a IA aqui: " + (e.message || e); }
-    hideLoading(); $("aiFast").disabled = $("aiBest").disabled = false; AI.busy = false;
+    hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false;
   }
   function applyAiBlend() {
     const c = S.aiCache; if (!c) return; const k = parseInt($("aiStr").value, 10) / 100, o = new ImageData(c.w, c.h), a = c.ai.data, b = c.base.data, d = o.data;
@@ -2340,6 +2422,82 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (!$("detail").hidden) drawDetail();
   }
   function aiUndo() { if (!S.orig0) return; S.orig = S.orig0; setPreviewFrom(S.orig); S.aiCache = null; $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiViewRow").hidden = true; S.split = false; $("aiSplit").setAttribute("aria-pressed", "false"); $("aiSub").textContent = "Voltei para a foto original."; $("capSize").textContent = S.orig.width + " × " + S.orig.height + " px"; schedule(); scheduleThumbs(); }
+
+  /* ---------- restauração de rosto (RestoreFormer++) ---------- */
+  const FFHQ = [[192.98, 239.95], [318.90, 240.19], [256.63, 314.02], [201.26, 371.41], [313.09, 371.15]];
+  async function faceSession() {
+    if (AI.fsess) return AI.fsess; await aiSession();
+    AI.fsess = await AI.ort.InferenceSession.create(new URL("vendor/models/restoreformer_pp_int8w.onnx", location.href).href, { executionProviders: ["wasm"] });
+    return AI.fsess;
+  }
+  function facePts(lm, W, H) {
+    const c = ids => { let x = 0, y = 0; ids.forEach(i => { x += lm[i].x; y += lm[i].y; }); return [x / ids.length * W, y / ids.length * H]; };
+    const ir = lm.length > 473 ? c([468]) : c([33, 133]), il = lm.length > 473 ? c([473]) : c([263, 362]);
+    // a pessoa "esquerda" da imagem primeiro
+    const eyeA = ir[0] < il[0] ? ir : il, eyeB = ir[0] < il[0] ? il : ir, ml = lm[61].x < lm[291].x;
+    return [eyeA, eyeB, c([1]), ml ? c([61]) : c([291]), ml ? c([291]) : c([61])];
+  }
+  // devolve a textura fina (poros, fios) da foto de origem ao resultado da IA, como faz um retocador
+  function reinjectTexture(outCanvas, srcCanvas, amount) {
+    const W = outCanvas.width, H = outCanvas.height, bl = document.createElement("canvas"); bl.width = W; bl.height = H;
+    const bx = bl.getContext("2d", { willReadFrequently: true }); bx.filter = "blur(" + Math.max(1, W / 1400).toFixed(2) + "px)"; bx.drawImage(srcCanvas, 0, 0, W, H); bx.filter = "none";
+    const sc = document.createElement("canvas"); sc.width = W; sc.height = H; const sx = sc.getContext("2d", { willReadFrequently: true }); sx.drawImage(srcCanvas, 0, 0, W, H);
+    const ox = outCanvas.getContext("2d", { willReadFrequently: true }), O = ox.getImageData(0, 0, W, H), o = O.data, a = sx.getImageData(0, 0, W, H).data, b = bx.getImageData(0, 0, W, H).data;
+    for (let i = 0; i < o.length; i += 4) {
+      const hf = ((a[i] - b[i]) * 0.3 + (a[i + 1] - b[i + 1]) * 0.59 + (a[i + 2] - b[i + 2]) * 0.11) * amount;
+      o[i] = Math.max(0, Math.min(255, o[i] + hf)); o[i + 1] = Math.max(0, Math.min(255, o[i + 1] + hf)); o[i + 2] = Math.max(0, Math.min(255, o[i + 2] + hf));
+    }
+    ox.putImageData(O, 0, 0);
+  }
+  async function restoreFaces(srcCanvas, onProg) {
+    const sess = await faceSession(), lms = (S.faceLms || []).filter(l => Math.hypot((l[454].x - l[234].x) * srcCanvas.width, (l[454].y - l[234].y) * srcCanvas.height) > 48).slice(0, 4);
+    if (!lms.length) throw new Error("SEM_ROSTO");
+    const W = srcCanvas.width, H = srcCanvas.height, out = document.createElement("canvas"); out.width = W; out.height = H; const ox = out.getContext("2d", { willReadFrequently: true }); ox.drawImage(srcCanvas, 0, 0);
+    const fc = document.createElement("canvas"); fc.width = fc.height = 512; const fx = fc.getContext("2d", { willReadFrequently: true });
+    const oc = document.createElement("canvas"); oc.width = oc.height = 512; const octx = oc.getContext("2d");
+    const mask = document.createElement("canvas"); mask.width = mask.height = 512; const mx = mask.getContext("2d"); mx.filter = "blur(14px)"; mx.fillStyle = "#fff"; mx.beginPath(); mx.ellipse(256, 262, 168, 205, 0, 0, 7); mx.fill(); mx.filter = "none";
+    let done = 0;
+    for (const lm of lms) {
+      if (AI.cancel) throw new Error("cancelado");
+      const P = facePts(lm, W, H), T = fitSimilarity(P, FFHQ);
+      fx.setTransform(1, 0, 0, 1, 0, 0); fx.fillStyle = "#777"; fx.fillRect(0, 0, 512, 512); fx.imageSmoothingQuality = "high"; fx.setTransform(T.a, T.b, -T.b, T.a, T.tx, T.ty); fx.drawImage(srcCanvas, 0, 0); fx.setTransform(1, 0, 0, 1, 0, 0);
+      const d = fx.getImageData(0, 0, 512, 512).data, f = new Float32Array(3 * 512 * 512), n = 512 * 512;
+      for (let i = 0; i < n; i++) { f[i] = d[i * 4] / 127.5 - 1; f[n + i] = d[i * 4 + 1] / 127.5 - 1; f[2 * n + i] = d[i * 4 + 2] / 127.5 - 1; }
+      const res = await sess.run({ [sess.inputNames[0]]: new AI.ort.Tensor("float32", f, [1, 3, 512, 512]) }), o = res[sess.outputNames[0]].data, im = octx.createImageData(512, 512);
+      for (let i = 0; i < n; i++) { for (let k = 0; k < 3; k++) { const v = (o[k * n + i] + 1) * 127.5; im.data[i * 4 + k] = v < 0 ? 0 : v > 255 ? 255 : v; } im.data[i * 4 + 3] = 255; }
+      octx.putImageData(im, 0, 0); octx.globalCompositeOperation = "destination-in"; octx.drawImage(mask, 0, 0); octx.globalCompositeOperation = "source-over";
+      const det = T.a * T.a + T.b * T.b; ox.setTransform(T.a / det, -T.b / det, T.b / det, T.a / det, -(T.a * T.tx + T.b * T.ty) / det, (T.b * T.tx - T.a * T.ty) / det);
+      ox.imageSmoothingQuality = "high"; ox.drawImage(oc, 0, 0); ox.setTransform(1, 0, 0, 1, 0, 0); octx.clearRect(0, 0, 512, 512);
+      octx.globalCompositeOperation = "source-over"; done++; onProg(done / lms.length); await nextTick();
+    }
+    return { canvas: out, n: lms.length };
+  }
+  async function aiFaces(all) {
+    if (AI.busy || !S.orig) return; AI.busy = true; AI.cancel = false; const t0 = performance.now();
+    ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = true; });
+    showLoading(all ? "Melhorando tudo com IA" : "Restaurando rostos", "Carregando a IA…", all ? ["Fundo", "Rostos", "Misturar"] : ["Carregar", "Rostos", "Misturar"], true); setLoading(0.04, null, 0);
+    $("ldCancel").onclick = () => { AI.cancel = true; $("ldSub").textContent = "Cancelando…"; };
+    try {
+      if (!S.orig0) S.orig0 = S.orig; const src0 = S.orig0;
+      if (!S.faceLms || !S.faceLms.length) throw new Error("SEM_ROSTO");
+      let base;
+      if (all) {
+        const sc = Math.min(1, 512 / Math.max(src0.width, src0.height)), lw = Math.round(src0.width * sc), lh = Math.round(src0.height * sc);
+        const small = document.createElement("canvas"); small.width = lw; small.height = lh; small.getContext("2d").drawImage(src0, 0, 0, lw, lh);
+        const up = await upscale4x(small, f => { const el = (performance.now() - t0) / 1000; setLoading(0.05 + f * 0.4, `Fundo e detalhe: ${Math.round(f * 100)}% · faltam uns ${Math.max(1, Math.round(el / Math.max(0.02, f) * (1 - f)))} s`, 0); });
+        const tw = Math.min(3000, up.width), k = tw / up.width; base = document.createElement("canvas"); base.width = Math.round(up.width * k); base.height = Math.round(up.height * k); const bx = base.getContext("2d"); bx.imageSmoothingQuality = "high"; bx.drawImage(up, 0, 0, base.width, base.height);
+      } else { const sc = Math.min(1, 3000 / Math.max(src0.width, src0.height)); base = document.createElement("canvas"); base.width = Math.round(src0.width * sc); base.height = Math.round(src0.height * sc); base.getContext("2d").drawImage(src0, 0, 0, base.width, base.height); }
+      setLoading(all ? 0.46 : 0.1, "Restaurando os rostos… cada um leva um tempo. Pode deixar o app aberto.", 1);
+      const t1 = performance.now(), r = await restoreFaces(base, f => { const el = (performance.now() - t1) / 1000; setLoading((all ? 0.46 : 0.1) + f * (all ? 0.48 : 0.84), `Rostos: ${Math.round(f * 100)}% · faltam uns ${Math.max(1, Math.round(el / Math.max(0.02, f) * (1 - f)))} s`, 1); });
+      setLoading(0.96, "Devolvendo a textura natural da pele…", 2); await nextTick();
+      reinjectTexture(r.canvas, src0, 0.9);
+      const fw = r.canvas.width, fh = r.canvas.height, bs = document.createElement("canvas"); bs.width = fw; bs.height = fh; const bx2 = bs.getContext("2d", { willReadFrequently: true }); bx2.imageSmoothingQuality = "high"; bx2.drawImage(src0, 0, 0, fw, fh);
+      S.aiCache = { ai: r.canvas.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, fw, fh), base: bx2.getImageData(0, 0, fw, fh), w: fw, h: fh };
+      applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false; $("aiViewRow").hidden = false;
+      $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s: ${r.n} ${r.n === 1 ? "rosto restaurado" : "rostos restaurados"}${all ? " e fundo reconstruído" : ""}. Use Ver detalhe 100% para comparar e a Força da IA para dosar.`;
+    } catch (e) { $("aiSub").textContent = e.message === "cancelado" ? "Cancelado. A foto continua como estava." : e.message === "SEM_ROSTO" ? "Não achei rosto nesta foto para restaurar. Use o botão Só fundo." : "Não deu para rodar a IA aqui: " + (e.message || e); }
+    hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false;
+  }
 
   /* ---------- detalhe 100% e antes/depois ---------- */
   const DT = { cx: 0.5, cy: 0.4 };
@@ -2407,7 +2565,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const a = S.an; if (!a) return [];
     const portrait = a.skinFrac > 0.03 || (a.seg && a.seg.person > 0.3), land = a.skyFrac > 0.1 || a.greenFrac > 0.15, warmS = a.avgR / Math.max(0.02, a.avgB) > 1.12, dark = a.med < 0.28, colorful = a.satMean > 0.42;
     const first = dark ? (colorful ? ["neon", "drama", "blockbuster"] : ["drama", "noir", "blockbuster"])
-      : portrait ? (warmS ? ["kodak", "editorial", "golden"] : ["editorial", "kodak", "blockbuster"])
+      : portrait ? (warmS ? ["editorial", "claro", "kodak"] : ["editorial", "kodak", "blockbuster"])
       : land ? ["golden", "blockbuster", "vibrante"] : colorful ? ["vibrante", "kodak", "blockbuster"] : ["kodak", "blockbuster", "golden"];
     return [...first, ...LOOK_ORDER.filter(k => !first.includes(k))];
   }
@@ -2446,13 +2604,13 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   function scheduleThumbs() { clearTimeout(S.thumbT); S.thumbT = setTimeout(refreshThumbs, 350); }
 
-  const QUICK = [["faceEnh", "Rosto", 0.7], ["skyDeep", "Céu", 0.5], ["bgBlur", "Fundo suave", 0.6], ["sharpen", "Nitidez", 0.4]];
+  const QUICK = [["faceEnh", "Rosto", 0.7], ["dof", "Fundo de cinema", 0.65], ["skyDeep", "Céu", 0.5], ["sharpen", "Nitidez", 0.4]];
   function buildQuick() {
     const box = $("quick"); box.innerHTML = "";
     QUICK.forEach(([k, n, v]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip q"; c.dataset.k = k; c.textContent = n;
       c.addEventListener("click", () => {
         const on = (effective()[k] || 0) > 0.05; $("quickMsg").textContent = "";
-        if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "bgBlur" && !(S.seg && S.an && S.an.seg && S.an.seg.person > 0.1)) $("quickMsg").textContent = "Precisa de uma pessoa na foto para separar o fundo."; }
+        if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "dof" && !S.depth) $("quickMsg").textContent = "Ainda estou medindo a profundidade da foto. Tente em instantes."; }
         markCustom(); renderQuick(); schedule(); scheduleThumbs();
       }); box.appendChild(c); });
   }
@@ -2495,7 +2653,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- carregar foto ---------- */
   function load(canvas, name) {
-    S.orig = canvas; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    S.orig = canvas; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
     const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
     const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
     const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
@@ -2565,6 +2723,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }, true);
   $("toolBack").addEventListener("click", closeTool);
   view.addEventListener("click", e => {
+    if (S.tool === "depth" && S.depth) { const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); S.dofFocus = depthAt(q[0], q[1]); S.dofWhy = "onde você tocou"; if (!(effective().dof > 0)) S.manual.dof = 0.6; markCustom(); schedule(); scheduleThumbs(); return; }
     if (S.tool !== "lens") return;
     const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); S.manual.lensX = Math.min(1, Math.max(0, q[0])); S.manual.lensY = Math.min(1, Math.max(0, q[1]));
     if (!(effective().lensBlur > 0)) S.manual.lensBlur = 0.6;
@@ -2582,6 +2741,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   });
   $("barsChip").addEventListener("click", () => { const on = S.noBars === null || S.noBars === undefined ? !outPortrait() : !S.noBars; S.noBars = on; heroText(); schedule(); scheduleThumbs(); });
   $("grainChip").addEventListener("click", () => { S.noGrain = !S.noGrain; heroText(); schedule(); scheduleThumbs(); });
+  $("aiAll").addEventListener("click", () => aiFaces(true));
+  $("aiFace").addEventListener("click", () => aiFaces(false));
   $("aiFast").addEventListener("click", () => aiEnhance(512));
   $("aiBest").addEventListener("click", () => aiEnhance(768));
   $("aiCancel").addEventListener("click", () => { AI.cancel = true; });
