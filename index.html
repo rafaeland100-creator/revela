@@ -587,7 +587,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   function pct(v) { return Math.round(v * 100) + "%"; }
   function sgn(v, d) { const s = v.toFixed(d).replace(".", ","); return (v > 0 ? "+" : "") + s; }
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const TM = window.__tm = {}, tm = (k, f) => { const t = performance.now(); const r = f(); TM[k] = Math.round(performance.now() - t); return r; };
+  const TM = window.__tm = {}, tm = (k, f) => { const t = performance.now(); const r = f(); TM[k] = Math.round(performance.now() - t); console.log("[revela] " + k + " " + TM[k] + " ms"); return r; };
+  const withTimeout = (pr, ms, name) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no(new Error("TEMPO:" + name)), ms))]);
   const $ = id => document.getElementById(id);
 
   /* ---------- estado ---------- */
@@ -705,7 +706,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         S.segMs = Math.round(performance.now() - t0);
         tm("onSeg", () => onSeg(S.segMs));
         runFace();
-      } catch (e) { setSegStatus("A segmentação falhou nesta foto: " + (e.message || e), false); }
+      } catch (e) { setSegStatus("A segmentação falhou nesta foto: " + (e.message || e), false); console.log("[revela] segmentação falhou: " + (e.message || e)); pill(null); }
     }, 30);
   }
 
@@ -1073,11 +1074,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     try {
       if (!(S.an && S.an.seg && S.an.seg.person > 0.06 && (S.an.seg.fr[3] > 0.004 || S.an.seg.person > 0.2))) { pill(null); toastDone(); return; }
       pill("A IA está medindo a profundidade…"); await nextTick();
-      const D = await computeDepth(S.prev); if (token !== S.prev) return;
+      const t0 = performance.now(), D = await withTimeout(computeDepth(S.prev), 90000, "profundidade"); if (token !== S.prev) return; console.log("[revela] profundidade " + Math.round(performance.now() - t0) + " ms");
       S.depth = D; autoFocus(); S.rm = {};
       if (S.detail) S.detail.dof = null; if (S.small && S.small.dt) S.small.dt.dof = null;
       applyStyle();
-    } catch (e) { S.depth = null; }
+    } catch (e) { S.depth = null; console.log("[revela] profundidade falhou: " + (e.message || e)); }
     pill(null); toastDone();
   }
   function toastDone() { if (S.an && S.an.scene2 && S.an.scene2.length) toast("Pronto. A IA melhorou: " + S.an.scene2.slice(0, 3).map(z => z.n).join(", ") + (S.depth && effective().dof > 0.05 ? ", fundo com profundidade" : "") + ".", 3200); }
@@ -1377,12 +1378,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const token = S.prev;
     try {
       pill("A IA está reconhecendo o que há na foto…"); await nextTick();
-      const R = await computeScene(S.prev); if (token !== S.prev) return;
+      const t0 = performance.now(), R = await withTimeout(computeScene(S.prev), 90000, "cena"); if (token !== S.prev) return; console.log("[revela] cena " + Math.round(performance.now() - t0) + " ms");
       S.sceneAI = R; S.an.scene2 = R.found;
       const el = document.getElementById("sceneList");
       if (el) el.textContent = R.found.length ? "Reconheci: " + R.found.map(z => `${z.n} (${Math.round(z.p * 100)}%)`).join(", ") + "." : "Não reconheci objetos específicos nesta foto.";
       applyStyle();
-    } catch (e) { S.sceneAI = null; }
+    } catch (e) { S.sceneAI = null; console.log("[revela] cena falhou: " + (e.message || e)); }
   }
 
   /* ---------- motor de render ---------- */
