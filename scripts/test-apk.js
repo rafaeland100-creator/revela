@@ -17,7 +17,7 @@ async function session(pg) {
     else if (d.method === 'Runtime.exceptionThrown') fs.appendFileSync('out/console.txt', 'ERRO: ' + JSON.stringify(d.params.exceptionDetails).slice(0, 600) + '\n'); };
   const send = (method, params = {}) => new Promise(r => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   await send('Runtime.enable');
-  const ev = async expr => { const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.result && r.result.exceptionDetails) return 'EXC ' + JSON.stringify(r.result.exceptionDetails).slice(0, 300); return r.result && r.result.result ? r.result.result.value : null; };
+  const ev = async expr => { const r = await Promise.race([send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }), sleep(30000).then(() => ({ result: { result: { value: 'SEM RESPOSTA (tela travada)' } } }))]); if (r.result && r.result.exceptionDetails) return 'EXC ' + JSON.stringify(r.result.exceptionDetails).slice(0, 300); return r.result && r.result.result ? r.result.result.value : null; };
   const waitFor = async (expr, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr) === true) return Date.now() - t; await sleep(1000); } return -1; };
   const shot = async name => { const r = await send('Page.captureScreenshot', { format: 'png' }); if (r.result && r.result.data) fs.writeFileSync('out/' + name, Buffer.from(r.result.data, 'base64')); };
   return { ev, waitFor, shot, ws };

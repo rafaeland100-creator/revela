@@ -12,7 +12,7 @@
 <title>Revela</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* Layout: palco da foto à esquerda, mesa de controle à direita; empilha no celular.
    Cor: grafite neutro de sala de edição, acento cobalto. */
@@ -666,7 +666,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       let vision;
       try { vision = await import(MP + "/vision_bundle.mjs"); } catch (e) { MP = CDN.MP; MODEL = CDN.MODEL; FACE_MODEL = CDN.FACE; vision = await import(MP + "/vision_bundle.mjs"); }
       const fileset = await vision.FilesetResolver.forVisionTasks(MP + "/wasm"); mpVision = vision; mpFileset = fileset;
-      for (const delegate of ["GPU", "CPU"]) {
+      for (const delegate of ["CPU", "GPU"]) {
         try {
           segmenter = await vision.ImageSegmenter.createFromOptions(fileset, {
             baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
@@ -675,7 +675,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       }
       if (!segmenter) throw new Error("modelo não iniciou");
       segState = "ready"; if (S.prev) { pill("A IA está analisando pessoas e rostos…"); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
-      for (const delegate of ["GPU", "CPU"]) {
+      for (const delegate of ["CPU", "GPU"]) {
         try { faceLm = await vision.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 8, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 }); break; } catch (e) { faceLm = null; }
       }
       if (faceLm && S.prev && S.seg) runFace();
@@ -2006,7 +2006,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   async function ensureFaceLm2() {
     if (faceLm2) return faceLm2;
     if (!mpVision) throw new Error("os modelos ainda estão carregando");
-    for (const delegate of ["GPU", "CPU"]) {
+    for (const delegate of ["CPU", "GPU"]) {
       try { faceLm2 = await mpVision.FaceLandmarker.createFromOptions(mpFileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 10, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true, minFaceDetectionConfidence: 0.4, minFacePresenceConfidence: 0.4 }); break; } catch (e) { faceLm2 = null; }
     }
     if (!faceLm2) throw new Error("o detector de rostos não iniciou");
@@ -3025,7 +3025,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     navigator.serviceWorker.register("sw.js").then(() => {
       // na primeira vez, recarrega uma vez para ativar o modo de vários núcleos da IA
-      if (!self.crossOriginIsolated && !sessionStorage.getItem("revela_coi")) { sessionStorage.setItem("revela_coi", "1"); navigator.serviceWorker.ready.then(() => { if (!S.prev) location.reload(); }); }
+      if (!self.crossOriginIsolated && !sessionStorage.getItem("revela_coi")) { sessionStorage.setItem("revela_coi", "1"); navigator.serviceWorker.ready.then(() => { if (!S.prev && performance.now() < 5000 && !isNative()) location.reload(); }); }
     }).catch(() => {});
   }
 })();

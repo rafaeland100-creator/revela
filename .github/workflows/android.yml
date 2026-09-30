@@ -26,6 +26,12 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
+      - name: Liberar vários núcleos para a IA (cabeçalhos de isolamento no servidor interno)
+        run: |
+          F=node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/WebViewLocalServer.java
+          sed -i 's|tempResponseHeaders.put("Cache-Control", "no-cache");|tempResponseHeaders.put("Cache-Control", "no-cache"); tempResponseHeaders.put("Cross-Origin-Opener-Policy", "same-origin"); tempResponseHeaders.put("Cross-Origin-Embedder-Policy", "require-corp");|' "$F"
+          grep -c "Cross-Origin-Embedder-Policy" "$F"
+
       - name: Copiar o app para www
         run: |
           mkdir www
