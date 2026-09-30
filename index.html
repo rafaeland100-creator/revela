@@ -750,7 +750,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     return out;
   }
   function refineSeg(raw, canvas) {
-    const sc = Math.min(1, 1000 / Math.max(canvas.width, canvas.height));
+    const sc = Math.min(1, 720 / Math.max(canvas.width, canvas.height));
     const tw = Math.round(canvas.width * sc), th = Math.round(canvas.height * sc), n = tw * th;
     const c = document.createElement("canvas"); c.width = tw; c.height = th;
     const cx = c.getContext("2d", { willReadFrequently: true }); cx.drawImage(canvas, 0, 0, tw, th);
@@ -786,7 +786,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   /* Pele: separa a foto em base suave (filtro guiado por ela mesma) e detalhe.
      Onde o detalhe é forte (barba, olhos, sobrancelha), a proteção fica alta e nada é suavizado. */
   function prepareSkin(canvas, seg) {
-    const sc = Math.min(1, 1000 / Math.max(canvas.width, canvas.height));
+    const sc = Math.min(1, 720 / Math.max(canvas.width, canvas.height));
     const tw = Math.round(canvas.width * sc), th = Math.round(canvas.height * sc), n = tw * th;
     if (seg.w !== tw || seg.h !== th) return null;
     const c = document.createElement("canvas"); c.width = tw; c.height = th;
@@ -928,7 +928,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const a = S.an, P = S.prevData;
     S.faceLms = faces; if (S.depth) { autoFocus(); if (S.detail) S.detail.dof = null; }
     if (!faces.length) { S.face = null; a.face = null; S.ovFace = null; showStats(a); applyStyle(); return; }
-    const sc = Math.min(1, 1000 / Math.max(S.prev.width, S.prev.height));
+    const sc = Math.min(1, 720 / Math.max(S.prev.width, S.prev.height));
     const tw = Math.round(S.prev.width * sc), th = Math.round(S.prev.height * sc), n = tw * th;
     const mk = () => { const c = document.createElement("canvas"); c.width = tw; c.height = th; const x = c.getContext("2d", { willReadFrequently: true }); x.fillStyle = "#000"; x.fillRect(0, 0, tw, th); return x; };
     const cT = mk(), cS = mk(), cI = mk(), cB = mk();
@@ -1271,7 +1271,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- profundidade (Depth Anything V2) e desfoque de cinema ---------- */
   async function depthSession() {
-    if (AI.dsess) return AI.dsess; await aiSession();
+    if (AI.dsess) return AI.dsess; await ortReady();
     AI.dsess = await AI.ort.InferenceSession.create(new URL("vendor/models/depth_anything_v2_small_int8.onnx", location.href).href, { executionProviders: ["wasm"] });
     return AI.dsess;
   }
@@ -1338,7 +1338,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   ];
   const FIELDS = ["exp", "sat", "vib", "str", "shp", "warm", "green", "glow"];
   async function sceneSession() {
-    if (AI.ssess) return AI.ssess; await aiSession();
+    if (AI.ssess) return AI.ssess; await ortReady();
     AI.ssess = await AI.ort.InferenceSession.create(new URL("vendor/models/segformer_b1_ade_q.onnx", location.href).href, { executionProviders: ["wasm"] });
     return AI.ssess;
   }
@@ -2449,15 +2449,20 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- melhoria com IA (Real-ESRGAN) ---------- */
   const AI = { ort: null, sess: null, busy: false, cancel: false };
-  async function aiSession() {
-    if (AI.sess) return AI.sess;
+  async function ortReady() {
+    if (AI.ort) return AI.ort;
     const base = new URL("vendor/", location.href).href;
     AI.ort = await import(base + "ort/ort.wasm.min.mjs");
     AI.ort.env.wasm.wasmPaths = base + "ort/"; AI.ort.env.wasm.numThreads = (self.crossOriginIsolated || (isNative() && typeof SharedArrayBuffer !== "undefined")) ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1; console.log("[revela] núcleos da IA: " + AI.ort.env.wasm.numThreads + " | SAB " + (typeof SharedArrayBuffer !== "undefined"));
-    AI.sess = await AI.ort.InferenceSession.create(base + "models/realesr-general-x4v3.onnx", { executionProviders: ["wasm"] });
+    return AI.ort;
+  }
+  async function aiSession() {
+    if (AI.sess) return AI.sess; await ortReady();
+    AI.sess = await AI.ort.InferenceSession.create(new URL("vendor/models/realesr-general-x4v3.onnx", location.href).href, { executionProviders: ["wasm"] });
     return AI.sess;
   }
   const nextTick = () => new Promise(r => setTimeout(r, 0));
+  function releaseHeavy() { for (const k of ["sess", "fsess"]) { if (AI[k]) { try { AI[k].release(); } catch (e) { /* já liberado */ } AI[k] = null; } } }
   async function upscale4x(src, onProg) {
     const sess = await aiSession(), T = 128, PAD = 12, C = T - 2 * PAD, W = src.width, H = src.height;
     const padded = document.createElement("canvas"); padded.width = W + 2 * PAD; padded.height = H + 2 * PAD; const px = padded.getContext("2d", { willReadFrequently: true });
@@ -2508,7 +2513,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false; $("aiViewRow").hidden = false;
       $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s. A foto agora tem ${fw} × ${fh} px, com detalhe reconstruído. ${S.orig0.width * S.orig0.height > fw * fh * 0.9 ? "Esta foto já tinha muitos pixels, então o ganho é principalmente limpeza de ruído e bordas." : ""} Se ficar com cara de pintura, baixe a força.`;
     } catch (e) { $("aiSub").textContent = e.message === "cancelado" ? "Cancelado. A foto continua como estava." : "Não deu para rodar a IA aqui: " + (e.message || e); }
-    hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false;
+    hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false; releaseHeavy();
   }
   function applyAiBlend() {
     const c = S.aiCache; if (!c) return; const k = parseInt($("aiStr").value, 10) / 100, o = new ImageData(c.w, c.h), a = c.ai.data, b = c.base.data, d = o.data;
@@ -2532,7 +2537,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   /* ---------- restauração de rosto (RestoreFormer++) ---------- */
   const FFHQ = [[192.98, 239.95], [318.90, 240.19], [256.63, 314.02], [201.26, 371.41], [313.09, 371.15]];
   async function faceSession() {
-    if (AI.fsess) return AI.fsess; await aiSession();
+    if (AI.fsess) return AI.fsess; await ortReady();
     AI.fsess = await AI.ort.InferenceSession.create(new URL("vendor/models/restoreformer_pp_int8w.onnx", location.href).href, { executionProviders: ["wasm"] });
     return AI.fsess;
   }
@@ -2602,7 +2607,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false; $("aiViewRow").hidden = false;
       $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s: ${r.n} ${r.n === 1 ? "rosto restaurado" : "rostos restaurados"}${all ? " e fundo reconstruído" : ""}. Use Ver detalhe 100% para comparar e a Força da IA para dosar.`;
     } catch (e) { $("aiSub").textContent = e.message === "cancelado" ? "Cancelado. A foto continua como estava." : e.message === "SEM_ROSTO" ? "Não achei rosto nesta foto para restaurar. Use o botão Só fundo." : "Não deu para rodar a IA aqui: " + (e.message || e); }
-    hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false;
+    hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false; releaseHeavy();
   }
 
   /* ---------- detalhe 100% e antes/depois ---------- */
@@ -3022,7 +3027,6 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   });
   renderLooksState();
   initSegmenter();
-  setTimeout(() => { sceneSession().then(() => depthSession()).then(() => console.log("[revela] IAs preparadas")).catch(e => console.log("[revela] preparo falhou: " + (e.message || e))); }, 2500);
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     navigator.serviceWorker.register("sw.js").then(() => {
       // na primeira vez, recarrega uma vez para ativar o modo de vários núcleos da IA
