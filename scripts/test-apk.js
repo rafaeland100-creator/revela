@@ -1,0 +1,22 @@
+const { chromium } = require('playwright-core'); const fs = require('fs');
+(async () => {
+  const log = (...a) => { const t = a.join(' '); console.log(t); fs.appendFileSync('out/resultado.txt', t + '\n'); };
+  const b = await chromium.connectOverCDP('http://localhost:9222');
+  const ctx = b.contexts()[0]; const p = ctx.pages()[0];
+  p.on('console', m => fs.appendFileSync('out/console.txt', m.type() + ': ' + m.text() + '\n'));
+  p.on('pageerror', e => fs.appendFileSync('out/console.txt', 'pageerror: ' + e.message + '\n'));
+  log('url', p.url(), '| nativo:', await p.evaluate(() => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())));
+  log('plugins:', await p.evaluate(() => Object.keys((window.Capacitor && window.Capacitor.Plugins) || {}).join(',')));
+  const t0 = Date.now();
+  await p.evaluate(() => document.getElementById('exBtn').click());
+  await p.waitForFunction(() => document.getElementById('view').width > 100, null, { timeout: 60000 });
+  log('foto na tela em', Date.now() - t0, 'ms');
+  await p.waitForFunction(() => document.getElementById('aiPill').hidden, null, { timeout: 400000 }).catch(() => log('IAs não terminaram no tempo'));
+  log('IAs em', Date.now() - t0, 'ms | status:', await p.evaluate(() => document.getElementById('segStat').textContent));
+  await p.screenshot({ path: 'out/app-editado.png' });
+  await p.evaluate(() => document.getElementById('saveBtn').click());
+  await p.waitForFunction(() => /salva|Não consegui/.test(document.getElementById('toast').textContent), null, { timeout: 120000 }).catch(() => {});
+  log('aviso ao salvar:', await p.evaluate(() => document.getElementById('toast').textContent));
+  await p.waitForTimeout(3000);
+  await b.close().catch(() => {});
+})().catch(e => { console.log('ERRO', e.message); fs.appendFileSync('out/resultado.txt', 'ERRO ' + e.message + '\n'); process.exit(1); });

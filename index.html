@@ -162,7 +162,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
 .startcard p { margin: 0; color: var(--mute); font-size: 15px; }
 .startbtns { display: grid; gap: 10px; }
 .btn.big { padding: 14px 18px; font-size: 16px; border-radius: 10px; }
-#view { touch-action: pan-y pinch-zoom; }
+#view { touch-action: none; }
 @media (max-width: 860px) {
   .app { height: 100dvh; }
   .top { padding: 8px 12px; gap: 8px; }
@@ -211,6 +211,15 @@ body { background: var(--bg); }
 .hero b { display: block; font-size: 15px; }
 .hero span { color: var(--mute); font-size: 12.5px; }
 .hero .chips { margin: 10px 0 0; }
+.toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; background: #1f1f25; color: #fff; border: 1px solid #34343b; padding: 12px 18px; border-radius: 14px; font-size: 14px; max-width: min(92vw, 460px); text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+.toast[hidden] { display: none; }
+.pill { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 8px; background: rgba(10,10,12,.78); color: #fff; padding: 7px 14px; border-radius: 999px; font-size: 12.5px; pointer-events: none; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.pill[hidden] { display: none; }
+.pill i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); border-top-color: #ff6a55; animation: spin 0.9s linear infinite; }
+.canvas-wrap { overflow: hidden; }
+#view { transform-origin: 0 0; will-change: transform; }
+.zoomhint { position: absolute; right: 12px; bottom: 10px; z-index: 5; background: rgba(10,10,12,.7); color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 999px; pointer-events: none; }
+.zoomhint[hidden] { display: none; }
 .loading { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(6,6,8,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .loading[hidden] { display: none; }
 .lcard { width: min(360px, 100%); text-align: center; display: grid; gap: 14px; }
@@ -304,6 +313,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         <canvas id="view" width="10" height="10"></canvas>
         <span class="flag" id="flag" hidden>Original</span>
         <div class="drop" id="drop">Solte a foto aqui</div>
+        <div class="pill" id="aiPill" hidden><i></i><span id="aiPillT">A IA está melhorando a foto…</span></div>
+        <span class="zoomhint" id="zoomHint" hidden>100%</span>
         <div class="loading" id="loading" hidden><div class="lcard"><div class="ring"></div><h3 id="ldTitle">Analisando a foto…</h3><p id="ldSub">Procurando pessoas, rostos e a luz da cena.</p><div class="lbar"><i id="ldFill"></i></div><div class="lsteps" id="ldSteps"></div><button class="btn" id="ldCancel" type="button" hidden>Cancelar</button></div></div>
       </div>
       <div class="caption"><span id="capName">–</span><span id="capSize">–</span><span id="capTime">–</span></div>
@@ -423,6 +434,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     </aside>
   </div>
 </div>
+<div class="toast" id="toast" hidden></div>
 <div class="detail" id="detail" hidden><div class="dpair"><figure><canvas id="dBefore"></canvas><figcaption>Antes</figcaption></figure><figure><canvas id="dAfter"></canvas><figcaption>Depois (IA)</figcaption></figure></div><p>Arraste para andar pela foto em tamanho real. Toque fora ou em Fechar para sair.</p><button class="btn" id="dClose" type="button">Fechar</button></div>
 
 <script>
@@ -661,13 +673,13 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         } catch (e) { segmenter = null; }
       }
       if (!segmenter) throw new Error("modelo não iniciou");
-      segState = "ready"; if (S.prev) { showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Objetos", "Profundidade"], false); setLoading(0.12, null, 0); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
+      segState = "ready"; if (S.prev) { pill("A IA está analisando pessoas e rostos…"); runSeg(); } else setSegStatus("Segmentação pronta. Abra uma foto.", true);
       for (const delegate of ["GPU", "CPU"]) {
         try { faceLm = await vision.FaceLandmarker.createFromOptions(fileset, { baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: "IMAGE", numFaces: 8, minFaceDetectionConfidence: 0.3, minFacePresenceConfidence: 0.3 }); break; } catch (e) { faceLm = null; }
       }
       if (faceLm && S.prev && S.seg) runFace();
     } catch (e) {
-      segState = "fail"; hideLoading();
+      segState = "fail"; hideLoading(); pill(null);
       setSegStatus("Segmentação indisponível aqui (" + (e.message || e) + "). O app segue funcionando sem regiões.", false);
     }
   }
@@ -1051,7 +1063,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     a.suggested = studio ? "leib" : (a.seg.person > 0.05 ? (a.satMean > 0.38 && a.seg.person < 0.3 ? "mccurry" : "natural") : (a.scores.adams > a.scores.mccurry && a.med >= 0.25 && a.dr > 0.4 ? "adams" : (a.satMean > 0.38 ? "mccurry" : "natural")));
     S.suggested = a.suggested; if (!S.userPicked) S.style = a.suggested;
     if (S.autoFmt && S.fmt === "feed") { S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; applyAspect(); suggestCrop(); }
-    setSegStatus("Regiões prontas em " + ms + " ms.", true); setLoading(0.7, "Ajustando luz, cor e rosto…", 2);
+    setSegStatus("Regiões prontas em " + ms + " ms.", true);
     $("regs").innerHTML = REG.map((r, i) => `<span><i style="background:rgb(${r.rgb})"></i>${r.name}<b>${Math.round(fr[i] * 100)}%</b></span>`).join("");
     $("ovl").disabled = false; showStats(a); applyStyle();
     runScene().then(runDepth);
@@ -1059,15 +1071,16 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   async function runDepth() {
     const token = S.prev;
     try {
-      if (!(S.an && S.an.seg && S.an.seg.person > 0.06 && (S.an.seg.fr[3] > 0.004 || S.an.seg.person > 0.2))) { setTimeout(hideLoading, 400); return; }
-      setLoading(0.82, "Medindo a profundidade da cena com IA…", 3); await nextTick();
+      if (!(S.an && S.an.seg && S.an.seg.person > 0.06 && (S.an.seg.fr[3] > 0.004 || S.an.seg.person > 0.2))) { pill(null); toastDone(); return; }
+      pill("A IA está medindo a profundidade…"); await nextTick();
       const D = await computeDepth(S.prev); if (token !== S.prev) return;
       S.depth = D; autoFocus(); S.rm = {};
       if (S.detail) S.detail.dof = null; if (S.small && S.small.dt) S.small.dt.dof = null;
       applyStyle();
     } catch (e) { S.depth = null; }
-    setTimeout(hideLoading, 400);
+    pill(null); toastDone();
   }
+  function toastDone() { if (S.an && S.an.scene2 && S.an.scene2.length) toast("Pronto. A IA melhorou: " + S.an.scene2.slice(0, 3).map(z => z.n).join(", ") + (S.depth && effective().dof > 0.05 ? ", fundo com profundidade" : "") + ".", 3200); }
 
   /* ---------- decisão automática ---------- */
   function autoParams(style, a) {
@@ -1363,7 +1376,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   async function runScene() {
     const token = S.prev;
     try {
-      setLoading(0.76, "Reconhecendo o que há na foto…", 3); await nextTick();
+      pill("A IA está reconhecendo o que há na foto…"); await nextTick();
       const R = await computeScene(S.prev); if (token !== S.prev) return;
       S.sceneAI = R; S.an.scene2 = R.found;
       const el = document.getElementById("sceneList");
@@ -2352,6 +2365,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
 
   function openTool(id) {
+    if (typeof resetZoom === "function") resetZoom();
     S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens", "depth"].includes(id) ? "none" : ""; $("toolList").hidden = true;
     if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false;
     document.querySelectorAll(".toolpane").forEach(p2 => { p2.hidden = p2.dataset.tool !== id; });
@@ -2428,6 +2442,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (stepIdx != null) [...$("ldSteps").children].forEach((e, i) => e.classList.toggle("on", i <= stepIdx));
   }
   function hideLoading() { clearTimeout(ldT); $("loading").hidden = true; }
+  function pill(t) { if (t) { $("aiPillT").textContent = t; $("aiPill").hidden = false; } else $("aiPill").hidden = true; }
 
   /* ---------- melhoria com IA (Real-ESRGAN) ---------- */
   const AI = { ort: null, sess: null, busy: false, cancel: false };
@@ -2653,7 +2668,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       p05: deep ? Math.max(0.035, Math.min(0.1, o.p05 * 0.5)) : Math.max(0.03, Math.min(0.12, o.p05 * 0.8)),
       p95: Math.max(o.p95 - 0.05, Math.min(0.93, o.p95)),
       sat: bw ? null : Math.max(o.sat, Math.min(deep ? 0.36 : 0.34, Math.max(o.sat * (deep ? 2.8 : 1.5), deep ? 0.24 : 0.2))),
-      mic: Math.min(o.mic * 1.85, o.mic + 0.08)
+      mic: Math.min(o.mic * (deep ? 1.85 : 1.5), o.mic + 0.08)
     };
   }
   function autoTune() {
@@ -2788,7 +2803,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- carregar foto ---------- */
   function load(canvas, name) {
-    S.orig = canvas; S.tune = {}; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.sceneAI = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    S.orig = canvas; S.tune = {}; if (typeof resetZoom === "function") resetZoom(); S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.sceneAI = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
     const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
     const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
     const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
@@ -2804,8 +2819,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("capName").textContent = name; $("capSize").textContent = canvas.width + " × " + canvas.height + " px";
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     showStats(S.an); applyStyle();
-    if (segState === "ready") { setSegStatus("Analisando a foto…", false); showLoading("Analisando a foto", "Procurando pessoas, rostos, céu e a luz da cena.", ["Cena", "Pessoas", "Rosto", "Edição"], false); setLoading(0.12, null, 0); runSeg(); }
-    else if (segState === "loading") { showLoading("Preparando o app", "Carregando os modelos de análise (só na primeira vez).", [], false); }
+    if (segState === "ready") { setSegStatus("Analisando a foto…", false); pill("A IA está analisando pessoas e rostos…"); runSeg(); }
+    else if (segState === "loading") { pill("Preparando as IAs (só na primeira vez)…"); }
   }
 
   function loadFile(file) {
@@ -2884,6 +2899,37 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   $("ldCancel").addEventListener("click", () => { AI.cancel = true; $("ldSub").textContent = "Cancelando…"; });
   $("aiUndo").addEventListener("click", aiUndo);
   let aiT = null; $("aiStr").addEventListener("input", e => { $("aiStrOut").textContent = e.target.value + "%"; clearTimeout(aiT); aiT = setTimeout(applyAiBlend, 250); });
+  const Z = { s: 1, tx: 0, ty: 0, pts: new Map(), start: null, lastTap: 0 };
+  const zoomBlocked = () => !!S.tool || S.split;
+  function applyZoom() {
+    const wr = $("wrap").getBoundingClientRect(), vr0 = { w: view.offsetWidth, h: view.offsetHeight };
+    const maxX = Math.max(0, (vr0.w * Z.s - vr0.w) / 2 + (vr0.w * Z.s - wr.width) / 2 * 0), lim = (v, m) => Math.max(-m, Math.min(m, v));
+    const mx = vr0.w * (Z.s - 1), my = vr0.h * (Z.s - 1); Z.tx = lim(Z.tx, mx) ; Z.ty = lim(Z.ty, my);
+    if (Z.s <= 1.001) { Z.s = 1; Z.tx = 0; Z.ty = 0; view.style.transform = ""; $("zoomHint").hidden = true; return; }
+    Z.tx = Math.min(0, Math.max(-mx, Z.tx)); Z.ty = Math.min(0, Math.max(-my, Z.ty));
+    view.style.transform = `translate(${Z.tx}px, ${Z.ty}px) scale(${Z.s})`; $("zoomHint").hidden = false; $("zoomHint").textContent = Math.round(Z.s * 100) + "%";
+  }
+  function zoomAt(ns, cx, cy) {
+    const r = view.getBoundingClientRect(), ox = cx - r.left, oy = cy - r.top, k = ns / Z.s;
+    Z.tx = Z.tx - ox * (k - 1); Z.ty = Z.ty - oy * (k - 1); Z.s = Math.max(1, Math.min(5, ns)); applyZoom();
+  }
+  function resetZoom() { Z.s = 1; Z.tx = 0; Z.ty = 0; applyZoom(); }
+  view.addEventListener("pointerdown", e => {
+    if (zoomBlocked()) return; Z.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (Z.pts.size === 2) { const [a, b] = [...Z.pts.values()]; Z.start = { d: Math.hypot(a.x - b.x, a.y - b.y), s: Z.s, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; if (lp) { clearTimeout(lp); lp = null; } }
+    else if (Z.s > 1) Z.start = { pan: true, x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty };
+  });
+  view.addEventListener("pointermove", e => {
+    if (!Z.pts.has(e.pointerId) || zoomBlocked()) return; Z.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (Z.pts.size === 2 && Z.start && Z.start.d) { const [a, b] = [...Z.pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y); zoomAt(Z.start.s * d / Math.max(10, Z.start.d), (a.x + b.x) / 2, (a.y + b.y) / 2); e.preventDefault(); if (lp) { clearTimeout(lp); lp = null; } }
+    else if (Z.start && Z.start.pan) { const dx = e.clientX - Z.start.x, dy = e.clientY - Z.start.y; if (Math.hypot(dx, dy) > 6 && lp) { clearTimeout(lp); lp = null; } Z.tx = Z.start.tx + dx; Z.ty = Z.start.ty + dy; applyZoom(); }
+  });
+  const zEnd = e => {
+    if (!Z.pts.has(e.pointerId)) return; Z.pts.delete(e.pointerId); if (Z.pts.size < 2 && Z.start && Z.start.d) Z.start = null; if (Z.pts.size === 0) Z.start = null;
+    if (e.type === "pointerup" && !zoomBlocked()) { const now = performance.now(); if (now - Z.lastTap < 300) { Z.lastTap = 0; if (Z.s > 1) resetZoom(); else zoomAt(2.5, e.clientX, e.clientY); } else Z.lastTap = now; }
+  };
+  ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, zEnd));
+  view.addEventListener("wheel", e => { if (zoomBlocked()) return; e.preventDefault(); zoomAt(Z.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
   $("btAdd").addEventListener("click", () => $("btFiles").click());
   $("btFiles").addEventListener("change", e => { btAddFiles(e.target.files); e.target.value = ""; });
   $("btMake").addEventListener("click", btMake);
@@ -2894,18 +2940,29 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   $("camBtn").addEventListener("click", () => $("cam").click());
   $("cam").addEventListener("change", e => { loadFile(e.target.files[0]); e.target.value = ""; });
   $("exBtn").addEventListener("click", () => load(sampleLandscape(), "Exemplo: paisagem"));
-  // dentro do app Android (Capacitor): salvar e compartilhar pelo sistema
-  const nativeCap = () => { const c = window.Capacitor; return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins.Filesystem && c.Plugins.Share ? c : null; };
+  // dentro do app Android (Capacitor): salvar na galeria e compartilhar pelo sistema
+  const isNative = () => { const c = window.Capacitor; return !!(c && c.isNativePlatform && c.isNativePlatform()); };
+  const capPlugin = n => { const c = window.Capacitor; if (!isNative()) return null; return (c.Plugins && c.Plugins[n]) || (c.registerPlugin ? c.registerPlugin(n) : null); };
+  const nativeCap = () => isNative() ? window.Capacitor : null;
+  let toastT = null;
+  function toast(t, ms) { const e = $("toast"); e.textContent = t; e.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { e.hidden = true; }, ms || 3500); }
+  const blobToDataURL = blob => new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.onerror = no; fr.readAsDataURL(blob); });
+  async function saveToGallery(blob) {
+    const Media = capPlugin("Media"); if (!Media) throw new Error("plugin de galeria indisponível");
+    const url = await blobToDataURL(blob), base = (await Media.getAlbumsPath()).path, album = base + "/Revela";
+    try { await Media.createAlbum({ name: "Revela" }); } catch (e) { /* o álbum já existe */ }
+    await Media.savePhoto({ path: url, albumIdentifier: album, fileName: "revela-" + Date.now() });
+  }
   async function nativeShare(blob) {
-    const c = nativeCap(); if (!c) return false;
-    const b64 = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(",")[1]); fr.onerror = no; fr.readAsDataURL(blob); });
-    const w = await c.Plugins.Filesystem.writeFile({ path: "revela-" + Date.now() + ".jpg", data: b64, directory: "CACHE" });
-    await c.Plugins.Share.share({ title: "Revela", files: [w.uri], dialogTitle: "Salvar ou compartilhar" });
+    const Fs = capPlugin("Filesystem"), Sh = capPlugin("Share"); if (!Fs || !Sh) return false;
+    const b64 = (await blobToDataURL(blob)).split(",")[1];
+    const w = await Fs.writeFile({ path: "revela-" + Date.now() + ".jpg", data: b64, directory: "CACHE" });
+    await Sh.share({ title: "Revela", files: [w.uri], dialogTitle: "Compartilhar" });
     return true;
   }
   $("shareBtn").addEventListener("click", async () => {
     if (!S.lastBlob) return;
-    try { if (await nativeShare(S.lastBlob)) return; } catch (e) { return; }
+    try { if (await nativeShare(S.lastBlob)) return; } catch (e) { toast("Não consegui abrir o compartilhamento: " + (e.message || e)); return; }
     try { await navigator.share({ files: [new File([S.lastBlob], "revela.jpg", { type: "image/jpeg" })], title: "Revela" }); } catch (e) { /* o usuário cancelou */ }
   });
   $("file").addEventListener("change", e => { loadFile(e.target.files[0]); e.target.value = ""; });
@@ -2924,7 +2981,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   wrap.addEventListener("drop", e => { const fl = e.dataTransfer.files; if (fl.length > 1) { setTab("rosto"); btAddFiles(fl); } else loadFile(fl[0]); });
 
   $("saveBtn").addEventListener("click", () => {
-    if (!S.orig) return;
+    if (!S.orig) { toast("Abra uma foto primeiro."); return; }
+    toast("Preparando a foto em alta qualidade…", 8000);
     const w = S.orig.width, h = S.orig.height, src = S.orig.getContext("2d").getImageData(0, 0, w, h);
     const out = render(src, w, h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
     const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").putImageData(out, 0, 0);
@@ -2935,8 +2993,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       S.lastBlob = b; try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); $("shareBtn").hidden = !(nativeCap() || (navigator.canShare && navigator.canShare({ files: [f] }))); } catch (e) { $("shareBtn").hidden = !nativeCap(); }
       const url = URL.createObjectURL(b); $("finalImg").src = url; $("final").classList.add("show");
       $("final").scrollIntoView({ block: "nearest" });
-      if (nativeCap()) { nativeShare(b).catch(() => {}); return; }
-      const a = document.createElement("a"); a.href = url; a.download = "revela-" + STYLES[S.style].name.toLowerCase() + ".jpg"; try { a.click(); } catch (e) { /* segue o aviso na tela */ }
+      if (isNative()) {
+        saveToGallery(b).then(() => toast("Foto salva na galeria, no álbum Revela.")).catch(e => { toast("Não consegui salvar na galeria (" + (e.message || e) + "). Abrindo o compartilhar para você salvar."); nativeShare(b).catch(() => {}); });
+        return;
+      }
+      if (navigator.canShare && /Android|iPhone|iPad/i.test(navigator.userAgent)) { try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); if (navigator.canShare({ files: [f] }) && /iPhone|iPad/i.test(navigator.userAgent)) { navigator.share({ files: [f], title: "Revela" }).catch(() => {}); return; } } catch (e) { /* segue o download */ } }
+      const a = document.createElement("a"); a.href = url; a.download = "revela-" + Date.now() + ".jpg"; document.body.appendChild(a); try { a.click(); toast("Foto salva em Downloads."); } catch (e) { toast("Segure o dedo na imagem final para salvar."); } a.remove();
     }, "image/jpeg", 0.93);
   });
 
