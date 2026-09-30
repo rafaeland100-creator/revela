@@ -2450,7 +2450,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (AI.sess) return AI.sess;
     const base = new URL("vendor/", location.href).href;
     AI.ort = await import(base + "ort/ort.wasm.min.mjs");
-    AI.ort.env.wasm.wasmPaths = base + "ort/"; AI.ort.env.wasm.numThreads = 1;
+    AI.ort.env.wasm.wasmPaths = base + "ort/"; AI.ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1;
     AI.sess = await AI.ort.InferenceSession.create(base + "models/realesr-general-x4v3.onnx", { executionProviders: ["wasm"] });
     return AI.sess;
   }
@@ -2657,7 +2657,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   function getTuneImg() {
     if (S.tuneImg && S.tuneImg.src === S.prevData) return S.tuneImg;
-    const W = S.prevData.width, H = S.prevData.height, sc = Math.min(1, 600 / Math.max(W, H)), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
+    const W = S.prevData.width, H = S.prevData.height, sc = Math.min(1, 480 / Math.max(W, H)), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
     const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
     const d = cx.getImageData(0, 0, w, h); S.tuneImg = { src: S.prevData, d, w, h, dt: makeDetail(d.data, w, h) }; return S.tuneImg;
   }
@@ -2671,13 +2671,16 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       mic: Math.min(o.mic * (deep ? 1.85 : 1.5), o.mic + 0.08)
     };
   }
-  function autoTune() {
+  let tuneJob = 0;
+  async function autoTune() {
     if (!S.prevData || !S.an || !autoOn()) { S.tune = {}; return; }
+    const job = ++tuneJob;
     const t0 = performance.now(), sm = getTuneImg(), run = () => { const img = render(sm.d, sm.w, sm.h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender()); return imgStats(img.data, sm.w, sm.h); };
     const o = imgStats(sm.d.data, sm.w, sm.h), T = tuneTargets(o); S.tune = { mid: 0, ev: 0, bp: 0, shadows: 0, highlights: 0, vibrance: 0, sat: 0, rich: 0, structure: 0, sharpen: 0 };
     const cl = (k, v) => { const sd = SD[k]; return sd ? Math.max(sd[2] - 1, Math.min(sd[3] + 1, v)) : v; };
     let st = run();
-    for (let it = 0; it < 12; it++) {
+    for (let it = 0; it < 9; it++) {
+      await new Promise(r => setTimeout(r, 0)); if (job !== tuneJob) return;
       const eMed = T.med - st.med, eLow = st.p05 - T.p05, eHi = st.p95 - T.p95;
       S.tune.mid = Math.max(-1.6, Math.min(1, S.tune.mid + eMed * 2.2)); if (effective(true).mid <= -0.98 && eMed < 0) S.tune.ev = Math.max(-1.2, S.tune.ev + eMed * 2.5);
       S.tune.bp = Math.max(-0.05, Math.min(0.14, S.tune.bp + eLow * 0.6));
@@ -2692,7 +2695,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     TM.tune = S.tuneInfo.ms;
   }
   let tuneT = null;
-  function scheduleTune() { clearTimeout(tuneT); tuneT = setTimeout(() => { autoTune(); schedule(); scheduleThumbs(); }, 60); }
+  function scheduleTune() { clearTimeout(tuneT); tuneT = setTimeout(async () => { await autoTune(); schedule(); scheduleThumbs(); }, 60); }
 
   /* ---------- looks, retoques em 1 toque, ajustar e formato ---------- */
   const LOOK_ORDER = ["blockbuster", "kodak", "golden", "noir", "neon", "editorial", "sonho", "drama", "vibrante", "pb", "claro"];
@@ -2721,24 +2724,29 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   function getThumb() {
     if (S.thumb && S.thumb.src === S.prevData) return S.thumb;
-    const W = S.prevData.width, H = S.prevData.height, sc = 300 / Math.max(W, H), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
+    const W = S.prevData.width, H = S.prevData.height, sc = 200 / Math.max(W, H), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
     const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
     const d = cx.getImageData(0, 0, w, h); S.thumb = { src: S.prevData, c, cx, d, w, h, dt: makeDetail(d.data, w, h) }; return S.thumb;
   }
+  let thumbJob = 0;
   function refreshThumbs() {
     if (!S.prevData || !S.an) return;
-    const t = getThumb(), rank = rankLooks(), box = $("looks"), items = [...box.querySelectorAll(".look")];
-    items.forEach(b => {
-      const id = b.dataset.id || null, p = effective(true, id), img = render(t.d, t.w, t.h, p, S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, t.dt, { w: 0, h: 0, list: [] });
-      t.cx.putImageData(img, 0, 0); const cv = b.querySelector("canvas"), x = cv.getContext("2d"), r = Math.max(cv.width / t.w, cv.height / t.h), dw = t.w * r, dh = t.h * r;
-      x.fillStyle = "#000"; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(t.c, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
-      const st = b.querySelector(".star"); const star = id && rank.slice(0, 2).includes(id);
-      if (star && !st) { const e = document.createElement("i"); e.className = "star"; e.textContent = "★"; b.appendChild(e); } else if (!star && st) st.remove();
-    });
+    const job = ++thumbJob, t = getThumb(), rank = rankLooks(), box = $("looks"), items = [...box.querySelectorAll(".look")];
     const auto = items[0], byId = Object.fromEntries(items.slice(1).map(b => [b.dataset.id, b])), order = rank.filter(k => byId[k]);
     if (box.dataset.order !== order.join()) { box.dataset.order = order.join(); order.forEach(k => box.appendChild(byId[k])); }
     box.appendChild(auto);
     if (!S.autoDone) { S.autoDone = true; if (autoOn()) autoProduce(rank[0]); else { S.look = null; renderLooksState(); } }
+    const list = [...box.querySelectorAll(".look")]; let k = 0;
+    const step = () => {
+      if (job !== thumbJob || k >= list.length) return;
+      const b = list[k++], id = b.dataset.id || null, p = effective(true, id), img = render(t.d, t.w, t.h, p, S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, t.dt, { w: 0, h: 0, list: [] });
+      t.cx.putImageData(img, 0, 0); const cv = b.querySelector("canvas"), x = cv.getContext("2d"), r = Math.max(cv.width / t.w, cv.height / t.h), dw = t.w * r, dh = t.h * r;
+      x.fillStyle = "#000"; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(t.c, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
+      const st = b.querySelector(".star"), star = id && rank.slice(0, 2).includes(id);
+      if (star && !st) { const e = document.createElement("i"); e.className = "star"; e.textContent = "★"; b.appendChild(e); } else if (!star && st) st.remove();
+      setTimeout(step, 16);
+    };
+    setTimeout(step, 30);
   }
   // ao abrir a foto: aplica a melhor produção sozinho, já no formato do Instagram
   function autoProduce(id) {
@@ -3013,6 +3021,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   });
   renderLooksState();
   initSegmenter();
-  if ("serviceWorker" in navigator && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").then(() => {
+      // na primeira vez, recarrega uma vez para ativar o modo de vários núcleos da IA
+      if (!self.crossOriginIsolated && !sessionStorage.getItem("revela_coi")) { sessionStorage.setItem("revela_coi", "1"); navigator.serviceWorker.ready.then(() => { if (!S.prev) location.reload(); }); }
+    }).catch(() => {});
+  }
 })();
 </script>

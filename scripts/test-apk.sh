@@ -3,7 +3,7 @@
 set -x
 adb install -r Revela.apk
 adb shell am start -n com.revela.app/.MainActivity
-sleep 25
+sleep 30
 PID=$(adb shell pidof com.revela.app | tr -d '\r')
 adb forward tcp:9222 localabstract:webview_devtools_remote_$PID
 curl -s http://localhost:9222/json/version || true
