@@ -436,7 +436,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     skinSmooth: 0, skinEven: 0, skinShine: 0,
     bgBlur: 0, skyDeep: 0, clothSmooth: 0, hairShine: 0, hairVolume: 0, hairSmooth: 0, beardDef: 0, mid: 0,
     teethWhite: 0, eyeWhite: 0, eyeIris: 0,
-    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0, dof: 0,
+    shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0, dof: 0, rich: 0,
     tcLow: 0, tcMid: 0, tcHigh: 0, glow: 0, glowRange: 0, fade: 0, leak: 0,
     structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0 };
   const BWW = [[0.3, 0.59, 0.11], [0.5, 0.45, 0.05], [0.6, 0.3, 0.1], [0.8, 0.18, 0.02], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6]];
@@ -444,7 +444,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   const SLIDERS = [
     ["ev", "Brilho", -2, 2, 0.05, v => sgn(v, 2) + " EV"],
-    ["mid", "Tons médios", -0.5, 0.9, 0.01, v => sgn(v, 2)],
+    ["mid", "Tons médios", -1, 0.9, 0.01, v => sgn(v, 2)],
+    ["rich", "Riqueza de cor", 0, 1, 0.01, pct],
     ["contrast", "Contraste", -0.5, 1, 0.01, pct],
     ["sat", "Saturação", -0.6, 0.6, 0.01, pct],
     ["vibrance", "Vibração", -0.5, 1, 0.01, pct],
@@ -1072,7 +1073,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const useSkin = a.skinFrac > 0.03;
     const localSubj = !!(a.seg && useSkin && a.seg.person < 0.35);
     const faceRef = useSkin && !localSubj;
-    const ref = clamp(faceRef ? a.skinY : a.med, 0.05, 0.95), tgt = faceRef ? 0.6 : T.tgt;
+    const ref = clamp(faceRef ? a.skinY : a.med, 0.05, 0.95), tgt = faceRef ? Math.min(0.55, Math.max(a.skinY, 0.42)) : T.tgt;
     // tons médios: uma curva de potência leva a referência ao alvo sem estourar os brilhos
     P.mid = clamp(-Math.log2(Math.log(tgt) / Math.log(ref)) * 0.85, a.fracBright > 0.1 ? -0.5 : -0.3, a.fracDark > 0.25 ? 0.3 : 0.9);
     const expo = Math.pow(2, -P.mid);
@@ -1431,9 +1432,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         const gn = 1 + lift * 0.9 - pull * 0.5, ad = lift * 0.12 * (1 - Math.min(1, Y));
         const tcw = p.tcLow * (1 - Y) * (1 - Y) + p.tcMid * 4 * Y * (1 - Y) + p.tcHigh * Y * Y, cl = (p.clarity * (1 - 1.6 * skw + 0.9 * p.hairVolume * hrw + 0.8 * p.beardDef * bdw) + tcw * 1.6 * (1 - 0.6 * skw)) * (Y - mm) * 1.2 * 4 * Math.min(1, Y) * (1 - Math.min(1, Y));
         r = r * gn + ad + cl; g = g * gn + ad + cl; b = b * gn + ad + cl;
-        if (dt && (p.structure !== 0 || p.sharpen > 0)) {
+        if (dt && (p.structure !== 0 || p.sharpen > 0 || p.beardDef > 0 || p.hairVolume > 0)) {
           const pi = y * w + x, y0v = dt.Y0[pi], yc = Math.min(1, Math.max(0, Y));
-          const dl = p.structure * 1.3 * (y0v - dt.ym[pi]) * (0.5 + 2 * yc * (1 - yc)) * (1 - 0.7 * skw) + p.sharpen * 1.6 * (y0v - dt.ys[pi]) * (1 - 0.5 * skw);
+          const dl = p.structure * 1.3 * (y0v - dt.ym[pi]) * (0.5 + 2 * yc * (1 - yc)) * (1 - 0.7 * skw) + (p.sharpen * (1 - 0.5 * skw) + 0.9 * p.beardDef * bdw + 0.3 * p.hairVolume * hrw) * 1.6 * (y0v - dt.ys[pi]);
           r += dl; g += dl; b += dl;
         }
         r = clamp(r, 0, 1); g = clamp(g, 0, 1); b = clamp(b, 0, 1);
@@ -1462,7 +1463,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         const mx = Math.max(r, g, b), mn = Math.min(r, g, b), s = mx > 0 ? (mx - mn) / mx : 0;
         const skinish = (r > g && g > b && (g - b) / (r - b + 1e-4) > 0.25 && (g - b) / (r - b + 1e-4) < 0.8) ? 1 : 0;
         const skinP = sg ? skw : skinish * 0.6, vib = (p.vibrance * (1 - skinP) * (1 - 0.7 * hrw) + p.clothVib * clw) * (1 - s);
-        let f = (1 + p.sat * (1 - 0.6 * skinP) + p.bgSat * bgw + p.hairDepth * 0.2 * hrw + vib) * (1 - p.midDesat * 4 * Y * (1 - Y)); if (f < 0) f = 0;
+        let f = (1 + p.rich * 1.4 * (1 - 0.35 * skinP) * (sg ? 0.25 + 0.75 * (1 - bgw) : Math.min(1, s * 4)) - (sg ? p.rich * 0.25 * bgw * (1 - Math.min(1, s * 3)) : 0) + p.sat * (1 - 0.6 * skinP) + p.bgSat * bgw + p.hairDepth * 0.2 * hrw + vib) * (1 - p.midDesat * 4 * Y * (1 - Y)); if (f < 0) f = 0;
         r = Y + (r - Y) * f; g = Y + (g - Y) * f; b = Y + (b - Y) * f;
         // divisão de tons
         const sh = (1 - Y) * (1 - Y) * (1 - 0.7 * skinP), hi = Y * Y;
@@ -1529,6 +1530,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (F) overlayP(p, F.d, S.filterK);
       const lid = lookId === undefined ? S.look : lookId, Lk = lid && LOOKS[lid];
       if (Lk) { overlayP(p, Lk.d, S.lookK); if (S.noGrain && Lk.d.grain) p.grain = Math.max(0, p.grain - Lk.d.grain * S.lookK); }
+      if (S.tune) for (const k in S.tune) { if (k in S.manual) continue; const sd = SD[k], v = p[k] + S.tune[k]; p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v; }
       p.curveLut = S.curveLut;
     }
     return p;
@@ -2316,7 +2318,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     S.target = autoOn() ? r.P : { ...NEUTRAL }; S.notes = autoOn() ? r.notes : ["O modo Automático está desligado. A foto está como você tirou, e você escolhe tudo à mão."];
     $("notes").innerHTML = ""; r.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
     $("reset").hidden = Object.keys(S.manual).length === 0;
-    refreshStyleCards(); schedule();
+    refreshStyleCards(); scheduleTune(); schedule();
     renderQuick(); renderLooksState(); scheduleThumbs(); if ($("adjRange")) syncAdjust();
   }
   function showStats(a) {
@@ -2544,6 +2546,53 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   function autoOn() { try { return localStorage.getItem("revela_auto") !== "0"; } catch (e) { return true; } }
   function setAutoPref(v) { try { localStorage.setItem("revela_auto", v ? "1" : "0"); } catch (e) { /* segue sem guardar */ } }
 
+  /* ---------- ajuste fino em ciclos: renderiza, mede, corrige, repete ---------- */
+  function imgStats(d, w, h) {
+    const n = w * h, hist = new Uint32Array(256); let sat = 0, lc = 0; const Y = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const r = d[i * 4] / 255, g = d[i * 4 + 1] / 255, b = d[i * 4 + 2] / 255, y = 0.2126 * r + 0.7152 * g + 0.0722 * b; Y[i] = y; hist[Math.min(255, (y * 255) | 0)]++; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); sat += mx ? (mx - mn) / mx : 0; }
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; lc += Math.abs(4 * Y[i] - Y[i - 1] - Y[i + 1] - Y[i - w] - Y[i + w]); }
+    const q = f => { let a = 0; for (let i = 0; i < 256; i++) { a += hist[i]; if (a >= f * n) return i / 255; } return 1; };
+    return { p05: q(0.05), med: q(0.5), p95: q(0.95), sat: sat / n, mic: lc / n };
+  }
+  function getTuneImg() {
+    if (S.tuneImg && S.tuneImg.src === S.prevData) return S.tuneImg;
+    const W = S.prevData.width, H = S.prevData.height, sc = Math.min(1, 600 / Math.max(W, H)), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h); S.tuneImg = { src: S.prevData, d, w, h, dt: makeDetail(d.data, w, h) }; return S.tuneImg;
+  }
+  function tuneTargets(o) {
+    const bw = effective(true).bw > 0.5, a = S.an || {}, person = !!(a.seg && a.seg.person > 0.08), outdoor = (a.skyFrac || 0) > 0.12 || (a.greenFrac || 0) > 0.2, deep = person && !outdoor;
+    return {
+      med: deep ? Math.max(0.3, Math.min(0.46, 0.37 + (o.med - 0.5) * 0.3)) : Math.max(0.24, Math.min(0.58, o.med - (o.med > 0.45 ? 0.04 : 0))),
+      p05: deep ? Math.max(0.035, Math.min(0.1, o.p05 * 0.5)) : Math.max(0.03, Math.min(0.12, o.p05 * 0.8)),
+      p95: Math.max(o.p95 - 0.05, Math.min(0.93, o.p95)),
+      sat: bw ? null : Math.max(o.sat, Math.min(deep ? 0.36 : 0.34, Math.max(o.sat * (deep ? 2.8 : 1.5), deep ? 0.24 : 0.2))),
+      mic: Math.min(o.mic * 1.85, o.mic + 0.08)
+    };
+  }
+  function autoTune() {
+    if (!S.prevData || !S.an || !autoOn()) { S.tune = {}; return; }
+    const t0 = performance.now(), sm = getTuneImg(), run = () => { const img = render(sm.d, sm.w, sm.h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender()); return imgStats(img.data, sm.w, sm.h); };
+    const o = imgStats(sm.d.data, sm.w, sm.h), T = tuneTargets(o); S.tune = { mid: 0, ev: 0, bp: 0, shadows: 0, highlights: 0, vibrance: 0, sat: 0, rich: 0, structure: 0, sharpen: 0 };
+    const cl = (k, v) => { const sd = SD[k]; return sd ? Math.max(sd[2] - 1, Math.min(sd[3] + 1, v)) : v; };
+    let st = run();
+    for (let it = 0; it < 12; it++) {
+      const eMed = T.med - st.med, eLow = st.p05 - T.p05, eHi = st.p95 - T.p95;
+      S.tune.mid = Math.max(-1.6, Math.min(1, S.tune.mid + eMed * 2.2)); if (effective(true).mid <= -0.98 && eMed < 0) S.tune.ev = Math.max(-1.2, S.tune.ev + eMed * 2.5);
+      S.tune.bp = Math.max(-0.05, Math.min(0.14, S.tune.bp + eLow * 0.6));
+      S.tune.shadows = Math.max(-0.8, Math.min(0.2, S.tune.shadows - eLow * 1.5));
+      S.tune.highlights = Math.max(-0.3, Math.min(0.6, S.tune.highlights + eHi * 2));
+      if (T.sat != null) { const eS = T.sat - st.sat; S.tune.vibrance = Math.max(-0.3, Math.min(0.6, S.tune.vibrance + eS * 1.6)); S.tune.rich = Math.max(0, Math.min(1, S.tune.rich + eS * 2.4)); }
+      const eM = T.mic / Math.max(1e-4, st.mic) - 1; S.tune.structure = Math.max(-0.2, Math.min(0.9, S.tune.structure + eM * 0.45)); if (S.tune.structure >= 0.89 && eM > 0) S.tune.sharpen = Math.min(0.8, S.tune.sharpen + eM * 0.5);
+      st = run();
+      if (Math.abs(T.med - st.med) < 0.012 && Math.abs(st.p05 - T.p05) < 0.012 && (T.sat == null || Math.abs(T.sat - st.sat) < 0.02) && Math.abs(st.mic / T.mic - 1) < 0.08) break;
+    }
+    S.tuneInfo = { o, T, st, ms: Math.round(performance.now() - t0), tune: { ...S.tune }, eff: (() => { const e = effective(true); return { mid: e.mid, bp: e.bp, shadows: e.shadows, vibrance: e.vibrance, sat: e.sat, structure: e.structure, contrast: e.contrast, midDesat: e.midDesat, fade: e.fade }; })() }; 
+    TM.tune = S.tuneInfo.ms;
+  }
+  let tuneT = null;
+  function scheduleTune() { clearTimeout(tuneT); tuneT = setTimeout(() => { autoTune(); schedule(); scheduleThumbs(); }, 60); }
+
   /* ---------- looks, retoques em 1 toque, ajustar e formato ---------- */
   const LOOK_ORDER = ["blockbuster", "kodak", "golden", "noir", "neon", "editorial", "sonho", "drama", "vibrante", "pb", "claro"];
   function buildLooksUI() {
@@ -2551,10 +2600,10 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     [null, ...LOOK_ORDER].forEach(id => {
       const b = document.createElement("button"); b.type = "button"; b.className = "look"; b.dataset.id = id || "";
       b.innerHTML = `<canvas width="236" height="296"></canvas><span>${id ? LOOKS[id].name : "Sem look"}</span><em>${id ? LOOKS[id].tag : "só o automático"}</em>`;
-      b.addEventListener("click", () => { S.look = id; S.noBars = null; renderLooksState(); schedule(); });
+      b.addEventListener("click", () => { S.look = id; S.noBars = null; renderLooksState(); scheduleTune(); schedule(); });
       box.appendChild(b);
     });
-    $("lookK").addEventListener("input", e => { S.lookK = e.target.value / 100; $("lookKOut").textContent = e.target.value + "%"; schedule(); });
+    $("lookK").addEventListener("input", e => { S.lookK = e.target.value / 100; $("lookKOut").textContent = e.target.value + "%"; scheduleTune(); schedule(); });
   }
   function renderLooksState() {
     document.querySelectorAll(".look").forEach(b => b.setAttribute("aria-pressed", String((S.look || "") === b.dataset.id)));
@@ -2593,7 +2642,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   // ao abrir a foto: aplica a melhor produção sozinho, já no formato do Instagram
   function autoProduce(id) {
     S.look = id; S.lookK = 1; S.noBars = null; $("lookK").value = 100; $("lookKOut").textContent = "100%";
-    renderLooksState(); heroText(); schedule();
+    renderLooksState(); heroText(); scheduleTune(); schedule();
   }
   function heroText() {
     const L = S.look && LOOKS[S.look];
@@ -2653,7 +2702,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- carregar foto ---------- */
   function load(canvas, name) {
-    S.orig = canvas; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
+    S.orig = canvas; S.tune = {}; S.orig0 = null; S.aiCache = null; S.split = false; if ($("aiViewRow")) { $("aiViewRow").hidden = true; $("aiSplit").setAttribute("aria-pressed", "false"); } S.prevData0 = null; if ($("aiUndo")) { $("aiUndo").hidden = true; $("aiStrRow").hidden = true; $("aiSub").textContent = "Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho."; } S.name = name; S.small = null; S.thumb = null; S.autoDone = false; S.autoFmt = false; S.noBars = null; S.noGrain = false; S.look = null; S.lookK = 1; S.fmt = "orig"; if ($("lookK")) { $("lookK").value = 100; $("lookKOut").textContent = "100%"; } S.fast = false; S.manual = {}; S.detail = null; S.locals = []; S.sel = -1; S.rm = {}; S.undo = []; S.lastRender = null; if (S.lbox) renderLocalBox(); S.filter = null; S.filterK = 1; if (S.curveLut) resetCurves(); S.seg = null; S.depth = null; S.dofFocus = null; S.faceLms = null; S.beard = null; S.skin = null; S.bgb = null; S.face = null; S.ovFace = null; if (S.an) S.an.face = undefined; S.segRaw = null; S.segRef = null; S.ov = null; S.userPicked = false; S.overlay = false; $("ovl").checked = false; $("ovl").disabled = true; $("regs").innerHTML = "";
     const long = 1000, sc = Math.min(1, long / Math.max(canvas.width, canvas.height));
     const pw = Math.round(canvas.width * sc), ph = Math.round(canvas.height * sc);
     const pc = document.createElement("canvas"); pc.width = pw; pc.height = ph;
