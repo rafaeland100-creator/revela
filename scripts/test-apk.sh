@@ -10,6 +10,7 @@ curl -s http://localhost:9222/json/version || true
 node scripts/test-apk.js || echo "TESTE FALHOU"
 adb exec-out screencap -p > out/tela-final.png
 adb shell content query --uri content://media/external/images/media --projection _display_name:relative_path:_size > out/galeria.txt 2>&1 || true
+adb shell ls -la /sdcard/Pictures/Revela >> out/galeria.txt 2>&1 || true
 cat out/galeria.txt
 adb logcat -d > out/logcat-completo.txt 2>&1 || true
 grep -iE "Capacitor|chromium|revela|Media|FATAL|ANR|lowmem" out/logcat-completo.txt | tail -300 > out/logcat.txt || true

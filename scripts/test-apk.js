@@ -1,5 +1,6 @@
 // Controla o app dentro do emulador pelo protocolo de depuração do Chrome (sem Playwright).
-const fs = require('fs');
+const fs = require('fs'); const { execSync } = require('child_process');
+const screencap = name => { try { execSync('adb exec-out screencap -p > out/' + name, { timeout: 30000 }); } catch (e) {} };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => { const t = a.join(' '); console.log(t); fs.appendFileSync('out/resultado.txt', t + '\n'); };
 async function connect() {
@@ -34,11 +35,11 @@ async function testPhoto(s, file, tag) {
   const tAI = await s.waitFor("document.getElementById('aiPill').hidden", 360000);
   log('[' + tag + '] IAs em segundo plano terminaram: ' + (tAI < 0 ? 'NÃO TERMINARAM em 6 min | etapa: ' + await s.ev("document.getElementById('aiPillT').textContent") : (Date.now() - t0) + ' ms'));
   log('[' + tag + '] o que o app fez: ' + await s.ev("[...document.querySelectorAll('#notes li')].map(l => l.textContent).slice(0, 3).join(' || ').slice(0, 500)"));
-  await s.shot(tag + '-editado.png');
+  await s.shot(tag + '-editado.png'); screencap(tag + '-tela-real.png');
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
   const tSave = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
   log('[' + tag + '] salvar: ' + (tSave < 0 ? 'SEM RESPOSTA' : tSave + ' ms') + ' | aviso: ' + await s.ev("document.getElementById('toast').textContent"));
-  await sleep(3000); await s.shot(tag + '-salvo.png');
+  await sleep(3000); screencap(tag + '-salvo-tela-real.png'); await s.ev("document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape'})); true"); try { execSync('adb shell input keyevent 4'); } catch (e) {} await sleep(1500);
 }
 (async () => {
   let pg = await connect(); await sleep(8000); pg = await connect();
@@ -46,6 +47,7 @@ async function testPhoto(s, file, tag) {
   log('url:', await s.ev('location.href'), '| nativo:', await s.ev('!!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())'), '| vários núcleos:', await s.ev('self.crossOriginIsolated'), '| núcleos:', await s.ev('navigator.hardwareConcurrency'));
   log('service worker ativo:', await s.ev('!!(navigator.serviceWorker && navigator.serviceWorker.controller)'));
   log('plugins nativos:', await s.ev('Object.keys((window.Capacitor && window.Capacitor.Plugins) || {}).join(",")'));
+  log('núcleos da IA e preparo:', await s.ev("typeof SharedArrayBuffer !== 'undefined'"));
   log('IAs prontas em', await s.waitFor("/pronta|indispon/.test(document.getElementById('segStat').textContent)", 120000), 'ms |', await s.ev("document.getElementById('segStat').textContent"));
   await testPhoto(s, 'scripts/teste-retrato.jpg', 'retrato');
   await testPhoto(s, 'scripts/teste-paisagem.jpg', 'paisagem');

@@ -1,5 +1,5 @@
 /* Revela: cache do app e dos modelos para funcionar sem internet depois da primeira abertura. */
-const VERSION = "revela-v12";
+const VERSION = "revela-v13";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 // bibliotecas e modelos, para o app funcionar sem internet desde a primeira instalação
 const HEAVY = ["vendor/mediapipe/vision_bundle.mjs", "vendor/mediapipe/wasm/vision_wasm_internal.js", "vendor/mediapipe/wasm/vision_wasm_internal.wasm", "vendor/models/selfie_multiclass_256x256.tflite", "vendor/models/face_landmarker.task", "vendor/ort/ort.wasm.min.mjs", "vendor/ort/ort-wasm-simd-threaded.mjs", "vendor/ort/ort-wasm-simd-threaded.wasm", "vendor/models/realesr-general-x4v3.onnx", "vendor/models/depth_anything_v2_small_int8.onnx", "vendor/models/segformer_b1_ade_q.onnx"];

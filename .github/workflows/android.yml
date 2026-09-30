@@ -41,6 +41,15 @@ jobs:
       - name: Criar o projeto Android
         run: npx cap add android
 
+      - name: Salvamento nativo na galeria (sem permissões no Android 10+)
+        run: |
+          D=android/app/src/main/java/com/revela/app
+          cp native/GalleryPlugin.java native/MainActivity.java "$D/"
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />#' "$M"
+          ls "$D"
+
       - name: Ícones do app
         run: npx @capacitor/assets generate --android
 
