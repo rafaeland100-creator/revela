@@ -39,7 +39,7 @@ async function testPhoto(s, file, tag) {
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
   const tSave = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
   log('[' + tag + '] salvar: ' + (tSave < 0 ? 'SEM RESPOSTA' : tSave + ' ms') + ' | aviso: ' + await s.ev("document.getElementById('toast').textContent"));
-  await sleep(3000); screencap(tag + '-salvo-tela-real.png'); await s.ev("document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape'})); true"); try { execSync('adb shell input keyevent 4'); } catch (e) {} await sleep(1500);
+  await sleep(3000); screencap(tag + '-salvo-tela-real.png'); await s.ev("document.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape'})); true"); await sleep(1500);
 }
 (async () => {
   let pg = await connect(); await sleep(8000); pg = await connect();
