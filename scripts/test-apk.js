@@ -21,7 +21,7 @@ async function session(pg) {
   const ev = async expr => { const r = await Promise.race([send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }), sleep(30000).then(() => ({ result: { result: { value: 'SEM RESPOSTA (tela travada)' } } }))]); if (r.result && r.result.exceptionDetails) return 'EXC ' + JSON.stringify(r.result.exceptionDetails).slice(0, 300); return r.result && r.result.result ? r.result.result.value : null; };
   const waitFor = async (expr, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr) === true) return Date.now() - t; await sleep(1000); } return -1; };
   const shot = async name => { const r = await send('Page.captureScreenshot', { format: 'png' }); if (r.result && r.result.data) fs.writeFileSync('out/' + name, Buffer.from(r.result.data, 'base64')); };
-  return { ev, waitFor, shot, ws };
+  return { ev, waitFor, shot, ws, send };
 }
 async function testPhoto(s, file, tag) {
   const b64 = fs.readFileSync(file).toString('base64');
@@ -29,6 +29,8 @@ async function testPhoto(s, file, tag) {
   await s.ev("(async () => { const b = await (await fetch('data:image/jpeg;base64," + b64 + "')).blob(); const f = new File([b], '" + tag + ".jpg', { type: 'image/jpeg' }); const dt = new DataTransfer(); dt.items.add(f); const inp = document.getElementById('file'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true })); return true; })()");
   const tShow = await s.waitFor("document.getElementById('capName').textContent === '" + tag + ".jpg' && document.getElementById('view').width > 100", 60000);
   log('[' + tag + '] foto na tela: ' + (tShow < 0 ? 'NÃO APARECEU' : (Date.now() - t0) + ' ms'));
+  const tIA = await s.waitFor("/IA Revela|clássico/.test(document.getElementById('heroT').textContent)", 60000);
+  log('[' + tag + '] IA Revela: ' + (tIA < 0 ? 'NÃO RODOU' : await s.ev("document.getElementById('heroT').textContent + ' | conta da rede ' + window.__tm.tom + ' ms | ' + document.getElementById('heroS').textContent.slice(0, 140)")));
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
   const tS0 = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
   log('[' + tag + '] salvar logo que a foto apareceu: ' + (tS0 < 0 ? 'SEM RESPOSTA em 3 min' : tS0 + ' ms') + ' | aviso: ' + await s.ev("document.getElementById('toast').textContent"));
@@ -54,5 +56,27 @@ async function testPhoto(s, file, tag) {
   const t1 = Date.now(); await s.ev("document.getElementById('aiFast').click(); true");
   const tA = await s.waitFor("/Pronto em|Não deu|Cancelado/.test(document.getElementById('aiSub').textContent)", 480000);
   log('IA de detalhe (Só fundo):', tA < 0 ? 'NÃO TERMINOU em 8 min' : (Date.now() - t1) + ' ms', '|', await s.ev("document.getElementById('aiSub').textContent"));
+  // Fundo de cinema: a profundidade agora só é medida quando o botão é tocado
+  await testPhoto(s, 'scripts/teste-retrato.jpg', 'retrato2');
+  const t2 = Date.now(); await s.ev("document.querySelector('#quick .chip[data-k=dof]').click(); true"); await sleep(1500);
+  const tD = await s.waitFor("document.getElementById('aiPill').hidden && !document.getElementById('quickMsg').textContent", 240000);
+  log('Fundo de cinema (profundidade sob demanda):', tD < 0 ? 'NÃO TERMINOU em 4 min | ' + await s.ev("document.getElementById('quickMsg').textContent") : (Date.now() - t2) + ' ms'); await sleep(2500); await s.shot('fundo-de-cinema.png');
+  await s.ev("document.querySelector('#quick .chip[data-k=dof]').click(); true"); await sleep(1500);
+  // zoom por pinça com dois dedos de verdade (eventos de toque)
+  const bx = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('view').getBoundingClientRect()))"));
+  const pts = d => [{ x: bx.x - d, y: bx.y, id: 0 }, { x: bx.x + d, y: bx.y, id: 1 }];
+  await s.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pts(30) });
+  for (const d of [45, 60, 80, 100]) { await s.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pts(d) }); await sleep(60); }
+  await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(800);
+  log('pinça com dois dedos: zoom =', await s.ev("document.getElementById('view').style.transform || 'sem zoom'"), '| zoom da página:', await s.ev('visualViewport.scale')); screencap('zoom-tela-real.png');
+  // botão Voltar do Android: 1º desfaz o zoom, 2º fecha a ferramenta, 3º volta de aba, 4º avisa; o app não pode fechar
+  const voltar = async () => { try { execSync('adb shell input keyevent 4', { timeout: 20000 }); } catch (e) {} await sleep(1500); };
+  await voltar(); log('Voltar 1 (zoom):', await s.ev("document.getElementById('view').style.transform || 'zoom desfeito'"));
+  await s.ev("document.querySelector('.tabbtn[data-tab=ferramentas]').click(); document.querySelector('.tool[data-tool=adjust]').click(); true"); await sleep(800);
+  await voltar(); log('Voltar 2 (ferramenta aberta): lista de ferramentas visível =', await s.ev("!document.getElementById('toolList').hidden"));
+  await voltar(); log('Voltar 3 (aba): Looks selecionada =', await s.ev("document.querySelector('.tabbtn[data-tab=looks]').getAttribute('aria-selected')"));
+  await voltar(); log('Voltar 4 (sair): aviso =', await s.ev("document.getElementById('toast').textContent"), '| app continua aberto =', await s.ev("document.visibilityState"));
+  let foco = ''; try { foco = execSync('adb shell dumpsys activity activities', { timeout: 20000 }).toString().split(/\r?\n/).filter(l => /mResumedActivity|topResumedActivity/.test(l)).join(' ').trim().slice(0, 200); } catch (e) {}
+  log('atividade em primeiro plano:', foco);
   s.ws.close();
 })().catch(e => { log('ERRO', e.message); process.exit(1); });

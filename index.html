@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>html{color-scheme:light;touch-action:pan-x pan-y}body{margin:0;overscroll-behavior:none}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Revela</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -250,7 +250,8 @@ body { background: var(--bg); }
 .dpair canvas { width: 100%; aspect-ratio: 1; background: #111; border-radius: 8px; touch-action: none; display: block; }
 .dpair figcaption { text-align: center; font-size: 13px; color: var(--mute); margin-top: 6px; }
 .detail p { margin: 0; color: var(--mute); font-size: 13px; text-align: center; }
-.hero.ai { background: linear-gradient(135deg, rgba(120,90,255,.18), rgba(60,190,255,.14)); border-color: rgba(120,140,255,.4); }
+.hero.ai { background: linear-gradient(135deg, rgba(120,90,255,.18), rgba(60,190,255,.14)); border-color: rgba(120,140,255,.4); margin-top: 16px; }
+.chips.motor { margin: 2px 0 10px; }
 .aibar { height: 6px; background: #2a2a31; border-radius: 3px; overflow: hidden; margin-top: 10px; }
 .aibar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7a5aff, #3cbeff); }
 .look[aria-pressed="true"] span { color: var(--fg); font-weight: 600; }
@@ -280,6 +281,21 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   .main { grid-template-rows: minmax(0, 1fr) minmax(290px, 44%); }
   .panel { border-radius: 18px 18px 0 0; }
   .btn { padding: 8px 13px; }
+}
+/* dedo precisa de alvo de pelo menos 40 px */
+@media (pointer: coarse), (max-width: 860px) {
+  .tools .btn { min-height: 42px; padding: 8px 14px; }
+  .chip, .fchip { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+  .linkbtn { min-height: 40px; }
+  .switch { min-height: 44px; }
+}
+/* no celular a ferramenta aberta mostra direto os controles: o nome dela vai no botão de voltar */
+@media (max-width: 860px) {
+  .panes { padding-top: 6px; }
+  #toolView > .toolhead { margin-top: 0; }
+  #toolBack { font-size: 14px; font-weight: 600; text-decoration: none; }
+  #toolBack[data-name]:not([data-name=""])::after { content: " · " attr(data-name); color: var(--fg); }
+  .toolpane > .toolhead, .toolpane > .toolhead + .tnote { display: none; }
 }
 </style>
 
@@ -332,21 +348,24 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       <div class="panes">
 
       <div class="tab" data-tab="looks">
-        <label class="switch"><input type="checkbox" id="autoSw" checked><span class="tr"></span><span><b>Automático</b><small id="autoHint">Ao abrir a foto, o app escolhe e aplica a produção.</small></span></label>
-        <div class="hero" id="hero"><b id="heroT">Preparando a produção…</b><span id="heroS">Escolhendo o visual de cinema para esta foto.</span><div class="chips"><button class="chip" id="barsChip" type="button" aria-pressed="true">Faixas de cinema</button><button class="chip" id="grainChip" type="button" aria-pressed="true">Grão de filme</button></div></div>
-        <div class="hero ai" id="aiBox">
-          <b>Melhoria com IA</b><span id="aiSub">Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho.</span>
-          <div class="chips"><button class="chip" id="aiAll" type="button" style="border-color:rgba(255,106,85,.6)">Tudo · rosto + fundo</button><button class="chip" id="aiFace" type="button">Só rostos</button><button class="chip" id="aiFast" type="button">Só fundo</button><button class="chip" id="aiBest" type="button">Fundo (melhor)</button><button class="chip" id="aiUndo" type="button" hidden>Desfazer IA</button></div>
-          <div class="chips" id="aiViewRow" hidden><button class="chip" id="aiSplit" type="button" aria-pressed="false">Antes / Depois</button><button class="chip" id="aiZoom" type="button">Ver detalhe 100%</button></div>
-          <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
-          <div class="chips" id="aiCancelRow" hidden><button class="chip" id="aiCancel" type="button">Cancelar</button></div>
-          <div class="field" id="aiStrRow" hidden style="margin-top:8px"><label for="aiStr">Força da IA</label><input type="range" id="aiStr" min="0" max="150" step="1" value="100"><output id="aiStrOut">100%</output></div>
-        </div>
+        <label class="switch"><input type="checkbox" id="autoSw" checked><span class="tr"></span><span><b>Automático</b><small id="autoHint">Ao abrir a foto, a IA do app corrige luz e cor sozinha.</small></span></label>
+        <div class="chips motor" id="motorRow" role="group" aria-label="Motor do automático"><button class="chip" id="motorIa" type="button" aria-pressed="true">IA Revela</button><button class="chip" id="motorRg" type="button" aria-pressed="false">Clássico (regras)</button></div>
+        <div class="hero" id="hero"><b id="heroT">Abra uma foto para começar</b><span id="heroS">A IA do app ajusta luz e cor; depois você escolhe um look, se quiser.</span>
+          <div class="field" id="tomRow" hidden style="margin-top:8px"><label for="tomK">Força da IA</label><input type="range" id="tomK" min="0" max="150" step="1" value="100"><output id="tomKOut">100%</output></div>
+          <div class="chips"><button class="chip" id="barsChip" type="button" aria-pressed="true" hidden>Faixas de cinema</button><button class="chip" id="grainChip" type="button" aria-pressed="true" hidden>Grão de filme</button></div></div>
         <div class="looks" id="looks"></div>
         <div class="field lookk"><label for="lookK">Intensidade</label><input type="range" id="lookK" min="0" max="120" step="1" value="100"><output id="lookKOut">100%</output></div>
         <h3 class="mini">Retoques em 1 toque</h3>
         <div class="chips" id="quick"></div>
         <p class="bmsg" id="quickMsg" style="margin:6px 0 0"></p>
+        <div class="hero ai" id="aiBox">
+          <b>Mais detalhe com IA</b><span id="aiSub">Reconstrói detalhe, tira ruído e nitidez de foto de celular, como o DLSS faz num jogo. Roda no seu aparelho.</span>
+          <div class="chips"><button class="chip" id="aiAll" type="button" style="border-color:rgba(255,106,85,.6)">Tudo · rosto + fundo</button><button class="chip" id="aiFace" type="button">Só rostos</button><button class="chip" id="aiFast" type="button">Só fundo</button><button class="chip" id="aiBest" type="button">Fundo (melhor)</button><button class="chip" id="aiUndo" type="button" hidden>Desfazer IA</button></div>
+          <div class="chips" id="aiViewRow" hidden><button class="chip" id="aiSplit" type="button" aria-pressed="false">Antes / Depois</button><button class="chip" id="aiZoom" type="button">Ver detalhe 100%</button></div>
+          <div class="aibar" id="aiBar" hidden><i id="aiFill"></i></div>
+          <div class="chips" id="aiCancelRow" hidden><button class="chip" id="aiCancel" type="button">Cancelar</button></div>
+          <div class="field" id="aiStrRow" hidden style="margin-top:8px"><label for="aiStr">Força do detalhe</label><input type="range" id="aiStr" min="0" max="150" step="1" value="100"><output id="aiStrOut">100%</output></div>
+        </div>
         <details class="why"><summary>O que o app fez nesta foto</summary><ul class="notes" id="notes"></ul></details>
       </div>
 
@@ -452,7 +471,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     teethWhite: 0, eyeWhite: 0, eyeIris: 0,
     shR: 0, shG: 0, shB: 0, hiR: 0, hiG: 0, hiB: 0, halation: 0, bars: 0, bloomHi: 0, dof: 0, rich: 0, scene: 0,
     tcLow: 0, tcMid: 0, tcHigh: 0, glow: 0, glowRange: 0, fade: 0, leak: 0,
-    structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0 };
+    structure: 0, sharpen: 0, grain: 0, lensBlur: 0, lensSize: 0.3, lensX: 0.5, lensY: 0.5, vigSize: 0, bwFilter: 2, faceEnh: 0, faceLight: 0, ai: 0 };
   const BWW = [[0.3, 0.59, 0.11], [0.5, 0.45, 0.05], [0.6, 0.3, 0.1], [0.8, 0.18, 0.02], [0.2, 0.7, 0.1], [0.1, 0.3, 0.6]];
   const BWN = ["Neutro", "Amarelo", "Laranja", "Vermelho", "Verde", "Azul"];
 
@@ -614,14 +633,14 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     x.drawImage(canvas, 0, 0, w, h);
     const d = x.getImageData(0, 0, w, h).data, n = w * h;
     const hist = new Float64Array(256);
-    let sumS = 0, mr = 0, mg = 0, mb = 0, mc = 0, skin = 0, skinYs = [], sky = 0, green = 0, skyN = 0, cSum = 0, cN = 0, eSum = 0, eN = 0;
+    let sumS = 0, mr = 0, mg = 0, mb = 0, mc = 0, skin = 0, skinYs = [], sky = 0, green = 0, skyN = 0, cSum = 0, cN = 0, eSum = 0, eN = 0, chromaN = 0, warmN = 0, coolN = 0;
     for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) {
       const i = (y * w + xx) * 4;
       const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
       const Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
       hist[Math.min(255, (Y * 255) | 0)]++;
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-      sumS += mx > 0 ? (mx - mn) / mx : 0;
+      sumS += mx > 0 ? (mx - mn) / mx : 0; if (mx - mn > 0.045) chromaN++; if (r - b > 0.03) warmN++; else if (b - r > 0.03) coolN++;
       // pele: faixa clássica em YCbCr
       const R = r * 255, G = g * 255, B = b * 255;
       const cb = 128 - 0.168736 * R - 0.331264 * G + 0.5 * B;
@@ -646,6 +665,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       skyFrac: sky / Math.max(1, skyN), greenFrac: green / n
     };
     a.dr = a.p95 - a.p05;
+    // foto realmente em preto e branco: quase nenhum pixel com cor. Mar cinzento ou neblina têm pouca cor, mas têm.
+    a.mono = chromaN / n < 0.01 && a.satMean < 0.035;
+    // foto de um tom só (sépia, azulada): tem cor, mas toda para o mesmo lado. Não é "pele sem cor", é escolha de quem fez.
+    a.toned = !a.mono && Math.min(warmN, coolN) / n < 0.03 && a.satMean < 0.22;
+    TM.cor = { mono: a.mono, toned: a.toned, quente: +(warmN / n).toFixed(3), fria: +(coolN / n).toFixed(3), sat: +a.satMean.toFixed(3) };
     a.vig = cN && eN && cSum > 0 ? (eSum / eN) / (cSum / cN) : 1;
     const sL = Math.min(1, a.skinFrac * 6);
     const sA = Math.min(1, a.skyFrac * 1.6 + a.greenFrac * 1.2 + (a.dr > 0.7 ? 0.15 : 0));
@@ -1030,7 +1054,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   function onSeg(ms) {
     const sg = S.seg, n = sg.w * sg.h, a = S.an, P = S.prevData, sx = P.width / sg.w, sy = P.height / sg.h;
-    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0; const skinYs = [];
+    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0, skR = 0, skG = 0, skB = 0; const skinYs = [];
     const ov = document.createElement("canvas"); ov.width = sg.w; ov.height = sg.h;
     const ox = ov.getContext("2d"), oi = ox.createImageData(sg.w, sg.h);
     for (let i = 0; i < n; i++) {
@@ -1040,7 +1064,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       const Y = (0.2126 * P.data[px] + 0.7152 * P.data[px + 1] + 0.0722 * P.data[px + 2]) / 255;
       const bw = sg.cls[0][i] / 255;
       if (bw > 0.7) { bgY += Y; bgN++; } else if (bw < 0.3) { sjY += Y; sjN++; }
-      if (sg.cls[2][i] + sg.cls[3][i] > 400) skinYs.push(Y);
+      // pele do corpo + pele do rosto com 60% de certeza ou mais (as classes somam 255; o limite antigo, 400, nunca era atingido)
+      if (sg.cls[2][i] + sg.cls[3][i] > 150) { skinYs.push(Y); skR += P.data[px]; skG += P.data[px + 1]; skB += P.data[px + 2]; }
       if (best !== 0) { const c = REG[best].rgb; oi.data[i * 4] = c[0]; oi.data[i * 4 + 1] = c[1]; oi.data[i * 4 + 2] = c[2]; oi.data[i * 4 + 3] = 110; }
     }
     S.rm = {};
@@ -1057,7 +1082,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     }
     const bgGrad = gn > 50 ? gs / gn : 0;
     let shineN = 0; for (const v of skinYs) if (v > 0.8) shineN++;
-    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr };
+    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr, skinRGB: skinYs.length > 20 ? [skR / skinYs.length / 255, skG / skinYs.length / 255, skB / skinYs.length / 255] : null };
     a.skinFrac = fr[2] + fr[3];
     if (skinYs.length > 20) a.skinY = skinYs[skinYs.length >> 1];
     a.scene = a.med < 0.2 ? "Pouca luz" : (fr[3] > 0.05 || a.seg.person > 0.35) ? "Retrato" : a.seg.person > 0.05 ? "Pessoa no ambiente" : (a.skyFrac > 0.15 || a.greenFrac > 0.2) ? "Paisagem" : "Cena geral";
@@ -1069,21 +1094,172 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     setSegStatus("Regiões prontas em " + ms + " ms.", true);
     $("regs").innerHTML = REG.map((r, i) => `<span><i style="background:rgb(${r.rgb})"></i>${r.name}<b>${Math.round(fr[i] * 100)}%</b></span>`).join("");
     $("ovl").disabled = false; showStats(a); applyStyle();
-    runScene().then(runDepth);
-  }
-  async function runDepth() {
     const token = S.prev;
-    try {
-      if (!(S.an && S.an.seg && S.an.seg.person > 0.06 && (S.an.seg.fr[3] > 0.004 || S.an.seg.person > 0.2))) { pill(null); toastDone(); return; }
-      pill("A IA está medindo a profundidade…"); await nextTick();
-      const t0 = performance.now(), D = await withTimeout(computeDepth(S.prev), 90000, "profundidade"); if (token !== S.prev) return; console.log("[revela] profundidade " + Math.round(performance.now() - t0) + " ms");
-      S.depth = D; autoFocus(); S.rm = {};
-      if (S.detail) S.detail.dof = null; if (S.small && S.small.dt) S.small.dt.dof = null;
-      applyStyle();
-    } catch (e) { S.depth = null; console.log("[revela] profundidade falhou: " + (e.message || e)); }
-    pill(null); toastDone();
+    runScene().then(() => { if (token !== S.prev) return; pill(null); toastDone(); });
   }
-  function toastDone() { if (S.an && S.an.scene2 && S.an.scene2.length) toast("Pronto. A IA melhorou: " + S.an.scene2.slice(0, 3).map(z => z.n).join(", ") + (S.depth && effective().dof > 0.05 ? ", fundo com profundidade" : "") + ".", 3200); }
+  // a profundidade só é medida quando alguém pede o desfoque de fundo: no celular ela leva vários segundos
+  let depthJob = null;
+  function ensureDepth() {
+    if (S.depth) return Promise.resolve(true);
+    if (!S.prev) return Promise.resolve(false);
+    if (depthJob && depthJob.token === S.prev) return depthJob.p;
+    const token = S.prev, p = (async () => {
+      try {
+        pill("A IA está medindo a profundidade…"); await nextTick();
+        const t0 = performance.now(), D = await withTimeout(computeDepth(token), 90000, "profundidade"); if (token !== S.prev) return false; console.log("[revela] profundidade " + Math.round(performance.now() - t0) + " ms");
+        S.depth = D; autoFocus(); S.rm = {};
+        if (S.detail) S.detail.dof = null; if (S.small && S.small.dt) S.small.dt.dof = null;
+        pill(null); schedule(); scheduleThumbs(); return true;
+      } catch (e) { if (token === S.prev) { S.depth = null; pill(null); } console.log("[revela] profundidade falhou: " + (e.message || e)); return false; }
+    })();
+    depthJob = { token, p }; return p;
+  }
+  function toastDone() { if (S.an && S.an.scene2 && S.an.scene2.length && autoOn()) toast("Pronto. Reconheci e reforcei: " + S.an.scene2.slice(0, 3).map(z => z.n).join(", ") + ".", 2800); }
+
+  /* ---------- IA Revela: rede própria de luz e cor ----------
+     Treinada por nós (pasta treino/ do projeto). Olha a foto reduzida a 128×128 e o histograma e devolve
+     uma correção global: matriz de cor, uma curva por canal e saturação/vibração. A conta da rede é feita
+     aqui mesmo, em JavaScript puro, então não depende de biblioteca de IA nem de internet. */
+  const TOM = { net: null, state: "idle", wait: null };
+  function tomLoad() {
+    if (TOM.net || TOM.state === "failed") return Promise.resolve(TOM.net);
+    if (TOM.wait) return TOM.wait;
+    TOM.state = "loading";
+    TOM.wait = fetch(new URL("vendor/models/revela_tom.bin", location.href).href).then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); }).then(buf => {
+      const hd = new Uint32Array(buf, 0, 16); if (hd[0] !== 0x31545652) throw new Error("arquivo inválido");
+      const K = hd[2], NB = hd[3], NS = hd[4], nc = hd[5], HH = hd[6 + nc], FH = hd[7 + nc], NP = hd[8 + nc], NH = NB * 4 + NS;
+      const f = new Float32Array(buf, 64); let o = 0; const take = n => { const a = f.subarray(o, o + n); o += n; return a; };
+      const conv = []; let ci = 3; for (let l = 0; l < nc; l++) { const co = hd[6 + l]; conv.push({ ci, co, w: take(co * ci * 9), b: take(co) }); ci = co; }
+      const fin = ci * 2 + HH, hist = { w: take(HH * NH), b: take(HH) }, fc1 = { w: take(FH * fin), b: take(FH) }, fc2 = { w: take(NP * FH), b: take(NP) };
+      if (o !== f.length) throw new Error("tamanho inesperado");
+      TOM.net = { K, NB, NS, NH, HH, FH, NP, fin, conv, hist, fc1, fc2 }; TOM.state = "ready"; return TOM.net;
+    }).catch(e => { TOM.state = "failed"; console.log("[revela] a IA Revela não carregou: " + (e.message || e)); return null; });
+    return TOM.wait;
+  }
+  // foto reduzida a 128×128 por média de área (qualquer proporção vira quadrado; para luz e cor não faz diferença)
+  function tomThumb(data, W, H) {
+    const T = 128, n = T * T, out = new Float32Array(3 * n);
+    for (let ty = 0; ty < T; ty++) {
+      const y0 = Math.floor(ty * H / T), y1 = Math.min(H, Math.max(y0 + 1, Math.floor((ty + 1) * H / T)));
+      for (let tx = 0; tx < T; tx++) {
+        const x0 = Math.floor(tx * W / T), x1 = Math.min(W, Math.max(x0 + 1, Math.floor((tx + 1) * W / T))); let r = 0, g = 0, b = 0;
+        for (let y = y0; y < y1; y++) for (let x = x0, i = (y * W + x0) * 4; x < x1; x++, i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
+        const q = ty * T + tx, k = 1 / (255 * (y1 - y0) * (x1 - x0)); out[q] = r * k; out[n + q] = g * k; out[2 * n + q] = b * k;
+      }
+    }
+    return out;
+  }
+  function tomHist(img, net) {
+    const n = 128 * 128, NB = net.NB, NS = net.NS, h = new Float32Array(net.NH), k = 1 / n;
+    for (let i = 0; i < n; i++) {
+      const r = img[i], g = img[n + i], b = img[2 * n + i], y = 0.2126 * r + 0.7152 * g + 0.0722 * b, mx = Math.max(r, g, b), s = (mx - Math.min(r, g, b)) / (mx + 1e-4);
+      h[Math.min(NB - 1, (r * NB) | 0)] += k; h[NB + Math.min(NB - 1, (g * NB) | 0)] += k; h[2 * NB + Math.min(NB - 1, (b * NB) | 0)] += k;
+      h[3 * NB + Math.min(NB - 1, (y * NB) | 0)] += k; h[4 * NB + Math.min(NS - 1, (s * NS) | 0)] += k;
+    }
+    return h;
+  }
+  // convolução 3×3 com passo 2 e borda 1, seguida de ReLU
+  function tomConv(x, hw, L) {
+    const ci = L.ci, co = L.co, w = L.w, oh = hw >> 1, sp = hw * hw, osp = oh * oh, out = new Float32Array(co * osp);
+    for (let o = 0; o < co; o++) {
+      const bias = L.b[o], ob = o * osp, wo = o * ci * 9;
+      for (let oy = 0; oy < oh; oy++) for (let ox = 0; ox < oh; ox++) {
+        let acc = bias; const iy0 = oy * 2 - 1, ix0 = ox * 2 - 1;
+        for (let i = 0; i < ci; i++) {
+          const wb = wo + i * 9, xb = i * sp;
+          for (let ky = 0; ky < 3; ky++) { const iy = iy0 + ky; if (iy < 0 || iy >= hw) continue; const row = xb + iy * hw + ix0, wr = wb + ky * 3;
+            if (ix0 >= 0) acc += x[row] * w[wr]; acc += x[row + 1] * w[wr + 1]; if (ix0 + 2 < hw) acc += x[row + 2] * w[wr + 2]; }
+        }
+        out[ob + oy * oh + ox] = acc > 0 ? acc : 0;
+      }
+    }
+    return out;
+  }
+  function tomForward(img, hist, net) {
+    let x = new Float32Array(img.length); for (let i = 0; i < x.length; i++) x[i] = img[i] * 2 - 1;
+    let hw = 128; for (const L of net.conv) { x = tomConv(x, hw, L); hw >>= 1; }
+    const C = net.conv[net.conv.length - 1].co, sp = hw * hw, feat = new Float32Array(net.fin);
+    for (let c = 0; c < C; c++) { let s = 0, m = -Infinity; for (let i = 0; i < sp; i++) { const v = x[c * sp + i]; s += v; if (v > m) m = v; } feat[c] = s / sp; feat[C + c] = m; }
+    const lin = (L, inp, nin, nout, relu) => { const o = new Float32Array(nout); for (let j = 0; j < nout; j++) { let a = L.b[j]; const wb = j * nin; for (let i = 0; i < nin; i++) a += inp[i] * L.w[wb + i]; o[j] = relu && a < 0 ? 0 : a; } return o; };
+    const hs = new Float32Array(net.NH); for (let i = 0; i < net.NH; i++) hs[i] = hist[i] * net.NB;
+    feat.set(lin(net.hist, hs, net.NH, net.HH, true), 2 * C);
+    return lin(net.fc2, lin(net.fc1, feat, net.fin, net.FH, true), net.FH, net.NP, false);
+  }
+  // saída crua da rede -> matriz, curvas monotônicas, saturação e vibração (igual a parametros() do treino)
+  function tomParams(raw, K) {
+    const sp = v => v > 20 ? v : Math.log1p(Math.exp(v)), C0 = Math.log(Math.E - 1), M = new Float32Array(9);
+    for (let i = 0; i < 9; i++) M[i] = (i % 4 === 0 ? 1 : 0) + 0.5 * raw[i];
+    const cv = [0, 1, 2].map(c => { const y = new Float32Array(K), b = 9 + c * K; y[0] = 0.25 * raw[b]; for (let k = 1; k < K; k++) y[k] = y[k - 1] + sp(raw[b + k] + C0) / (K - 1); return y; });
+    return { M, cv, K, sat: sp(raw[9 + 3 * K] + C0), vib: Math.tanh(raw[10 + 3 * K]) };
+  }
+  function tomPixel(T, r, g, b) {
+    const M = T.M, Km = T.K - 1, c1 = v => v < 0 ? 0 : v > 1 ? 1 : v, cu = (y, u) => { const t = c1(u) * Km; let k = t | 0; if (k >= Km) k = Km - 1; return c1(y[k] + (y[k + 1] - y[k]) * (t - k)); };
+    let v0 = cu(T.cv[0], M[0] * r + M[1] * g + M[2] * b), v1 = cu(T.cv[1], M[3] * r + M[4] * g + M[5] * b), v2 = cu(T.cv[2], M[6] * r + M[7] * g + M[8] * b);
+    const y = 0.2126 * v0 + 0.7152 * v1 + 0.0722 * v2, mx = Math.max(v0, v1, v2), f = T.sat + T.vib * (1 - (mx - Math.min(v0, v1, v2)) / (mx + 1e-4));
+    return [c1(y + (v0 - y) * f), c1(y + (v1 - y) * f), c1(y + (v2 - y) * f)];
+  }
+  const lumaOf = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  function tomCompute() {
+    const net = TOM.net, src = S.prevData; if (!net || !src) { S.tom = null; return; }
+    const t0 = performance.now(), img = tomThumb(src.data, src.width, src.height), T = tomParams(tomForward(img, tomHist(img, net), net), net.K);
+    T.yl = new Float32Array(256); for (let i = 0; i < 256; i++) T.yl[i] = lumaOf(tomPixel(T, i / 255, i / 255, i / 255));
+    // resumo em números, para explicar ao usuário o que a rede decidiu
+    const n = 128 * 128; let y0 = 0, y1 = 0, s0 = 0, s1 = 0, wr = 0, y2 = 0, cnt = 0;
+    for (let i = 0; i < n; i += 3) { const r = img[i], g = img[n + i], b = img[2 * n + i], o = tomPixel(T, r, g, b), chroma = c => Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]), yo = lumaOf(o);
+      y0 += lumaOf([r, g, b]); y1 += yo; y2 += yo * yo; s0 += chroma([r, g, b]); s1 += chroma(o); wr += (o[0] - o[2]) - (r - b); cnt++; }
+    const k = 1 / cnt, mid = T.yl[128], lo = T.yl[20], hi = T.yl[235];
+    // desvio = contraste que a foto tem depois da correção; croma = quanta cor ela tem. Servem para dosar o acabamento.
+    T.info = { luz: (y1 - y0) * k, cor: s1 / Math.max(1e-4, s0), calor: wr * k, contraste: (T.yl[191] - T.yl[64]) / (127 / 255), mid, lo, hi, desvio: Math.sqrt(Math.max(0, y2 * k - y1 * k * y1 * k)), croma: s1 * k };
+    T.ms = Math.round(performance.now() - t0); TM.tom = T.ms; TM.tomP = [...T.M, ...T.cv[0], ...T.cv[1], ...T.cv[2], T.sat, T.vib]; S.tom = T;
+    console.log("[revela] IA Revela " + T.ms + " ms");
+  }
+  const motorPref = () => { try { return localStorage.getItem("revela_motor") === "regras" ? "regras" : "ia"; } catch (e) { return "ia"; } };
+  const motor = () => (S.forceRules || TOM.state === "failed") ? "regras" : motorPref();
+  function tomText(i) {
+    const pc = v => (v > 0 ? "+" : "") + Math.round(v * 100) + "%", parts = [];
+    parts.push(Math.abs(i.luz) < 0.012 ? "manteve a luz geral" : (i.luz > 0 ? "clareou " : "escureceu ") + Math.round(Math.abs(i.luz) * 100) + " pontos");
+    if (Math.abs(i.contraste - 1) > 0.03) parts.push((i.contraste > 1 ? "aumentou" : "suavizou") + " o contraste (" + pc(i.contraste - 1) + ")");
+    if (i.lo < 20 / 255 - 0.012) parts.push("firmou os pretos");
+    else if (i.lo > 20 / 255 + 0.012) parts.push("abriu as sombras");
+    if (Math.abs(i.cor - 1) > 0.03) parts.push((i.cor > 1 ? "deu mais cor (" : "segurou a cor (") + pc(i.cor - 1) + ")");
+    if (Math.abs(i.calor) > 0.006) parts.push(i.calor > 0 ? "aqueceu o tom" : "esfriou o tom");
+    return parts.join(", ") + ".";
+  }
+  // no motor IA Revela a rede cuida de luz e cor da foto inteira; aqui ficam só os retoques locais, bem dosados
+  function iaParams(a) {
+    const P = { ...NEUTRAL, ai: 1 }, notes = [], seg = a.seg;
+    notes.push(`IA Revela (rede neural do próprio app, ${S.tom.ms} ms neste aparelho): olhou a foto inteira e ${tomText(S.tom.info)} A correção é global, então não cria halo nem borda falsa.`);
+    // acabamento: um pouco de contraste e cor por cima, dosado pelo que ainda cabe depois da correção da rede
+    const inf = S.tom.info, cabeC = clamp((0.27 - inf.desvio) / 0.1, 0, 1), cabeV = clamp((0.2 - inf.croma) / 0.12, 0, 1);
+    P.contrast = 0.05 + 0.09 * cabeC; P.vibrance = a.mono || a.toned ? 0 : 0.08 + 0.16 * cabeV; P.clarity = 0.06;
+    P.structure = 0.1; P.sharpen = 0.18;
+    notes.push(`Acabamento: contraste ${sgn(P.contrast, 2)} e vibração ${sgn(P.vibrance, 2)} (a vibração poupa a pele), mais textura e nitidez de leve.`);
+    if (seg && seg.person > 0.08) {
+      const gap = seg.bgY - seg.subjY;
+      if (a.skinFrac > 0.03 && gap > 0.1) { P.subjLight = clamp(gap * 0.6, 0, 0.3); notes.push(`As pessoas estavam mais escuras que o cenário. Iluminei só elas em ${sgn(P.subjLight, 1)} EV.`); }
+      // quando a rede escurece a foto para dar profundidade, as pessoas recebem parte da luz de volta
+      if (a.skinFrac > 0.03 && inf.luz < -0.04) { const s = clamp(-inf.luz * 3, 0, 0.45); P.subjLight += s; notes.push(`A rede escureceu a cena para dar profundidade; devolvi ${sgn(s, 1)} EV de luz só às pessoas, para os rostos não ficarem apagados.`); }
+      if (seg.skin > 0.02) { P.skinSmooth = 0.2; P.skinEven = 0.22; P.skinShine = seg.shine * 0.8; notes.push("Pele: suavizei de leve a textura fina e uniformizei o tom. Barba, sobrancelhas, olhos e lábios ficam de fora."); }
+      // pele acinzentada (luz fria, névoa da lente): devolve cor e calor só o quanto falta. Pele que já tem cor não é mexida.
+      if (seg.skin > 0.02 && seg.skinRGB && !a.mono && !a.toned) {
+        const sk = tomPixel(S.tom, seg.skinRGB[0], seg.skinRGB[1], seg.skinRGB[2]), cr = Math.max(sk[0], sk[1], sk[2]) - Math.min(sk[0], sk[1], sk[2]), quente = sk[0] - sk[2];
+        TM.peleCor = [+cr.toFixed(3), +quente.toFixed(3)];
+        if (cr < 0.22) { P.rich = clamp((0.22 - cr) * 5, 0, 0.55); P.temp = clamp((0.14 - quente) * 0.9, 0, 0.12); notes.push(`A pele estava acinzentada (cor em ${Math.round(cr * 100)}%, o saudável fica perto de 25%). Devolvi cor ${sgn(P.rich, 2)} e um pouco de calor, só o que faltava.`); }
+      }
+      if (seg.hair > 0.02) { P.hairVolume = 0.14; P.hairShine = 0.06; }
+    }
+    if (a.face) {
+      const f = a.face;
+      if (f.teethPx > 30) { P.teethWhite = clamp((f.yellow - 0.05) * 5, 0, 0.5); if (P.teethWhite > 0.05) notes.push(`Dentes: clareei ${Math.round(P.teethWhite * 100)}%, só neles.`); }
+      if (f.eyes > 0) { P.eyeWhite = f.eyePx > 4 ? clamp(0.2 + f.red * 2.5, 0.2, 0.45) : 0; P.eyeIris = 0.2; notes.push("Olhos: clareei o branco e realcei a íris de leve."); }
+    }
+    if (a.beard > 0.3) P.beardDef = 0.25;
+    if (S.sceneAI && S.sceneAI.found.length) {
+      P.scene = 0.4; const top = S.sceneAI.found.slice(0, 4);
+      notes.push(`Também reconheci na foto: ${top.map(z => z.n + " (" + Math.round(z.p * 100) + "%)").join(", ")}. Cada parte ganhou um reforço próprio e leve: ${top.map(z => z.d).join("; ")}.`);
+    }
+    return { P, notes };
+  }
 
   /* ---------- decisão automática ---------- */
   function autoParams(style, a) {
@@ -1163,21 +1339,17 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       P.skyDeep = style === "mccurry" ? 0.4 : 0.3;
       notes.push(`Céu azul em ${Math.round(a.skyFrac * 100)}% da parte de cima: aprofundei o azul só nele, sem pintar nuvens nem pessoas.`);
     }
-    if (S.depth && a.seg && a.seg.person > 0.06 && a.seg.person < 0.8 && (a.seg.fr[3] > 0.004 || a.seg.person > 0.2) && !(S.sceneAI && S.sceneAI.found.some(z => z.n === "comida" && z.p > 0.04))) { P.dof = (style === "adams" ? 0.35 : 0.6) * (a.seg.person < 0.12 ? 0.45 : 1); notes.push(`Profundidade medida pela IA: desfoquei o fundo como uma lente de cinema, com o foco ${S.dofWhy || "na pessoa"}.`); }
+    // desfoque de fundo não entra mais sozinho: fica no botão "Fundo de cinema", que mede a profundidade na hora
     if (a.seg) {
       const q = a.seg;
-      if (!S.depth && q.person > 0.12 && q.person < 0.7 && q.fr[3] > 0.005) {
-        P.bgBlur = clamp((q.bgGrad - 0.02) * 25, 0, 0.7);
-        if (P.bgBlur > 0.1) notes.push(`O fundo tem muito detalhe e compete com as pessoas. Desfoquei ${Math.round(P.bgBlur * 100)}%, calculado só com as cores do fundo para não borrar o contorno.`);
-      }
       if (q.cloth > 0.06 && q.person > 0.2 && style !== "adams") {
         P.clothSmooth = style === "leib" ? 0.3 : 0.2;
         notes.push(`Roupa em ${Math.round(q.cloth * 100)}% da foto: alisei amassados leves em ${Math.round(P.clothSmooth * 100)}%, mantendo estampas e costuras.`);
       }
       if (q.hair > 0.02 && style !== "adams") {
-        P.hairShine = style === "leib" ? 0.18 : 0.12;
-        P.hairVolume = 0.42; P.hairSmooth = 0.3;
-        notes.push("Cabelo: dei corpo aos fios (mais definição e luz e sombra entre as mechas, o que lê como mais volume), assentei fios soltos e realcei o brilho. Não muda o corte nem o penteado.");
+        P.hairShine = style === "leib" ? 0.1 : 0.06;
+        P.hairVolume = 0.16; P.hairSmooth = 0.08;
+        notes.push("Cabelo: dei um pouco de corpo e brilho aos fios, de leve, para não ficar com cara de molhado. Não muda o corte nem o penteado.");
       }
     }
     if (a.face) {
@@ -1306,11 +1478,24 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const w = dt.w, h = dt.h, s2 = Math.min(1, 1500 / Math.max(w, h)), dw = Math.max(8, Math.round(w * s2)), dh = Math.max(8, Math.round(h * s2)), n = dw * dh;
     const full = document.createElement("canvas"); full.width = w; full.height = h; full.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(dt.src), w, h), 0, 0);
     const cv = document.createElement("canvas"); cv.width = dw; cv.height = dh; const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(full, 0, 0, dw, dh);
-    const im = cx.getImageData(0, 0, dw, dh), px = im.data, amt = new Float32Array(n), sg = S.segRef || S.seg, person = !!(sg && S.an && S.an.seg && S.an.seg.person > 0.06), F = S.dofFocus;
+    const im = cx.getImageData(0, 0, dw, dh), px = im.data, amt = new Float32Array(n), sg = S.segRef || S.seg, person = !!(sg && S.an && S.an.seg && S.an.seg.person > 0.06), F = S.dofFocus, D = S.depth;
+    const samp = (a, u, v) => { const x = u * (D.w - 1), y = v * (D.h - 1), x0 = Math.min(D.w - 2, x | 0), y0 = Math.min(D.h - 2, y | 0), tx = x - x0, ty = y - y0, q = y0 * D.w + x0; return (a[q] * (1 - tx) + a[q + 1] * tx) * (1 - ty) + (a[q + D.w] * (1 - tx) + a[q + D.w + 1] * tx) * ty; };
+    const ss = (e0, e1, v) => { const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+    // Em volta das pessoas o mapa de profundidade é borrado e ainda marca "perto": isso deixava um anel nítido
+    // (halo) ao redor da cabeça. Onde a segmentação diz que é fundo, vale a profundidade mais distante da vizinhança.
+    if (person && !D.far) {
+      const r = Math.max(2, Math.round(Math.max(D.w, D.h) * 0.025)), nd = D.w * D.h, t1 = new Float32Array(nd), mn = new Float32Array(nd), pm = new Float32Array(nd), pb = new Float32Array(nd), tmp = new Float32Array(nd);
+      for (let y = 0; y < D.h; y++) for (let x = 0; x < D.w; x++) { let m = 9; for (let k = Math.max(0, x - r), e = Math.min(D.w - 1, x + r); k <= e; k++) { const v = D.d[y * D.w + k]; if (v < m) m = v; } t1[y * D.w + x] = m; }
+      for (let y = 0; y < D.h; y++) for (let x = 0; x < D.w; x++) { let m = 9; for (let k = Math.max(0, y - r), e = Math.min(D.h - 1, y + r); k <= e; k++) { const v = t1[k * D.w + x]; if (v < m) m = v; } mn[y * D.w + x] = m; }
+      for (let y = 0; y < D.h; y++) for (let x = 0; x < D.w; x++) pm[y * D.w + x] = 1 - sg.cls[0][Math.min(sg.h - 1, (y * sg.h / D.h) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / D.w) | 0)] / 255;
+      boxF(pm, D.w, D.h, r, pb, tmp); D.far = { mn, pb };
+    }
     for (let y = 0; y < dh; y++) for (let x = 0; x < dw; x++) {
-      const i = y * dw + x, dv = depthAt(x / (dw - 1), y / (dh - 1)); let far = Math.max(0, Math.min(1, (F - dv - 0.03) / 0.24));
-      if (person) { const bgw = sg.cls[0][Math.min(sg.h - 1, (y * sg.h / dh) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / dw) | 0)] / 255; far = bgw < 0.5 ? far * bgw * 2 * 0.5 : far; }
-      far = far * far * (3 - 2 * far); amt[i] = far; px[i * 4 + 3] = Math.max(2, far * 255);
+      const i = y * dw + x, u = x / (dw - 1), v = y / (dh - 1); let dv = samp(D.d, u, v), cut = 1;
+      if (person) { const bgw = sg.cls[0][Math.min(sg.h - 1, (y * sg.h / dh) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / dw) | 0)] / 255; dv += (samp(D.far.mn, u, v) - dv) * Math.min(1, samp(D.far.pb, u, v) * 3) * ss(0.5, 0.85, bgw); cut = ss(0.3, 0.7, bgw); }
+      let far = Math.max(0, Math.min(1, (F - dv - 0.03) / 0.24)) * cut;
+      // o peso no desfoque satura rápido: tudo que é fundo mistura por igual; só o que está em foco fica de fora
+      far = far * far * (3 - 2 * far); amt[i] = far; px[i * 4 + 3] = Math.max(2, Math.min(255, far * 6 * 255));
     }
     cx.putImageData(im, 0, 0);
     const mx = Math.max(dw, dh), R = [0.006, 0.014, 0.026, 0.042].map(r => Math.max(1, r * mx)), lv = R.map(r => { const c2 = document.createElement("canvas"); c2.width = dw; c2.height = dh; const x2 = c2.getContext("2d", { willReadFrequently: true }); x2.filter = "blur(" + r.toFixed(1) + "px)"; x2.drawImage(cv, 0, 0); return x2.getImageData(0, 0, dw, dh).data; });
@@ -1396,6 +1581,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     let lxi = null, lxf = null;
     if (LL) { lxi = new Int32Array(w); lxf = new Float32Array(w); for (let x = 0; x < w; x++) { const f = x / Math.max(1, w - 1) * (LL.w - 1); lxi[x] = Math.min(LL.w - 2, f | 0); lxf[x] = f - lxi[x]; } }
     const DF = p.dof > 0.005 ? dofFor(dt) : null;
+    // IA Revela: correção global prevista pela rede (matriz de cor, curva por canal, saturação e vibração)
+    const TT = p.ai > 0.004 && S.tom ? S.tom : null, TK = TT ? p.ai : 0, tM = TT && TT.M, tR = TT && TT.cv[0], tG = TT && TT.cv[1], tB = TT && TT.cv[2], tKm = TT ? TT.K - 1 : 1, tS = TT ? TT.sat : 1, tV = TT ? TT.vib : 0, tY = TT && TT.yl;
+    const tyl = v => { if (!TT) return v; const q = v <= 0 ? 0 : v >= 1 ? 255 : v * 255, qi = q | 0; return v + (tY[qi] + (tY[qi < 255 ? qi + 1 : 255] - tY[qi]) * (q - qi) - v) * TK; };
     const SC = p.scene > 0.005 && S.sceneAI ? S.sceneAI : null, sk2 = p.scene;
     let scx = null; if (SC) { scx = new Int32Array(w); for (let x = 0; x < w; x++) scx[x] = Math.min(SC.w - 1, (x * SC.w / w) | 0); }
     const Fe = SC && SC.f.exp, Fs = SC && SC.f.sat, Fv = SC && SC.f.vib, Ft = SC && SC.f.str, Fh = SC && SC.f.shp, Fw = SC && SC.f.warm, Fg = SC && SC.f.green, Fl = SC && SC.f.glow;
@@ -1516,6 +1704,18 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
             if (a.str && dt) { const pi = y * w + x, dd = (dt.Y0[pi] - dt.ym[pi]) * a.str * 1.6 * mv; r0 += dd; g0 += dd; b0 += dd; }
           }
         }
+        if (TT) {
+          let u0 = tM[0] * r0 + tM[1] * g0 + tM[2] * b0, u1 = tM[3] * r0 + tM[4] * g0 + tM[5] * b0, u2 = tM[6] * r0 + tM[7] * g0 + tM[8] * b0;
+          u0 = u0 < 0 ? 0 : u0 > 1 ? 1 : u0; u1 = u1 < 0 ? 0 : u1 > 1 ? 1 : u1; u2 = u2 < 0 ? 0 : u2 > 1 ? 1 : u2;
+          let t = u0 * tKm, k = t | 0; if (k >= tKm) k = tKm - 1; let v0 = tR[k] + (tR[k + 1] - tR[k]) * (t - k);
+          t = u1 * tKm; k = t | 0; if (k >= tKm) k = tKm - 1; let v1 = tG[k] + (tG[k + 1] - tG[k]) * (t - k);
+          t = u2 * tKm; k = t | 0; if (k >= tKm) k = tKm - 1; let v2 = tB[k] + (tB[k + 1] - tB[k]) * (t - k);
+          v0 = v0 < 0 ? 0 : v0 > 1 ? 1 : v0; v1 = v1 < 0 ? 0 : v1 > 1 ? 1 : v1; v2 = v2 < 0 ? 0 : v2 > 1 ? 1 : v2;
+          const yv = 0.2126 * v0 + 0.7152 * v1 + 0.0722 * v2, mxv = Math.max(v0, v1, v2), fv = tS + tV * (1 - (mxv - Math.min(v0, v1, v2)) / (mxv + 1e-4));
+          v0 = yv + (v0 - yv) * fv; v1 = yv + (v1 - yv) * fv; v2 = yv + (v2 - yv) * fv;
+          v0 = v0 < 0 ? 0 : v0 > 1 ? 1 : v0; v1 = v1 < 0 ? 0 : v1 > 1 ? 1 : v1; v2 = v2 < 0 ? 0 : v2 > 1 ? 1 : v2;
+          r0 += (v0 - r0) * TK; g0 += (v1 - g0) * TK; b0 += (v2 - b0) * TK;
+        }
         if (SC) { if (sG > 0.01 && g0 > r0 && g0 > b0) { const gg = sG * 0.35 * (g0 - Math.max(r0, b0)); r0 -= gg; b0 -= gg * 0.4; g0 += gg * 0.2; } if (sW) { r0 *= 1 + 0.16 * sW; b0 *= 1 - 0.16 * sW; } }
         const sgn2 = SC ? Math.pow(2, 0.45 * sE) : 1;
         let r = r0 * kr * ex * rg * sgn2, g = g0 * kg * ex * rg * sgn2, b = b0 * kb * ex * rg * sgn2;
@@ -1525,6 +1725,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         // máscara suavizada da luz da região (dodge/burn)
         const j = y0 * mw + xi[x], tx = xf[x];
         let mm = (md[j] * (1 - tx) + md[j + 1] * tx) * (1 - ty) + (md[j + mw] * (1 - tx) + md[j + mw + 1] * tx) * ty;
+        if (TT) mm = tyl(mm);
         mm = clamp((mm * ex - p.bp) * inv, 0, 1);
         if (p.mid !== 0) mm = Math.pow(mm, expo);
         mm = Math.min(Y + 0.2, Math.max(Y - 0.2, mm));
@@ -1554,7 +1755,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         if (p.skinShine > 0 && skw > 0.02) { const t = Math.min(1, Math.max(0, (Y - 0.6) / 0.3)), k2 = 1 - p.skinShine * skw * t * 0.25; r *= k2; g *= k2; b *= k2; Y *= k2; }
         if (p.hairShine > 0 && hrw > 0.02) { const t = Math.min(1, Math.max(0, (Y - 0.3) / 0.4)), k3 = 1 + p.hairShine * hrw * t * 0.5; r *= k3; g *= k3; b *= k3; Y *= k3; }
         if ((p.glow > 0 || sL > 0.01) && dt) {
-          const gb = dt.bl, pg = y * w + x, gy2 = (0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hw = p.glowRange > 0 && !sL ? sstep(p.glowRange * 0.5, p.glowRange * 0.5 + 0.4, gy2) : 1, gk = Math.min(1, (p.glow + sL) * hw * 0.5) * (0.35 + 0.65 * Math.min(1, gy2 * 1.6));
+          const gb = dt.bl, pg = y * w + x, gy2 = tyl(0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hw = p.glowRange > 0 && !sL ? sstep(p.glowRange * 0.5, p.glowRange * 0.5 + 0.4, gy2) : 1, gk = Math.min(1, (p.glow + sL) * hw * 0.5) * (0.35 + 0.65 * Math.min(1, gy2 * 1.6));
           r = 1 - (1 - r) * (1 - Math.min(1, gb[0][pg] * ex) * gk); g = 1 - (1 - g) * (1 - Math.min(1, gb[1][pg] * ex) * gk); b = 1 - (1 - b) * (1 - Math.min(1, gb[2][pg] * ex) * gk);
         }
         if (p.fade > 0) { r = r * (1 - p.fade * 0.6) + p.fade * 0.14; g = g * (1 - p.fade * 0.6) + p.fade * 0.13; b = b * (1 - p.fade * 0.6) + p.fade * 0.16; }
@@ -1572,7 +1773,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         b += 0.042 * p.teal * sh - 0.04 * p.warm * hi;
         r += p.shR * sh + p.hiR * hi; g += p.shG * sh + p.hiG * hi; b += p.shB * sh + p.hiB * hi;
         if ((p.halation > 0 || p.bloomHi > 0) && dt) {
-          const gb = dt.bl, pg = y * w + x, by = (0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hl = Math.max(0, by - 0.5) / 0.5, hh = hl * hl * (3 - 2 * Math.min(1, hl));
+          const gb = dt.bl, pg = y * w + x, by = tyl(0.2126 * gb[0][pg] + 0.7152 * gb[1][pg] + 0.0722 * gb[2][pg]) * ex, hl = Math.max(0, by - 0.5) / 0.5, hh = hl * hl * (3 - 2 * Math.min(1, hl));
           if (p.halation > 0) { r += p.halation * hh * 0.42; g += p.halation * hh * 0.11; b += p.halation * hh * 0.02; }
           if (p.bloomHi > 0) { const k = p.bloomHi * hh * 0.55; r += (gb[0][pg] - r) * k * 0.5 + k * 0.08; g += (gb[1][pg] - g) * k * 0.5 + k * 0.06; b += (gb[2][pg] - b) * k * 0.5 + k * 0.05; }
         }
@@ -1599,16 +1800,16 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   /* ---------- parâmetros efetivos ---------- */
   const LOOKS = {
-    blockbuster: { name: "Blockbuster", tag: "Cinema", d: { contrast: 0.38, sat: 0.04, vibrance: 0.2, clarity: 0.22, tcMid: 0.25, vignette: 0.34, grain: 0.14, halation: 0.55, bars: 2.39, shR: -0.07, shG: 0.026, shB: 0.1, hiR: 0.06, hiG: 0.03, hiB: -0.06, warm: 0.06, teal: 0.2 } },
-    kodak: { name: "Filme Kodak", tag: "Cinema", d: { fade: 0.2, contrast: 0.16, sat: -0.02, vibrance: 0.24, warm: 0.3, grain: 0.32, halation: 0.4, bloomHi: 0.25, vignette: 0.2, shR: 0.03, shG: 0.03, shB: -0.01, hiR: 0.07, hiG: 0.04, hiB: -0.05, mid: 0.06 } },
-    golden: { name: "Golden Hour", tag: "Cinema", d: { temp: 0.32, warm: 0.6, contrast: 0.18, vibrance: 0.3, glow: 0.35, glowRange: 0.55, bloomHi: 0.5, halation: 0.35, vignette: 0.2, shadows: 0.15, shR: 0.06, shB: -0.04, hiR: 0.16, hiG: 0.075, hiB: -0.13, mid: 0.05 } },
-    noir: { name: "Noir", tag: "Cinema", d: { bw: 1, contrast: 0.55, structure: 0.35, tcMid: 0.3, vignette: 0.45, grain: 0.34, halation: 0.3, bars: 2.39, fade: 0.05 } },
-    neon: { name: "Neon noite", tag: "Cinema", d: { contrast: 0.42, sat: 0.16, vibrance: 0.4, tcLow: 0.25, bloomHi: 0.6, halation: 0.3, vignette: 0.3, grain: 0.12, shR: -0.06, shG: -0.01, shB: 0.11, hiR: 0.13, hiG: -0.02, hiB: 0.07 } },
-    editorial: { name: "Editorial", tag: "Moda", d: { contrast: 0.32, structure: 0.4, clarity: 0.25, vibrance: 0.3, sat: 0.05, tcHigh: 0.18, vignette: 0.14, skinSmooth: 0.3, skinEven: 0.28, faceEnh: 0.5, hiR: 0.03 } },
+    blockbuster: { name: "Blockbuster", tag: "Cinema", d: { contrast: 0.38, sat: 0.04, vibrance: 0.2, clarity: 0.22, tcMid: 0.25, vignette: 0.24, grain: 0.14, halation: 0.55, bars: 2.39, shR: -0.07, shG: 0.026, shB: 0.1, hiR: 0.06, hiG: 0.03, hiB: -0.06, warm: 0.06, teal: 0.2 } },
+    kodak: { name: "Filme Kodak", tag: "Cinema", d: { fade: 0.2, contrast: 0.16, sat: -0.02, vibrance: 0.24, warm: 0.3, grain: 0.32, halation: 0.4, bloomHi: 0.25, vignette: 0.14, shR: 0.03, shG: 0.03, shB: -0.01, hiR: 0.07, hiG: 0.04, hiB: -0.05, mid: 0.06 } },
+    golden: { name: "Golden Hour", tag: "Cinema", d: { temp: 0.32, warm: 0.6, contrast: 0.18, vibrance: 0.3, glow: 0.35, glowRange: 0.55, bloomHi: 0.5, halation: 0.35, vignette: 0.14, shadows: 0.15, shR: 0.06, shB: -0.04, hiR: 0.16, hiG: 0.075, hiB: -0.13, mid: 0.05 } },
+    noir: { name: "Noir", tag: "Cinema", d: { bw: 1, contrast: 0.55, structure: 0.35, tcMid: 0.3, vignette: 0.32, grain: 0.34, halation: 0.3, bars: 2.39, fade: 0.05 } },
+    neon: { name: "Neon noite", tag: "Cinema", d: { contrast: 0.42, sat: 0.16, vibrance: 0.4, tcLow: 0.25, bloomHi: 0.6, halation: 0.3, vignette: 0.21, grain: 0.12, shR: -0.06, shG: -0.01, shB: 0.11, hiR: 0.13, hiG: -0.02, hiB: 0.07 } },
+    editorial: { name: "Editorial", tag: "Moda", d: { contrast: 0.32, structure: 0.4, clarity: 0.25, vibrance: 0.3, sat: 0.05, tcHigh: 0.18, vignette: 0.1, skinSmooth: 0.3, skinEven: 0.28, faceEnh: 0.5, hiR: 0.03 } },
     sonho: { name: "Sonho", tag: "Suave", d: { fade: 0.2, glow: 0.5, glowRange: 0.4, bloomHi: 0.45, sat: -0.05, contrast: -0.06, mid: 0.14, shR: 0.045, shB: 0.05, hiR: 0.09, hiG: 0.02, hiB: 0.05, skinSmooth: 0.25, faceEnh: 0.3 } },
-    drama: { name: "Drama", tag: "Cinema", d: { mid: -0.2, contrast: 0.5, sat: -0.3, vignette: 0.55, tcLow: 0.35, grain: 0.2, halation: 0.25, shR: -0.045, shG: 0.02, shB: 0.075, hiR: 0.05, hiB: -0.04 } },
+    drama: { name: "Drama", tag: "Cinema", d: { mid: -0.2, contrast: 0.5, sat: -0.3, vignette: 0.39, tcLow: 0.35, grain: 0.2, halation: 0.25, shR: -0.045, shG: 0.02, shB: 0.075, hiR: 0.05, hiB: -0.04 } },
     vibrante: { name: "Vibrante", tag: "Cor", d: { vibrance: 0.65, sat: 0.22, contrast: 0.26, structure: 0.32, clarity: 0.22, skyDeep: 0.5, hiR: 0.05, hiG: 0.02 } },
-    pb: { name: "P&B", tag: "Clássico", d: { bw: 1, contrast: 0.45, structure: 0.3, vignette: 0.34, grain: 0.2, tcMid: 0.25 } },
+    pb: { name: "P&B", tag: "Clássico", d: { bw: 1, contrast: 0.45, structure: 0.3, vignette: 0.24, grain: 0.2, tcMid: 0.25 } },
     claro: { name: "Claro e limpo", tag: "Suave", d: { mid: 0.28, fade: 0.1, sat: -0.06, contrast: -0.1, glow: 0.3, highlights: -0.12, hiR: 0.02, hiG: 0.02, shR: 0.02, shG: 0.02, shB: 0.03 } }
   };
   function outPortrait() { const g = S.geo, d = geoDims(rc.width || 1, rc.height || 1, g); return g.crop.w * d.Fw < g.crop.h * d.Fh; }
@@ -1632,7 +1833,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (Lk) { overlayP(p, Lk.d, S.lookK); if (S.noGrain && Lk.d.grain) p.grain = Math.max(0, p.grain - Lk.d.grain * S.lookK); }
       if (S.tune) for (const k in S.tune) { if (k in S.manual) continue; const sd = SD[k], v = p[k] + S.tune[k]; p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v; }
       p.curveLut = S.curveLut;
-      if (S.an && S.an.satMean < 0.045 && !("bw" in S.manual)) p.bw = 1;
+      if (S.an && S.an.mono && !("bw" in S.manual)) p.bw = 1;
     }
     return p;
   }
@@ -1929,7 +2130,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       document.querySelectorAll(".lockchip").forEach(c => c.setAttribute("aria-pressed", String((L.lock || "") === c.dataset.k)));
     }
     document.querySelectorAll(".modechip").forEach(c => c.setAttribute("aria-pressed", String((S.brush.erase ? "erase" : "paint") === c.dataset.k)));
-    $("br_size").parentNode.querySelector("output").textContent = pct(S.brush.size); $("br_hard").parentNode.querySelector("output").textContent = pct(S.brush.hard); $("br_edge").parentNode.querySelector("output").textContent = pct(S.brush.edge);
+    [["br_size", "size"], ["br_hard", "hard"], ["br_edge", "edge"]].forEach(([id, k]) => { const el = $(id); if (document.activeElement !== el) el.value = S.brush[k]; el.parentNode.querySelector("output").textContent = pct(S.brush[k]); });
   }
   function buildLocalBox() {
     const box = document.createElement("div"); box.id = "localBox";
@@ -2215,6 +2416,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (comparing) { rcx.putImageData(S.prevData0 || S.prevData, 0, 0); present(); return; }
     if (S.fast && !S.painting) { fastDraw(); return; }
     const h = new Float64Array(256);
+    if (!S.depth && effective(true).dof > 0.005) ensureDepth();
     const img = (S.painting && S.lastRender) ? S.lastRender : render(S.prevData, S.prevData.width, S.prevData.height, effective(true), S.mask, h, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, S.detail || (S.detail = makeDetail(S.prevData.data, S.prevData.width, S.prevData.height)), localsForRender());
     S.lastRender = img; rcx.putImageData(img, 0, 0);
     if (S.tool === "lens") { const e = effective(), m2 = Math.min(rc.width, rc.height); rcx.save(); rcx.strokeStyle = "rgba(255,255,255,.9)"; rcx.lineWidth = 2; rcx.setLineDash([8, 6]); rcx.beginPath(); rcx.arc(e.lensX * rc.width, e.lensY * rc.height, e.lensSize * m2, 0, 7); rcx.stroke(); rcx.restore(); }
@@ -2272,7 +2474,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       }
       const z = document.createElement("p"); z.style.margin = "14px 0 0";
       z.innerHTML = '<button class="linkbtn" type="button">Zerar esta ferramenta</button>';
-      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } markCustom(); schedule(); });
+      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; Object.assign(S.brush, { size: 0.06, hard: 0.5, edge: 0.6, erase: false }); if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } markCustom(); schedule(); });
       pane.appendChild(z); panes.appendChild(pane);
     }
   }
@@ -2370,7 +2572,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   function openTool(id) {
     if (typeof resetZoom === "function") resetZoom();
     S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens", "depth"].includes(id) ? "none" : ""; $("toolList").hidden = true;
-    if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false;
+    $("toolBack").dataset.name = (TOOLS.find(t => t.id === id) || {}).name || "";
+    if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false; if (id === "depth") ensureDepth();
     document.querySelectorAll(".toolpane").forEach(p2 => { p2.hidden = p2.dataset.tool !== id; });
     if (id === "selective" || id === "brush") { const pane = document.querySelector(`.toolpane[data-tool="${id}"]`); if (!S.lbox) S.lbox = buildLocalBox(); pane.insertBefore(S.lbox, pane.querySelector("p:last-child")); renderLocalBox(); }
     schedule();
@@ -2392,6 +2595,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       row.querySelector("output").textContent = SD[key][5](p[key]);
       row.classList.toggle("changed", key in S.manual);
     }
+    if (!$("tomRow").hidden && document.activeElement !== $("tomK")) { const v = Math.round(p.ai * 100); $("tomK").value = v; $("tomKOut").textContent = v + "%"; }
     document.querySelectorAll(".chip[data-i]").forEach(c => c.setAttribute("aria-pressed", String(Math.round(p.bwFilter) === +c.dataset.i)));
     document.querySelectorAll(".fchip").forEach(c => c.setAttribute("aria-pressed", String((S.filter || "") === c.dataset.f)));
     for (const t of TOOLS) { const b = document.querySelector(`.tool[data-tool="${t.id}"]`); if (b) b.dataset.dirty = (t.keys.some(k => Math.abs(p[k] - NEUTRAL[k]) > 0.005) || (t.custom === "filters" && S.filter) || (t.custom === "curves" && S.curveLut) || (t.custom === "local" && S.locals.length) || ((t.custom === "crop" || t.custom === "rotate") && !geoIsId(S.geo))) ? "1" : "0"; }
@@ -2404,7 +2608,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       const st = STYLES[key], b = document.createElement("button");
       b.type = "button"; b.className = "style"; b.dataset.key = key;
       b.innerHTML = `<div class="row"><b>${st.name}</b><span class="kind">${st.kind}</span><span class="tag" hidden>sugerido</span></div><p>${st.desc}</p><div class="meter"><i></i></div>`;
-      b.addEventListener("click", () => { S.style = key; S.userPicked = true; S.manual = {}; applyStyle(); });
+      b.addEventListener("click", () => { S.style = key; S.userPicked = true; S.forceRules = true; S.manual = {}; applyStyle(); renderMotor(); });
       box.appendChild(b);
     }
   }
@@ -2417,9 +2621,10 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     });
   }
   function applyStyle() {
-    const r = autoParams(S.style, S.an);
+    // motor IA Revela: a rede decide luz e cor; enquanto ela carrega (só na primeira foto) a imagem fica como foi tirada
+    const ia = motor() === "ia", r = ia ? (S.tom ? iaParams(S.an) : { P: { ...NEUTRAL }, notes: ["A IA Revela está carregando. Em instantes ela ajusta a luz e a cor desta foto."] }) : autoParams(S.style, S.an);
     S.target = autoOn() ? r.P : { ...NEUTRAL }; S.notes = autoOn() ? r.notes : ["O modo Automático está desligado. A foto está como você tirou, e você escolhe tudo à mão."];
-    $("notes").innerHTML = ""; r.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
+    $("notes").innerHTML = ""; S.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
     $("reset").hidden = Object.keys(S.manual).length === 0;
     refreshStyleCards(); scheduleTune(); schedule();
     renderQuick(); renderLooksState(); scheduleThumbs(); if ($("adjRange")) syncAdjust();
@@ -2585,7 +2790,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   async function aiFaces(all) {
     if (AI.busy || !S.orig) return; AI.busy = true; AI.cancel = false; const t0 = performance.now();
-    ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = true; });
+    ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = true; }); $("aiSub").textContent = all ? "Melhorando rosto e fundo com IA…" : "Restaurando os rostos com IA…";
     showLoading(all ? "Melhorando tudo com IA" : "Restaurando rostos", "Carregando a IA…", all ? ["Fundo", "Rostos", "Misturar"] : ["Carregar", "Rostos", "Misturar"], true); setLoading(0.04, null, 0);
     $("ldCancel").onclick = () => { AI.cancel = true; $("ldSub").textContent = "Cancelando…"; };
     try {
@@ -2605,7 +2810,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       const fw = r.canvas.width, fh = r.canvas.height, bs = document.createElement("canvas"); bs.width = fw; bs.height = fh; const bx2 = bs.getContext("2d", { willReadFrequently: true }); bx2.imageSmoothingQuality = "high"; bx2.drawImage(src0, 0, 0, fw, fh);
       S.aiCache = { ai: r.canvas.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, fw, fh), base: bx2.getImageData(0, 0, fw, fh), w: fw, h: fh };
       applyAiBlend(); $("aiUndo").hidden = false; $("aiStrRow").hidden = false; $("aiViewRow").hidden = false;
-      $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s: ${r.n} ${r.n === 1 ? "rosto restaurado" : "rostos restaurados"}${all ? " e fundo reconstruído" : ""}. Use Ver detalhe 100% para comparar e a Força da IA para dosar.`;
+      $("aiSub").textContent = `Pronto em ${Math.round((performance.now() - t0) / 1000)} s: ${r.n} ${r.n === 1 ? "rosto restaurado" : "rostos restaurados"}${all ? " e fundo reconstruído" : ""}. Use Ver detalhe 100% para comparar e a Força do detalhe para dosar.`;
     } catch (e) { $("aiSub").textContent = e.message === "cancelado" ? "Cancelado. A foto continua como estava." : e.message === "SEM_ROSTO" ? "Não achei rosto nesta foto para restaurar. Use o botão Só fundo." : "Não deu para rodar a IA aqui: " + (e.message || e); }
     hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false; releaseHeavy();
   }
@@ -2670,18 +2875,20 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const d = cx.getImageData(0, 0, w, h); S.tuneImg = { src: S.prevData, d, w, h, dt: makeDetail(d.data, w, h) }; return S.tuneImg;
   }
   function tuneTargets(o) {
-    const bw = effective(true).bw > 0.5, a = S.an || {}, person = !!(a.seg && a.seg.person > 0.08), outdoor = (a.skyFrac || 0) > 0.12 || (a.greenFrac || 0) > 0.2, deep = person && !outdoor;
+    // motor clássico: alvos conservadores. Só clareia o que está escuro, nunca escurece foto clara (fundo branco, neve),
+    // firma os pretos de leve e dá cor sem passar do natural.
+    const bw = effective(true).bw > 0.5;
     return {
-      med: deep ? Math.max(0.3, Math.min(0.46, 0.37 + (o.med - 0.5) * 0.3)) : Math.max(0.24, Math.min(0.58, o.med - (o.med > 0.45 ? 0.04 : 0))),
-      p05: deep ? Math.max(0.035, Math.min(0.1, o.p05 * 0.5)) : Math.max(0.03, Math.min(0.12, o.p05 * 0.8)),
-      p95: Math.max(o.p95 - 0.05, Math.min(0.93, o.p95)),
-      sat: bw ? null : Math.max(o.sat, Math.min(deep ? 0.36 : 0.34, Math.max(o.sat * (deep ? 2.8 : 1.5), deep ? 0.24 : 0.2))),
-      mic: Math.min(o.mic * (deep ? 1.85 : 1.5), o.mic + 0.08)
+      med: Math.max(o.med, Math.min(0.4, o.med + (0.4 - o.med) * 0.6)),
+      p05: Math.max(0.025, Math.min(0.12, o.p05 * 0.8)),
+      p95: Math.max(o.p95 - 0.03, Math.min(0.95, o.p95)),
+      sat: bw ? null : Math.max(o.sat, Math.min(0.3, Math.max(o.sat * 1.3, 0.18))),
+      mic: Math.min(o.mic * 1.35, o.mic + 0.05)
     };
   }
   let tuneJob = 0;
   async function autoTune() {
-    if (!S.prevData || !S.an || !autoOn()) { S.tune = {}; return; }
+    if (!S.prevData || !S.an || !autoOn() || motor() === "ia") { S.tune = {}; return; }
     const job = ++tuneJob;
     const t0 = performance.now(), sm = getTuneImg(), run = () => { const img = render(sm.d, sm.w, sm.h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender()); return imgStats(img.data, sm.w, sm.h); };
     const o = imgStats(sm.d.data, sm.w, sm.h), T = tuneTargets(o); S.tune = { mid: 0, ev: 0, bp: 0, shadows: 0, highlights: 0, vibrance: 0, sat: 0, rich: 0, structure: 0, sharpen: 0 };
@@ -2742,8 +2949,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const job = ++thumbJob, t = getThumb(), rank = rankLooks(), box = $("looks"), items = [...box.querySelectorAll(".look")];
     const auto = items[0], byId = Object.fromEntries(items.slice(1).map(b => [b.dataset.id, b])), order = rank.filter(k => byId[k]);
     if (box.dataset.order !== order.join()) { box.dataset.order = order.join(); order.forEach(k => box.appendChild(byId[k])); }
-    box.appendChild(auto);
-    if (!S.autoDone) { S.autoDone = true; if (autoOn()) autoProduce(rank[0]); else { S.look = null; renderLooksState(); } }
+    box.insertBefore(auto, box.firstChild);
+    // ao abrir, a foto fica só com a melhoria automática; os looks são sugestões a um toque
+    if (!S.autoDone) { S.autoDone = true; S.look = null; renderLooksState(); }
     const list = [...box.querySelectorAll(".look")]; let k = 0;
     const step = () => {
       if (job !== thumbJob || k >= list.length) return;
@@ -2756,27 +2964,26 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     };
     setTimeout(step, 30);
   }
-  // ao abrir a foto: aplica a melhor produção sozinho, já no formato do Instagram
-  function autoProduce(id) {
-    S.look = id; S.lookK = 1; S.noBars = null; $("lookK").value = 100; $("lookKOut").textContent = "100%";
-    renderLooksState(); heroText(); scheduleTune(); schedule();
-  }
   function heroText() {
-    const L = S.look && LOOKS[S.look];
-    $("heroT").textContent = L ? "Pronta para o Instagram: " + L.name : "Sem look aplicado";
-    $("heroS").textContent = L ? "Apliquei cor, grão e brilho de cinema sem cortar a foto. Toque em outro cartão para trocar, ou use Formato para o Instagram." : "Escolha um cartão para dar o visual de cinema.";
+    const L = S.look && LOOKS[S.look], on = autoOn(), ia = on && motor() === "ia", ready = ia && !!S.tom;
+    $("heroT").textContent = L ? "Look " + L.name + (ready ? " sobre a IA Revela" : "") : !on ? "Foto como você tirou" : ready ? "Melhorada pela IA Revela" : ia ? "IA Revela ajustando luz e cor…" : "Melhorada pelo modo clássico";
+    $("heroS").textContent = L ? "Cor, grão e brilho de cinema por cima da foto já corrigida. Toque em Sem look para voltar, ou em outro cartão para trocar."
+      : !on ? "O Automático está desligado. Escolha um look ou ajuste à mão."
+      : ready ? "A rede neural do app " + tomText(S.tom.info) + " Para um visual de cinema, toque num look abaixo."
+      : ia ? "Só na primeira foto leva um instante." : "Ajuste por regras fixas, sem a rede neural. Para um visual de cinema, toque num look abaixo.";
+    $("tomRow").hidden = !ready; if (ready && document.activeElement !== $("tomK")) { const v = Math.round(effective().ai * 100); $("tomK").value = v; $("tomKOut").textContent = v + "%"; }
     $("barsChip").hidden = !(L && L.d.bars); $("barsChip").setAttribute("aria-pressed", String(S.noBars === null || S.noBars === undefined ? !outPortrait() : !S.noBars)); $("grainChip").hidden = !(L && L.d.grain);
     $("grainChip").setAttribute("aria-pressed", String(!S.noGrain));
   }
   function scheduleThumbs() { clearTimeout(S.thumbT); S.thumbT = setTimeout(refreshThumbs, 350); }
 
-  const QUICK = [["faceEnh", "Rosto", 0.7], ["dof", "Fundo de cinema", 0.65], ["skyDeep", "Céu", 0.5], ["sharpen", "Nitidez", 0.4]];
+  const QUICK = [["faceEnh", "Rosto", 0.7], ["dof", "Fundo de cinema", 0.5], ["skyDeep", "Céu", 0.5], ["sharpen", "Nitidez", 0.4]];
   function buildQuick() {
     const box = $("quick"); box.innerHTML = "";
     QUICK.forEach(([k, n, v]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip q"; c.dataset.k = k; c.textContent = n;
       c.addEventListener("click", () => {
         const on = (effective()[k] || 0) > 0.05; $("quickMsg").textContent = "";
-        if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "dof" && !S.depth) $("quickMsg").textContent = "Ainda estou medindo a profundidade da foto. Tente em instantes."; }
+        if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "dof" && !S.depth) { $("quickMsg").textContent = "Medindo a profundidade da foto para desfocar só o fundo…"; ensureDepth().then(ok => { $("quickMsg").textContent = ok ? "" : "Não consegui medir a profundidade desta foto, então o fundo ficou como estava."; }); } }
         markCustom(); renderQuick(); schedule(); scheduleThumbs();
       }); box.appendChild(c); });
   }
@@ -2834,19 +3041,24 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     S.suggested = S.an.suggested; S.style = S.suggested;
     $("capName").textContent = name; $("capSize").textContent = canvas.width + " × " + canvas.height + " px";
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
+    S.forceRules = false; S.tom = null;
+    if (TOM.net) tomCompute();
+    else if (TOM.state !== "failed") tomLoad().then(() => { if (S.orig !== canvas) return; if (TOM.net) tomCompute(); applyStyle(); });
     showStats(S.an); applyStyle();
     if (segState === "ready") { setSegStatus("Analisando a foto…", false); pill("A IA está analisando pessoas e rostos…"); runSeg(); }
     else if (segState === "loading") { pill("Preparando as IAs (só na primeira vez)…"); }
   }
 
   function loadFile(file) {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    // algumas galerias do Android entregam a foto sem o tipo; nesse caso tenta abrir pelo conteúdo
+    if (file.type && !file.type.startsWith("image/")) { toast("Esse arquivo não é uma foto. Escolha uma imagem JPG, PNG ou WebP."); return; }
     createImageBitmap(file).then(img => {
       const long = 3000, sc = Math.min(1, long / Math.max(img.width, img.height));
-      const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+      const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      img.close(); load(c, file.name);
-    }).catch(() => { $("capName").textContent = "Não consegui abrir esse arquivo. Tente JPG ou PNG."; });
+      img.close(); load(c, file.name || "foto");
+    }).catch(() => { toast("Não consegui abrir essa foto. O arquivo pode estar corrompido ou num formato que o aparelho não lê. Tente JPG ou PNG.", 5000); });
   }
 
   /* ---------- fotos de exemplo (sintéticas, chapadas de propósito) ---------- */
@@ -2898,13 +3110,19 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   let lp = null;
   view.addEventListener("pointerdown", e => { if (S.tool || !S.prevData || e.pointerType === "mouse" && e.button !== 0) return; lp = setTimeout(() => { lp = null; cmp(true); }, 280); });
   ["pointerup", "pointercancel", "pointerleave"].forEach(ev => view.addEventListener(ev, () => { if (lp) { clearTimeout(lp); lp = null; } if (comparing && !S.tool) cmp(false); }));
-  $("autoSw").checked = autoOn();
-  $("autoHint").textContent = autoOn() ? "Ao abrir a foto, o app escolhe e aplica a produção." : "Desligado: a foto abre como você tirou.";
+  const autoHint = on => on ? "Ao abrir a foto, a IA do app corrige luz e cor sozinha." : "Desligado: a foto abre como você tirou.";
+  $("autoSw").checked = autoOn(); $("autoHint").textContent = autoHint(autoOn());
   $("autoSw").addEventListener("change", e => {
-    setAutoPref(e.target.checked); $("autoHint").textContent = e.target.checked ? "Ao abrir a foto, o app escolhe e aplica a produção." : "Desligado: a foto abre como você tirou.";
-    if (!S.an) return; S.manual = {}; applyStyle();
-    if (e.target.checked) autoProduce(rankLooks()[0]); else { S.look = null; S.filter = null; renderLooksState(); schedule(); scheduleThumbs(); }
+    setAutoPref(e.target.checked); $("autoHint").textContent = autoHint(e.target.checked); renderMotor();
+    if (!S.an) return; S.manual = {}; S.look = null; S.filter = null; applyStyle(); schedule(); scheduleThumbs();
   });
+  // motor do automático: a rede neural do app (padrão) ou as regras fixas de antes
+  function renderMotor() { const m = motor(); $("motorRow").hidden = !autoOn(); $("motorIa").setAttribute("aria-pressed", String(m === "ia")); $("motorRg").setAttribute("aria-pressed", String(m === "regras")); $("motorIa").disabled = TOM.state === "failed"; }
+  const setMotor = m => { try { localStorage.setItem("revela_motor", m); } catch (e) { /* sem armazenamento */ } S.forceRules = false; renderMotor(); if (!S.an) return; S.manual = {}; applyStyle(); };
+  $("motorIa").addEventListener("click", () => setMotor("ia"));
+  $("motorRg").addEventListener("click", () => setMotor("regras"));
+  $("tomK").addEventListener("input", e => { S.manual.ai = e.target.value / 100; $("tomKOut").textContent = e.target.value + "%"; markCustom(); schedule(); scheduleThumbs(); });
+  renderMotor(); tomLoad().then(renderMotor);
   $("barsChip").addEventListener("click", () => { const on = S.noBars === null || S.noBars === undefined ? !outPortrait() : !S.noBars; S.noBars = on; heroText(); schedule(); scheduleThumbs(); });
   $("grainChip").addEventListener("click", () => { S.noGrain = !S.noGrain; heroText(); schedule(); scheduleThumbs(); });
   $("aiAll").addEventListener("click", () => aiFaces(true));
@@ -2915,34 +3133,48 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   $("ldCancel").addEventListener("click", () => { AI.cancel = true; $("ldSub").textContent = "Cancelando…"; });
   $("aiUndo").addEventListener("click", aiUndo);
   let aiT = null; $("aiStr").addEventListener("input", e => { $("aiStrOut").textContent = e.target.value + "%"; clearTimeout(aiT); aiT = setTimeout(applyAiBlend, 250); });
-  const Z = { s: 1, tx: 0, ty: 0, pts: new Map(), start: null, lastTap: 0 };
+  // zoom: pinça com dois dedos, arrastar para andar, toque duplo para aproximar e voltar
+  const Z = { s: 1, tx: 0, ty: 0, pts: new Map(), start: null, lastTap: 0, lastX: 0, lastY: 0, multi: false, down: null };
   const zoomBlocked = () => !!S.tool || S.split;
   function applyZoom() {
-    const wr = $("wrap").getBoundingClientRect(), vr0 = { w: view.offsetWidth, h: view.offsetHeight };
-    const maxX = Math.max(0, (vr0.w * Z.s - vr0.w) / 2 + (vr0.w * Z.s - wr.width) / 2 * 0), lim = (v, m) => Math.max(-m, Math.min(m, v));
-    const mx = vr0.w * (Z.s - 1), my = vr0.h * (Z.s - 1); Z.tx = lim(Z.tx, mx) ; Z.ty = lim(Z.ty, my);
     if (Z.s <= 1.001) { Z.s = 1; Z.tx = 0; Z.ty = 0; view.style.transform = ""; $("zoomHint").hidden = true; return; }
+    const mx = view.offsetWidth * (Z.s - 1), my = view.offsetHeight * (Z.s - 1);
     Z.tx = Math.min(0, Math.max(-mx, Z.tx)); Z.ty = Math.min(0, Math.max(-my, Z.ty));
     view.style.transform = `translate(${Z.tx}px, ${Z.ty}px) scale(${Z.s})`; $("zoomHint").hidden = false; $("zoomHint").textContent = Math.round(Z.s * 100) + "%";
   }
+  // canto da foto sem o zoom, em coordenadas da tela
+  const zoomOrigin = () => { const r = view.getBoundingClientRect(); return { L: r.left - Z.tx, T: r.top - Z.ty }; };
   function zoomAt(ns, cx, cy) {
-    const r = view.getBoundingClientRect(), ox = cx - r.left, oy = cy - r.top, k = ns / Z.s;
-    Z.tx = Z.tx - ox * (k - 1); Z.ty = Z.ty - oy * (k - 1); Z.s = Math.max(1, Math.min(5, ns)); applyZoom();
+    const o = zoomOrigin(), u = (cx - o.L - Z.tx) / Z.s, v = (cy - o.T - Z.ty) / Z.s;
+    Z.s = Math.max(1, Math.min(6, ns)); Z.tx = cx - o.L - Z.s * u; Z.ty = cy - o.T - Z.s * v; applyZoom();
   }
   function resetZoom() { Z.s = 1; Z.tx = 0; Z.ty = 0; applyZoom(); }
+  const pinchStart = () => { const [a, b] = [...Z.pts.values()], o = zoomOrigin(), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2; Z.start = { d: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), s: Z.s, u: (cx - o.L - Z.tx) / Z.s, v: (cy - o.T - Z.ty) / Z.s, o }; };
   view.addEventListener("pointerdown", e => {
     if (zoomBlocked()) return; Z.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (Z.pts.size === 2) { const [a, b] = [...Z.pts.values()]; Z.start = { d: Math.hypot(a.x - b.x, a.y - b.y), s: Z.s, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; if (lp) { clearTimeout(lp); lp = null; } }
-    else if (Z.s > 1) Z.start = { pan: true, x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty };
+    try { view.setPointerCapture(e.pointerId); } catch (err) { /* ponteiro já solto */ }
+    if (Z.pts.size === 1) { Z.multi = false; Z.down = { x: e.clientX, y: e.clientY, t: performance.now() }; if (Z.s > 1) Z.start = { pan: true, x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty }; }
+    else if (Z.pts.size === 2) { Z.multi = true; pinchStart(); if (lp) { clearTimeout(lp); lp = null; } if (comparing) cmp(false); }
   });
   view.addEventListener("pointermove", e => {
     if (!Z.pts.has(e.pointerId) || zoomBlocked()) return; Z.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (Z.pts.size === 2 && Z.start && Z.start.d) { const [a, b] = [...Z.pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y); zoomAt(Z.start.s * d / Math.max(10, Z.start.d), (a.x + b.x) / 2, (a.y + b.y) / 2); e.preventDefault(); if (lp) { clearTimeout(lp); lp = null; } }
-    else if (Z.start && Z.start.pan) { const dx = e.clientX - Z.start.x, dy = e.clientY - Z.start.y; if (Math.hypot(dx, dy) > 6 && lp) { clearTimeout(lp); lp = null; } Z.tx = Z.start.tx + dx; Z.ty = Z.start.ty + dy; applyZoom(); }
+    if (Z.pts.size >= 2 && Z.start && Z.start.d) {
+      const [a, b] = [...Z.pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, st = Z.start;
+      Z.s = Math.max(1, Math.min(6, st.s * d / st.d)); Z.tx = cx - st.o.L - Z.s * st.u; Z.ty = cy - st.o.T - Z.s * st.v; applyZoom(); e.preventDefault();
+    } else if (Z.start && Z.start.pan) { const dx = e.clientX - Z.start.x, dy = e.clientY - Z.start.y; if (Math.hypot(dx, dy) > 6 && lp) { clearTimeout(lp); lp = null; } Z.tx = Z.start.tx + dx; Z.ty = Z.start.ty + dy; applyZoom(); }
   });
   const zEnd = e => {
-    if (!Z.pts.has(e.pointerId)) return; Z.pts.delete(e.pointerId); if (Z.pts.size < 2 && Z.start && Z.start.d) Z.start = null; if (Z.pts.size === 0) Z.start = null;
-    if (e.type === "pointerup" && !zoomBlocked()) { const now = performance.now(); if (now - Z.lastTap < 300) { Z.lastTap = 0; if (Z.s > 1) resetZoom(); else zoomAt(2.5, e.clientX, e.clientY); } else Z.lastTap = now; }
+    if (!Z.pts.has(e.pointerId)) return; Z.pts.delete(e.pointerId);
+    if (Z.pts.size === 1) { const [q] = [...Z.pts.values()]; Z.start = Z.s > 1 ? { pan: true, x: q.x, y: q.y, tx: Z.tx, ty: Z.ty } : null; return; }
+    if (Z.pts.size > 1) { pinchStart(); return; }
+    Z.start = null;
+    // toque duplo: só vale para um dedo, parado e rápido. Soltar os dois dedos da pinça não conta.
+    if (e.type === "pointerup" && !Z.multi && Z.down && !zoomBlocked()) {
+      const now = performance.now(), still = Math.hypot(e.clientX - Z.down.x, e.clientY - Z.down.y) < 14 && now - Z.down.t < 320;
+      if (still && now - Z.lastTap < 380 && Math.hypot(e.clientX - Z.lastX, e.clientY - Z.lastY) < 44) { Z.lastTap = 0; if (Z.s > 1) resetZoom(); else zoomAt(2.5, e.clientX, e.clientY); }
+      else if (still) { Z.lastTap = now; Z.lastX = e.clientX; Z.lastY = e.clientY; } else Z.lastTap = 0;
+    }
+    if (Z.s < 1.06) resetZoom();
   };
   ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, zEnd));
   view.addEventListener("wheel", e => { if (zoomBlocked()) return; e.preventDefault(); zoomAt(Z.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
@@ -3005,12 +3237,14 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (wantW && outCv.width > wantW * 1.05) { const k = wantW / outCv.width, sc2 = document.createElement("canvas"); sc2.width = wantW; sc2.height = Math.round(outCv.height * k); const q = sc2.getContext("2d"); q.imageSmoothingQuality = "high"; q.drawImage(outCv, 0, 0, sc2.width, sc2.height); outCv = sc2; }
     outCv.toBlob(b => {
       S.lastBlob = b; try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); $("shareBtn").hidden = !(nativeCap() || (navigator.canShare && navigator.canShare({ files: [f] }))); } catch (e) { $("shareBtn").hidden = !nativeCap(); }
-      const url = URL.createObjectURL(b); $("finalImg").src = url; $("final").classList.add("show");
-      $("final").scrollIntoView({ block: "nearest" });
+      if (!b) { toast("Não consegui gerar a foto final. Tente de novo ou reduza o tamanho em Formato."); return; }
       if (isNative()) {
         saveToGallery(b).then(() => toast("Foto salva na galeria (pasta Imagens › Revela).")).catch(e => { toast("Não consegui salvar na galeria (" + (e.message || e) + "). Abrindo o compartilhar para você salvar."); nativeShare(b).catch(() => {}); });
         return;
       }
+      if (S.lastUrl) URL.revokeObjectURL(S.lastUrl);
+      const url = URL.createObjectURL(b); S.lastUrl = url; $("finalImg").src = url; $("final").classList.add("show");
+      $("final").scrollIntoView({ block: "nearest" });
       if (navigator.canShare && /Android|iPhone|iPad/i.test(navigator.userAgent)) { try { const f = new File([b], "revela.jpg", { type: "image/jpeg" }); if (navigator.canShare({ files: [f] }) && /iPhone|iPad/i.test(navigator.userAgent)) { navigator.share({ files: [f], title: "Revela" }).catch(() => {}); return; } } catch (e) { /* segue o download */ } }
       const a = document.createElement("a"); a.href = url; a.download = "revela-" + Date.now() + ".jpg"; document.body.appendChild(a); try { a.click(); toast("Foto salva em Downloads."); } catch (e) { toast("Segure o dedo na imagem final para salvar."); } a.remove();
     }, "image/jpeg", 0.93);
@@ -3019,6 +3253,24 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   $("refine").addEventListener("change", e => { if (!S.segRaw) return; S.seg = e.target.checked ? S.segRef : S.segRaw; onSeg(S.segMs); });
   $("ovl").addEventListener("change", e => { S.overlay = e.target.checked; schedule(); });
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", schedule);
+
+  // botão Voltar: fecha o que estiver aberto. Devolve false quando não há mais nada para fechar
+  // (no Android o app então vai para o segundo plano, sem perder a foto).
+  let backT = 0;
+  window.revelaBack = () => {
+    if (!$("detail").hidden) { $("detail").hidden = true; return true; }
+    if (!$("loading").hidden) { if (!$("ldCancel").hidden) { AI.cancel = true; $("ldSub").textContent = "Cancelando…"; } return true; }
+    if (Z.s > 1) { resetZoom(); return true; }
+    if (S.tool) { closeTool(); return true; }
+    const tab = document.querySelector(".tab:not([hidden])"), t = tab && tab.dataset.tab;
+    if (t && ["estilos", "rosto", "analise"].includes(t)) { setTab("ferramentas"); return true; }
+    if (t && t !== "looks") { setTab("looks"); return true; }
+    if (S.orig) { const now = Date.now(); if (now - backT < 2500) return false; backT = now; toast("Toque em Voltar de novo para sair. A foto continua aqui quando você voltar.", 2500); return true; }
+    return false;
+  };
+  if (!isNative()) {
+    try { history.pushState({ revela: 1 }, ""); window.addEventListener("popstate", () => { if (window.revelaBack()) history.pushState({ revela: 1 }, ""); else history.back(); }); } catch (e) { /* sem histórico (arquivo local) */ }
+  }
 
   buildStyleCards(); buildSliders(); buildLooksUI(); buildQuick(); buildAdjust(); buildFormats();
   document.querySelectorAll("[data-back]").forEach(b => b.addEventListener("click", () => setTab("ferramentas")));
