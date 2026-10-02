@@ -256,6 +256,10 @@ body { background: var(--bg); }
 .aibar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7a5aff, #3cbeff); }
 .look[aria-pressed="true"] span { color: var(--fg); font-weight: 600; }
 .look .star { position: absolute; top: 6px; right: 6px; font-size: 11px; background: rgba(0,0,0,.65); color: #ffcf6a; border-radius: 999px; padding: 1px 6px; font-style: normal; }
+.look.add .plus { width: 118px; height: 148px; border-radius: 14px; display: grid; place-items: center; border: 2px dashed #3d3d46; font-size: 36px; font-weight: 300; color: var(--mute); margin: 0; }
+.look.add:hover .plus { border-color: var(--accent); color: var(--accent); }
+.look .del { position: absolute; top: 5px; left: 5px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.7); color: #fff; font-style: normal; font-size: 16px; display: grid; place-items: center; }
+.look .mini { position: absolute; right: 6px; top: 110px; width: 32px; height: 32px; border-radius: 8px; object-fit: cover; border: 2px solid rgba(255,255,255,.85); }
 .field.lookk { margin-top: 4px; }
 .field.big label { font-size: 15px; font-weight: 600; }
 input[type="range"] { -webkit-appearance: none; appearance: none; height: 30px; background: transparent; cursor: pointer; }
@@ -323,6 +327,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     </div>
     <input type="file" id="file" accept="image/*" hidden>
     <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="refFile" accept="image/*" hidden>
   </header>
 
   <div class="main">
@@ -1063,7 +1068,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   function onSeg(ms) {
     const sg = S.seg, n = sg.w * sg.h, a = S.an, P = S.prevData, sx = P.width / sg.w, sy = P.height / sg.h;
-    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0, skR = 0, skG = 0, skB = 0; const skinYs = [];
+    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0, skR = 0, skG = 0, skB = 0, nR = 0, nG = 0, nB = 0, nN = 0; const skinYs = [];
     const ov = document.createElement("canvas"); ov.width = sg.w; ov.height = sg.h;
     const ox = ov.getContext("2d"), oi = ox.createImageData(sg.w, sg.h);
     for (let i = 0; i < n; i++) {
@@ -1073,6 +1078,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       const Y = (0.2126 * P.data[px] + 0.7152 * P.data[px + 1] + 0.0722 * P.data[px + 2]) / 255;
       const bw = sg.cls[0][i] / 255;
       if (bw > 0.7) { bgY += Y; bgN++; } else if (bw < 0.3) { sjY += Y; sjN++; }
+      // áreas pouco coloridas do cenário (parede, teto, roupa de cama): dizem se a luz do ambiente puxou para alguma cor
+      if (bw > 0.7 && Y > 0.25 && Y < 0.9) { const r3 = P.data[px], g3 = P.data[px + 1], b3 = P.data[px + 2], m3 = Math.max(r3, g3, b3); if (m3 - Math.min(r3, g3, b3) < 0.5 * m3) { nR += r3; nG += g3; nB += b3; nN++; } }
       // pele do corpo + pele do rosto com 60% de certeza ou mais (as classes somam 255; o limite antigo, 400, nunca era atingido)
       if (sg.cls[2][i] + sg.cls[3][i] > 150) { skinYs.push(Y); skR += P.data[px]; skG += P.data[px + 1]; skB += P.data[px + 2]; }
       if (best !== 0) { const c = REG[best].rgb; oi.data[i * 4] = c[0]; oi.data[i * 4 + 1] = c[1]; oi.data[i * 4 + 2] = c[2]; oi.data[i * 4 + 3] = 110; }
@@ -1091,7 +1098,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     }
     const bgGrad = gn > 50 ? gs / gn : 0;
     let shineN = 0; for (const v of skinYs) if (v > 0.8) shineN++;
-    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr, skinRGB: skinYs.length > 20 ? [skR / skinYs.length / 255, skG / skinYs.length / 255, skB / skinYs.length / 255] : null };
+    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr, skinRGB: skinYs.length > 20 ? [skR / skinYs.length / 255, skG / skinYs.length / 255, skB / skinYs.length / 255] : null, neutro: nN > n * 0.03 ? [nR / nN / 255, nG / nN / 255, nB / nN / 255] : null };
     a.skinFrac = fr[2] + fr[3];
     if (skinYs.length > 20) a.skinY = skinYs[skinYs.length >> 1];
     a.scene = a.med < 0.2 ? "Pouca luz" : (fr[3] > 0.05 || a.seg.person > 0.35) ? "Retrato" : a.seg.person > 0.05 ? "Pessoa no ambiente" : (a.skyFrac > 0.15 || a.greenFrac > 0.2) ? "Paisagem" : "Cena geral";
@@ -1210,7 +1217,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   const lumaOf = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   function tomCompute() {
     const net = TOM.net, src = S.prevData; if (!net || !src) { S.tom = null; return; }
-    const t0 = performance.now(), img = tomThumb(src.data, src.width, src.height), T = tomParams(tomForward(img, tomHist(img, net), net), net.K);
+    const t0 = performance.now(), img = S.t128 || tomThumb(src.data, src.width, src.height), T = tomParams(tomForward(img, tomHist(img, net), net), net.K);
     T.yl = new Float32Array(256); for (let i = 0; i < 256; i++) T.yl[i] = lumaOf(tomPixel(T, i / 255, i / 255, i / 255));
     // resumo em números, para explicar ao usuário o que a rede decidiu
     const n = 128 * 128; let y0 = 0, y1 = 0, s0 = 0, s1 = 0, wr = 0, y2 = 0, cnt = 0;
@@ -1236,7 +1243,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   // no motor IA Revela a rede cuida de luz e cor da foto inteira; aqui ficam só os retoques locais, bem dosados
   function iaParams(a) {
-    const P = { ...NEUTRAL, ai: 1 }, notes = [], seg = a.seg;
+    const P = { ...NEUTRAL, ai: 1 }, notes = [], seg = a.seg; S.comp = 0;
     notes.push(`IA Revela (rede neural do próprio app, ${S.tom.ms} ms neste aparelho): olhou a foto inteira e ${tomText(S.tom.info)} A correção é global, então não cria halo nem borda falsa.`);
     // acabamento: um pouco de contraste e cor por cima, dosado pelo que ainda cabe depois da correção da rede
     const inf = S.tom.info, cabeC = clamp((0.27 - inf.desvio) / 0.1, 0, 1), cabeV = clamp((0.2 - inf.croma) / 0.12, 0, 1);
@@ -1247,13 +1254,27 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       const gap = seg.bgY - seg.subjY;
       if (a.skinFrac > 0.03 && gap > 0.1) { P.subjLight = clamp(gap * 0.6, 0, 0.3); notes.push(`As pessoas estavam mais escuras que o cenário. Iluminei só elas em ${sgn(P.subjLight, 1)} EV.`); }
       // quando a rede escurece a foto para dar profundidade, as pessoas recebem parte da luz de volta
-      if (a.skinFrac > 0.03 && inf.luz < -0.04) { const s = clamp(-inf.luz * 3, 0, 0.45); P.subjLight += s; notes.push(`A rede escureceu a cena para dar profundidade; devolvi ${sgn(s, 1)} EV de luz só às pessoas, para os rostos não ficarem apagados.`); }
+      if (a.skinFrac > 0.03 && inf.luz < -0.04) { const s = clamp(-inf.luz * 3, 0, 0.45); P.subjLight += s; S.comp = s; notes.push(`A rede escureceu a cena para dar profundidade; devolvi ${sgn(s, 1)} EV de luz só às pessoas, para os rostos não ficarem apagados.`); }
       if (seg.skin > 0.02) { P.skinSmooth = 0.2; P.skinEven = 0.22; P.skinShine = seg.shine * 0.8; notes.push("Pele: suavizei de leve a textura fina e uniformizei o tom. Barba, sobrancelhas, olhos e lábios ficam de fora."); }
       // pele acinzentada (luz fria, névoa da lente): devolve cor e calor só o quanto falta. Pele que já tem cor não é mexida.
       if (seg.skin > 0.02 && seg.skinRGB && !a.mono && !a.toned) {
         const sk = tomPixel(S.tom, seg.skinRGB[0], seg.skinRGB[1], seg.skinRGB[2]), cr = Math.max(sk[0], sk[1], sk[2]) - Math.min(sk[0], sk[1], sk[2]), quente = sk[0] - sk[2];
-        TM.peleCor = [+cr.toFixed(3), +quente.toFixed(3)];
+        // a pele serve de referência de cor: R > G > B, com o verde a meio caminho e o azul não muito abaixo do vermelho
+        const mx = Math.max(sk[0], 1e-3), rel = (sk[0] - sk[2]) / mx, meio = (sk[1] - sk[2]) / (sk[0] - sk[2] + 1e-4);
+        // ambiente interno: sem céu, mato ou água. Quando a IA de cena já respondeu vale o que ela viu (camisa verde não é mato)
+        const fora = S.sceneAI ? S.sceneAI.found.some(z => (z.n === "céu" && z.p > 0.05) || (z.n === "árvores e plantas" && z.p > 0.15) || (z.n === "água" && z.p > 0.1)) : (a.skyFrac || 0) >= 0.04 || (a.greenFrac || 0) >= 0.12;
+        // e as áreas sem cor (parede, roupa branca) também têm de estar amareladas: pele quente com fundo neutro é só pele quente
+        const nt = seg.neutro && tomPixel(S.tom, seg.neutro[0], seg.neutro[1], seg.neutro[2]), neutros = nt ? nt[0] / Math.max(0.02, nt[2]) : 1, interno = !fora && neutros > 1.2;
+        TM.peleCor = [+cr.toFixed(3), +quente.toFixed(3), +rel.toFixed(3), +meio.toFixed(3), +neutros.toFixed(2)];
         if (cr < 0.22) { P.rich = clamp((0.22 - cr) * 5, 0, 0.55); P.temp = clamp((0.14 - quente) * 0.9, 0, 0.12); notes.push(`A pele estava acinzentada (cor em ${Math.round(cr * 100)}%, o saudável fica perto de 25%). Devolvi cor ${sgn(P.rich, 2)} e um pouco de calor, só o que faltava.`); }
+        else if (interno && sk[0] > sk[1] && (rel > 0.58 || meio > 0.64)) {
+          // luz amarela de ambiente interno: o azul da pele fica baixo demais e o verde sobe para perto do vermelho.
+          // Corrige 60% do caminho, para tirar o amarelado sem apagar o clima da cena. Ao ar livre não mexe (pôr do sol é quente de propósito).
+          const alvoB = sk[0] * (1 - Math.min(rel, 0.5)), razao = Math.pow(Math.max(1e-3, sk[2]) / alvoB, 0.6);   // quanto a razão vermelho/azul deve cair
+          P.temp = clamp((razao - 1) / (0.18 * (razao + 1)), -0.85, 0);
+          const g2 = sk[2] + Math.min(meio, 0.52) * (sk[0] - sk[2]); P.tint = clamp((Math.pow(g2 / Math.max(1e-3, sk[1]), 0.6) - 1) / 0.1, -0.5, 0);
+          if (P.temp < -0.03 || P.tint < -0.03) notes.push(`A luz do ambiente deixou a pele e as paredes amareladas. Usei a pele como referência e esfriei a foto (${sgn(P.temp, 2)}${P.tint < -0.03 ? ", com menos verde" : ""}), sem ir até o fim, para não apagar o clima.`);
+        }
       }
       if (seg.hair > 0.02) { P.hairVolume = 0.14; P.hairShine = 0.06; }
     }
@@ -1268,6 +1289,103 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       notes.push(`Também reconheci na foto: ${top.map(z => z.n + " (" + Math.round(z.p * 100) + "%)").join(", ")}. Cada parte ganhou um reforço próprio e leve: ${top.map(z => z.d).join("; ")}.`);
     }
     return { P, notes };
+  }
+
+  /* ---------- copiar o look de uma foto de referência ----------
+     Aqui não é rede neural, é conta direta: mede na referência a distribuição de luz, o tom das sombras, dos
+     meios-tons e dos brilhos e a quantidade de cor, e calcula a curva e os tons que levam a foto atual até lá.
+     (Testamos com a rede: ela copiava só de 4% a 31% do look de outra foto. A conta direta chega bem mais perto.) */
+  const LQ = [0.005, 0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98, 0.995];
+  // px: Float32Array com R, G e B em planos seguidos (n pixels cada), valores de 0 a 1
+  function lookStats(px) {
+    const n = px.length / 3, Y = new Float32Array(n), acc = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], mix = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]; let cm = 0;
+    for (let i = 0; i < n; i++) {
+      const r = px[i], g = px[n + i], b = px[2 * n + i], y = 0.2126 * r + 0.7152 * g + 0.0722 * b; Y[i] = y;
+      const c = Math.max(r, g, b) - Math.min(r, g, b); cm += c;
+      // o tom de cada faixa vem principalmente dos pixels pouco coloridos: é a "tinta" da foto, não a cor dos objetos
+      const wn = 1 / (1 + (c / 0.12) * (c / 0.12)), yc = y < 0 ? 0 : y > 1 ? 1 : y, p0 = (1 - yc) * (1 - yc), p2 = yc * yc, p1 = 1 - p0 - p2, w0 = p0 * wn, w1 = p1 * wn, w2 = p2 * wn;
+      let a = acc[0]; a[0] += w0 * (r - y); a[1] += w0 * (g - y); a[2] += w0 * (b - y); a[3] += w0;
+      a = acc[1]; a[0] += w1 * (r - y); a[1] += w1 * (g - y); a[2] += w1 * (b - y); a[3] += w1;
+      a = acc[2]; a[0] += w2 * (r - y); a[1] += w2 * (g - y); a[2] += w2 * (b - y); a[3] += w2;
+      // as faixas se sobrepõem (um pixel de meio-tom conta um pouco como sombra e como brilho): mix guarda quanto
+      mix[0][0] += w0 * p0; mix[0][1] += w0 * p1; mix[0][2] += w0 * p2; mix[1][0] += w1 * p0; mix[1][1] += w1 * p1; mix[1][2] += w1 * p2; mix[2][0] += w2 * p0; mix[2][1] += w2 * p1; mix[2][2] += w2 * p2;
+    }
+    const s = Float32Array.from(Y).sort(), q = LQ.map(f => s[Math.min(n - 1, Math.floor(f * n))]), tot = acc[0][3] + acc[1][3] + acc[2][3];
+    return { q, band: acc.map(a => a[3] > 1e-6 ? [a[0] / a[3], a[1] / a[3], a[2] / a[3]] : [0, 0, 0]), peso: acc.map(a => a[3] / n), mix: mix.map((m, k) => acc[k][3] > 1e-6 ? m.map(v => v / acc[k][3]) : [k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0]),
+      geral: tot > 1e-6 ? [0, 1, 2].map(k => (acc[0][k] + acc[1][k] + acc[2][k]) / tot) : [0, 0, 0], cm: cm / n };
+  }
+  // curva de luz + cor num pixel (o render tem a mesma conta embutida)
+  function lookPixel(T, r, g, b) {
+    const y = 0.2126 * r + 0.7152 * g + 0.0722 * b, q = y <= 0 ? 0 : y >= 1 ? 255 : y * 255, qi = q | 0, yp = T.ly[qi] + (T.ly[qi < 255 ? qi + 1 : 255] - T.ly[qi]) * (q - qi);
+    // clareia multiplicando até 2,5 vezes; o que faltar entra somado (preto levantado sem estourar o ruído das sombras)
+    const k = y > 1e-3 ? Math.min(2.5, yp / y) : 1, off = yp - y * k, ws = (1 - yp) * (1 - yp), wh = yp * yp, wm = 1 - ws - wh, s = T.s, t = T.tau;
+    return [yp + (r * k + off - yp) * s + ws * t[0][0] + wm * t[1][0] + wh * t[2][0], yp + (g * k + off - yp) * s + ws * t[0][1] + wm * t[1][1] + wh * t[2][1], yp + (b * k + off - yp) * s + ws * t[0][2] + wm * t[1][2] + wh * t[2][2]];
+  }
+  // base e ref: estatísticas (lookStats) da foto atual e da referência; px: pixels da foto atual;
+  // peleY: luz da pele na foto atual (quando há gente), para o look não estourar nem apagar o rosto
+  function lookBuild(base, ref, px, peleY) {
+    // 1) luz: cinco quantis da foto (preto, sombra, meio, brilho, branco) vão para os mesmos quantis da referência.
+    //    Com mais pontos a curva copiava até o formato do histograma e ficava estranha em fotos de assunto diferente.
+    //    Quantis que caem no mesmo nível (céu chapado, preto cortado) viram um ponto só, com a média dos alvos.
+    const grp = [[0, Math.max(0, ref.q[0] - base.q[0]), 1]];
+    for (let i = 0; i < LQ.length; i += 2) { const g = grp[grp.length - 1]; if (base.q[i] > g[0] + 0.006) grp.push([base.q[i], ref.q[i], 1]); else { g[1] += ref.q[i]; g[2]++; } }
+    const pts = grp.map(g => [g[0], g[1] / g[2]]);
+    for (let i = 1; i < pts.length; i++) pts[i][1] = Math.max(pts[i][1], pts[i - 1][1]);
+    const last = pts[pts.length - 1]; if (last[0] < 0.994) pts.push([1, Math.min(1, Math.max(last[1], ref.q[LQ.length - 1] + (1 - base.q[LQ.length - 1])))]);
+    let ly = splineLut(pts);
+    // proteção do rosto: se a curva levaria a pele para cima de 74% (estoura) ou para baixo de 24% (apaga),
+    // entra um ponto a mais segurando a pele no limite; preto e branco continuam vindo da referência
+    if (peleY > 0.02 && peleY < 0.98) {
+      const alvo = ly[Math.round(peleY * 255)], y = Math.min(Math.max(peleY, 0.74), Math.max(Math.min(peleY, 0.24), alvo));
+      if (Math.abs(y - alvo) > 0.004) {
+        const p2 = pts.filter(q => Math.abs(q[0] - peleY) > 0.07).map(q => q.slice()); p2.push([peleY, y]); p2.sort((a, b) => a[0] - b[0]);
+        const k = p2.findIndex(q => q[0] === peleY);
+        for (let i = k + 1; i < p2.length; i++) p2[i][1] = Math.max(p2[i][1], p2[i - 1][1]);
+        for (let i = k - 1; i >= 0; i--) p2[i][1] = Math.min(p2[i][1], p2[i + 1][1]);
+        ly = splineLut(p2);
+      }
+    }
+    // inclinação limitada a partir da mediana: sem degrau (pôster) nem ruído ampliado demais
+    const m = Math.min(254, Math.max(1, Math.round(base.q[4] * 255))), lo = 0.15 / 255, hi = 3.5 / 255;
+    for (let i = m + 1; i < 256; i++) ly[i] = Math.min(1, Math.min(Math.max(ly[i], ly[i - 1] + lo), ly[i - 1] + hi));
+    for (let i = m - 1; i >= 0; i--) ly[i] = Math.max(0, Math.max(Math.min(ly[i], ly[i + 1] - lo), ly[i + 1] - hi));
+    const T = { ly, s: 1, tau: [[0, 0, 0], [0, 0, 0], [0, 0, 0]] };
+    // 2) cor: mede a foto já com a curva e acerta a quantidade de cor e o tom de cada faixa de luz
+    const n = px.length / 3, tmp = new Float32Array(px.length), c01 = v => v < 0 ? 0 : v > 1 ? 1 : v, lim = v => Math.max(-0.12, Math.min(0.12, v));
+    const medir = () => { for (let i = 0; i < n; i++) { const o = lookPixel(T, px[i], px[n + i], px[2 * n + i]); tmp[i] = c01(o[0]); tmp[n + i] = c01(o[1]); tmp[2 * n + i] = c01(o[2]); } return lookStats(tmp); };
+    let st = medir();
+    // quantidade de cor: vai até a da referência, com piso e teto; com gente na foto o piso sobe para a pele não ficar cinza
+    T.s = ref.cm < 0.012 ? 0 : Math.max(peleY > 0 ? 0.6 : 0.35, Math.min(2.2, ref.cm / Math.max(0.012, st.cm)));
+    // tom por faixa, em três voltas de "mede o que falta e corrige". Como as faixas se sobrepõem, o tom de cada uma
+    // sai de um sistema 3×3 (com um pouco de amortecimento); faixa quase vazia (foto sem brilho) usa o tom geral.
+    for (let volta = 0; volta < 3; volta++) {
+      st = medir();
+      const d = [0, 1, 2].map(k => { const conf = Math.max(0, Math.min(1, Math.min(ref.peso[k], st.peso[k]) / 0.02)); return [0, 1, 2].map(c => (ref.band[k][c] - st.band[k][c]) * conf + (ref.geral[c] - st.geral[c]) * (1 - conf)); });
+      const A = st.mix.map((row, k) => row.map((v, j) => v + (j === k ? 0.03 : 0)));
+      for (let c = 0; c < 3; c++) {
+        const M = A.map((row, k) => [...row, d[k][c]]);
+        for (let i = 0; i < 3; i++) { let pv = i; for (let r = i + 1; r < 3; r++) if (Math.abs(M[r][i]) > Math.abs(M[pv][i])) pv = r; [M[i], M[pv]] = [M[pv], M[i]]; const di = Math.abs(M[i][i]) < 1e-6 ? 1e-6 : M[i][i]; for (let r = 0; r < 3; r++) if (r !== i) { const f = M[r][i] / di; for (let j = i; j < 4; j++) M[r][j] -= f * M[i][j]; } }
+        for (let k = 0; k < 3; k++) T.tau[k][c] = lim(T.tau[k][c] + M[k][3] / (Math.abs(M[k][k]) < 1e-6 ? 1e-6 : M[k][k]));
+      }
+    }
+    return T;
+  }
+  let REFS = []; try { REFS = JSON.parse(localStorage.getItem("revela_refs") || "[]").filter(r => r && r.id && r.st && r.st.q); } catch (e) { REFS = []; }
+  const saveRefs = () => { try { localStorage.setItem("revela_refs", JSON.stringify(REFS)); } catch (e) { /* sem espaço: os looks valem só nesta sessão */ } };
+  // pixels da foto atual já com a correção da IA: é por cima deles que o look copiado entra
+  function refBase() {
+    const ai = S.tom ? effective().ai : 0, corr = (r, g, b) => { if (ai <= 0.004) return [r, g, b]; const o = tomPixel(S.tom, r, g, b); return [r + (o[0] - r) * ai, g + (o[1] - g) * ai, b + (o[2] - b) * ai]; };
+    // luz da pele (quando a separação de pessoas achou pele): o look copiado não pode estourar nem apagar o rosto
+    const sk = S.an && S.an.seg && S.an.seg.skin > 0.02 && S.an.seg.skinRGB, pele = sk ? lumaOf(corr(sk[0], sk[1], sk[2])) : 0;
+    const key = ai.toFixed(2) + (S.tom ? "t" : "") + pele.toFixed(2);
+    if (S.refBase && S.refBase.key === key && S.refBase.src === S.t128) return S.refBase;
+    const src = S.t128, n = src.length / 3, px = new Float32Array(src.length);
+    for (let i = 0; i < n; i++) { const o = corr(src[i], src[n + i], src[2 * n + i]); px[i] = o[0]; px[n + i] = o[1]; px[2 * n + i] = o[2]; }
+    S.refBase = { key, src, px, st: lookStats(px), pele }; S.refT = {}; return S.refBase;
+  }
+  function refTransform(id) {
+    const R = REFS.find(r => "ref:" + r.id === id); if (!R || !S.t128) return null;
+    const B = refBase(); if (!S.refT) S.refT = {}; if (!S.refT[id]) S.refT[id] = lookBuild(B.st, R.st, B.px, B.pele); return S.refT[id];
   }
 
   /* ---------- decisão automática ---------- */
@@ -1592,7 +1710,14 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const DF = p.dof > 0.005 ? dofFor(dt) : null;
     // IA Revela: correção global prevista pela rede (matriz de cor, curva por canal, saturação e vibração)
     const TT = p.ai > 0.004 && S.tom ? S.tom : null, TK = TT ? p.ai : 0, tM = TT && TT.M, tR = TT && TT.cv[0], tG = TT && TT.cv[1], tB = TT && TT.cv[2], tKm = TT ? TT.K - 1 : 1, tS = TT ? TT.sat : 1, tV = TT ? TT.vib : 0, tY = TT && TT.yl;
-    const tyl = v => { if (!TT) return v; const q = v <= 0 ? 0 : v >= 1 ? 255 : v * 255, qi = q | 0; return v + (tY[qi] + (tY[qi < 255 ? qi + 1 : 255] - tY[qi]) * (q - qi) - v) * TK; };
+    // look copiado de uma foto de referência: curva de luz, quantidade de cor e tom por faixa (sombra, meio, brilho)
+    const RF = p.ref > 0.004 && p.refT ? p.refT : null, RK = RF ? p.ref : 0, rL = RF && RF.ly, rS = RF ? RF.s : 1, rT = RF && RF.tau;
+    // a luz borrada (máscaras, brilho, halo) passa pelas mesmas curvas que a foto
+    const tyl = v => {
+      if (TT) { const q = v <= 0 ? 0 : v >= 1 ? 255 : v * 255, qi = q | 0; v += (tY[qi] + (tY[qi < 255 ? qi + 1 : 255] - tY[qi]) * (q - qi) - v) * TK; }
+      if (RF) { const q = v <= 0 ? 0 : v >= 1 ? 255 : v * 255, qi = q | 0; v += (rL[qi] + (rL[qi < 255 ? qi + 1 : 255] - rL[qi]) * (q - qi) - v) * RK; }
+      return v;
+    };
     const SC = p.scene > 0.005 && S.sceneAI ? S.sceneAI : null, sk2 = p.scene;
     let scx = null; if (SC) { scx = new Int32Array(w); for (let x = 0; x < w; x++) scx[x] = Math.min(SC.w - 1, (x * SC.w / w) | 0); }
     const Fe = SC && SC.f.exp, Fs = SC && SC.f.sat, Fv = SC && SC.f.vib, Ft = SC && SC.f.str, Fh = SC && SC.f.shp, Fw = SC && SC.f.warm, Fg = SC && SC.f.green, Fl = SC && SC.f.glow;
@@ -1725,6 +1850,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
           v0 = v0 < 0 ? 0 : v0 > 1 ? 1 : v0; v1 = v1 < 0 ? 0 : v1 > 1 ? 1 : v1; v2 = v2 < 0 ? 0 : v2 > 1 ? 1 : v2;
           r0 += (v0 - r0) * TK; g0 += (v1 - g0) * TK; b0 += (v2 - b0) * TK;
         }
+        if (RF) {
+          const y = 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0, q = y <= 0 ? 0 : y >= 1 ? 255 : y * 255, qi = q | 0, yp = rL[qi] + (rL[qi < 255 ? qi + 1 : 255] - rL[qi]) * (q - qi);
+          const k = y > 1e-3 ? Math.min(2.5, yp / y) : 1, off = yp - y * k, ws = (1 - yp) * (1 - yp), wh = yp * yp, wm = 1 - ws - wh;
+          const v0 = yp + (r0 * k + off - yp) * rS + ws * rT[0][0] + wm * rT[1][0] + wh * rT[2][0], v1 = yp + (g0 * k + off - yp) * rS + ws * rT[0][1] + wm * rT[1][1] + wh * rT[2][1], v2 = yp + (b0 * k + off - yp) * rS + ws * rT[0][2] + wm * rT[1][2] + wh * rT[2][2];
+          r0 += (v0 - r0) * RK; g0 += (v1 - g0) * RK; b0 += (v2 - b0) * RK;
+        }
         if (SC) { if (sG > 0.01 && g0 > r0 && g0 > b0) { const gg = sG * 0.35 * (g0 - Math.max(r0, b0)); r0 -= gg; b0 -= gg * 0.4; g0 += gg * 0.2; } if (sW) { r0 *= 1 + 0.16 * sW; b0 *= 1 - 0.16 * sW; } }
         const sgn2 = SC ? Math.pow(2, 0.45 * sE) : 1;
         let r = r0 * kr * ex * rg * sgn2, g = g0 * kg * ex * rg * sgn2, b = b0 * kb * ex * rg * sgn2;
@@ -1734,7 +1865,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         // máscara suavizada da luz da região (dodge/burn)
         const j = y0 * mw + xi[x], tx = xf[x];
         let mm = (md[j] * (1 - tx) + md[j + 1] * tx) * (1 - ty) + (md[j + mw] * (1 - tx) + md[j + mw + 1] * tx) * ty;
-        if (TT) mm = tyl(mm);
+        if (TT || RF) mm = tyl(mm);
         mm = clamp((mm * ex - p.bp) * inv, 0, 1);
         if (p.mid !== 0) mm = Math.pow(mm, expo);
         mm = Math.min(Y + 0.2, Math.max(Y - 0.2, mm));
@@ -1840,6 +1971,16 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (F) overlayP(p, F.d, S.filterK);
       const lid = lookId === undefined ? S.look : lookId, Lk = lid && LOOKS[lid];
       if (Lk) { overlayP(p, Lk.d, S.lookK); if (S.noGrain && Lk.d.grain) p.grain = Math.max(0, p.grain - Lk.d.grain * S.lookK); }
+      else if (lid && lid.slice(0, 4) === "ref:") {
+        // look copiado: ele define contraste e cor, então o acabamento do automático sai para não somar por cima
+        const T = refTransform(lid);
+        if (T) {
+          const k = Math.min(1, S.lookK); p.ref = S.lookK; p.refT = T;
+          for (const key of ["contrast", "vibrance", "rich", "temp", "tint", "sat"]) if (!(key in S.manual)) p[key] += (NEUTRAL[key] - p[key]) * k;
+          // a luz devolvida às pessoas compensava o escurecimento da rede; com o look copiado quem manda na luz é a referência
+          if (S.comp && autoOn() && motor() === "ia" && !("subjLight" in S.manual)) p.subjLight -= S.comp * S.k * k;
+        }
+      }
       if (S.tune) for (const k in S.tune) { if (k in S.manual) continue; const sd = SD[k], v = p[k] + S.tune[k]; p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v; }
       p.curveLut = S.curveLut;
       if (S.an && S.an.mono && !("bw" in S.manual)) p.bw = 1;
@@ -2932,6 +3073,42 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       box.appendChild(b);
     });
     $("lookK").addEventListener("input", e => { S.lookK = e.target.value / 100; $("lookKOut").textContent = e.target.value + "%"; scheduleTune(); schedule(); });
+    $("refFile").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) addRef(f); });
+    renderRefCards();
+  }
+  // looks copiados de fotos de referência: ficam guardados no aparelho e valem para as próximas fotos
+  function renderRefCards() {
+    const box = $("looks"); box.querySelectorAll(".look.ref, .look.add").forEach(e => e.remove());
+    const add = document.createElement("button"); add.type = "button"; add.className = "look add"; add.dataset.id = "+";
+    add.innerHTML = '<span class="plus" aria-hidden="true">+</span><span>Copiar look</span><em>de outra foto</em>';
+    // ficam logo depois de "Sem look": primeiro o botão de copiar, depois os looks já copiados
+    const auto = box.querySelector('.look[data-id=""]'); let depois = auto ? auto.nextSibling : null;
+    const por = e => { box.insertBefore(e, depois); };
+    add.addEventListener("click", () => $("refFile").click()); por(add);
+    REFS.forEach(R => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "look ref"; b.dataset.id = "ref:" + R.id;
+      b.innerHTML = '<canvas width="236" height="296"></canvas><img class="mini" alt=""><span></span><em>copiado</em><i class="del" role="button" aria-label="Apagar este look" title="Apagar este look">×</i>';
+      b.querySelector("span").textContent = R.name; b.querySelector("img").src = R.thumb;
+      b.addEventListener("click", e => {
+        if (e.target.classList.contains("del")) { REFS = REFS.filter(r => r !== R); saveRefs(); if (S.look === "ref:" + R.id) S.look = null; renderRefCards(); renderLooksState(); schedule(); scheduleThumbs(); return; }
+        S.look = "ref:" + R.id; S.noBars = null; renderLooksState(); scheduleTune(); schedule();
+      });
+      por(b);
+    });
+  }
+  function addRef(file) {
+    if (file.type && !file.type.startsWith("image/")) { toast("Escolha uma foto como referência."); return; }
+    createImageBitmap(file).then(img => {
+      const sc = Math.min(1, 512 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, c.width, c.height); img.close();
+      const st = lookStats(tomThumb(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height));
+      const t = document.createElement("canvas"), k = 96 / Math.max(c.width, c.height); t.width = Math.max(1, Math.round(c.width * k)); t.height = Math.max(1, Math.round(c.height * k)); t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+      const num = REFS.reduce((m, r) => Math.max(m, parseInt((r.name.match(/\d+$/) || [0])[0], 10) || 0), 0) + 1;
+      const R = { id: Date.now().toString(36), name: "Meu look " + num, thumb: t.toDataURL("image/jpeg", 0.7), st };
+      REFS.push(R); if (REFS.length > 8) REFS.shift(); saveRefs(); renderRefCards();
+      if (S.prevData) { S.refT = {}; S.look = "ref:" + R.id; S.lookK = 1; $("lookK").value = 100; $("lookKOut").textContent = "100%"; renderLooksState(); schedule(); scheduleThumbs(); }
+      toast(S.prevData ? "Look copiado. Ele fica guardado aqui para as próximas fotos." : "Look guardado. Abra uma foto para aplicar.", 3200);
+    }).catch(() => toast("Não consegui abrir essa foto de referência. Tente JPG ou PNG.", 4000));
   }
   function renderLooksState() {
     document.querySelectorAll(".look").forEach(b => b.setAttribute("aria-pressed", String((S.look || "") === b.dataset.id)));
@@ -2956,12 +3133,13 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   function refreshThumbs() {
     if (!S.prevData || !S.an) return;
     const job = ++thumbJob, t = getThumb(), rank = rankLooks(), box = $("looks"), items = [...box.querySelectorAll(".look")];
-    const auto = items[0], byId = Object.fromEntries(items.slice(1).map(b => [b.dataset.id, b])), order = rank.filter(k => byId[k]);
+    const auto = box.querySelector('.look[data-id=""]'), byId = Object.fromEntries(items.filter(b => LOOKS[b.dataset.id]).map(b => [b.dataset.id, b])), order = rank.filter(k => byId[k]);
     if (box.dataset.order !== order.join()) { box.dataset.order = order.join(); order.forEach(k => box.appendChild(byId[k])); }
-    box.insertBefore(auto, box.firstChild);
+    // ordem: sem look, copiar look, looks copiados e depois os prontos (os mais indicados primeiro)
+    [auto, box.querySelector(".look.add"), ...box.querySelectorAll(".look.ref")].reverse().forEach(e => { if (e) box.insertBefore(e, box.firstChild); });
     // ao abrir, a foto fica só com a melhoria automática; os looks são sugestões a um toque
     if (!S.autoDone) { S.autoDone = true; S.look = null; renderLooksState(); }
-    const list = [...box.querySelectorAll(".look")]; let k = 0;
+    const list = [...box.querySelectorAll(".look")].filter(b => !b.classList.contains("add")); let k = 0;
     const step = () => {
       if (job !== thumbJob || k >= list.length) return;
       const b = list[k++], id = b.dataset.id || null, p = effective(true, id), img = render(t.d, t.w, t.h, p, S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, t.dt, { w: 0, h: 0, list: [] });
@@ -2975,9 +3153,10 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   }
   function heroText() {
     if (!S.prevData) { $("heroT").textContent = "Abra uma foto para começar"; $("heroS").textContent = "A IA do app ajusta luz e cor; depois você escolhe um look, se quiser."; $("tomRow").hidden = true; return; }
-    const L = S.look && LOOKS[S.look], on = autoOn(), ia = on && motor() === "ia", ready = ia && !!S.tom;
-    $("heroT").textContent = L ? "Look " + L.name + (ready ? " sobre a IA Revela" : "") : !on ? "Foto como você tirou" : ready ? "Melhorada pela IA Revela" : ia ? "IA Revela ajustando luz e cor…" : "Melhorada pelo modo clássico";
-    $("heroS").textContent = L ? "Cor, grão e brilho de cinema por cima da foto já corrigida. Toque em Sem look para voltar, ou em outro cartão para trocar."
+    const L = S.look && LOOKS[S.look], R = S.look && REFS.find(r => "ref:" + r.id === S.look), on = autoOn(), ia = on && motor() === "ia", ready = ia && !!S.tom;
+    $("heroT").textContent = R ? "Look copiado: " + R.name : L ? "Look " + L.name + (ready ? " sobre a IA Revela" : "") : !on ? "Foto como você tirou" : ready ? "Melhorada pela IA Revela" : ia ? "IA Revela ajustando luz e cor…" : "Melhorada pelo modo clássico";
+    $("heroS").textContent = R ? "Luz, contraste e cor levados para perto da foto de referência. Use a Intensidade para dosar; o look fica guardado para as próximas fotos."
+      : L ? "Cor, grão e brilho de cinema por cima da foto já corrigida. Toque em Sem look para voltar, ou em outro cartão para trocar."
       : !on ? "O Automático está desligado. Escolha um look ou ajuste à mão."
       : ready ? "A rede neural do app " + tomText(S.tom.info) + " Para um visual de cinema, toque num look abaixo."
       : ia ? "Só na primeira foto leva um instante." : "Ajuste por regras fixas, sem a rede neural. Para um visual de cinema, toque num look abaixo.";
@@ -3052,6 +3231,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("capName").textContent = name; $("capSize").textContent = canvas.width + " × " + canvas.height + " px";
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     S.forceRules = false; S.tom = null;
+    S.t128 = tomThumb(S.prevData.data, pw, ph); S.refBase = null; S.refT = {};
     if (TOM.net) tomCompute();
     else if (TOM.state !== "failed") tomLoad().then(() => { if (S.orig !== canvas) return; if (TOM.net) tomCompute(); applyStyle(); });
     showStats(S.an); applyStyle();

@@ -67,6 +67,12 @@ async function testPhoto(s, file, tag) {
   const tD = await s.waitFor("document.getElementById('aiPill').hidden && !document.getElementById('quickMsg').textContent", 240000);
   log('Fundo de cinema (profundidade sob demanda):', tD < 0 ? 'NÃO TERMINOU em 4 min | ' + await s.ev("document.getElementById('quickMsg').textContent") : (Date.now() - t2) + ' ms'); await sleep(2500); await s.shot('fundo-de-cinema.png');
   await s.ev("document.querySelector('#quick .chip[data-k=dof]').click(); true"); await sleep(1500);
+  // copiar o look de outra foto (a paisagem de teste serve de referência para o retrato)
+  const refB64 = fs.readFileSync('scripts/teste-paisagem.jpg').toString('base64'), t3 = Date.now();
+  await s.ev("(async () => { const b = await (await fetch('data:image/jpeg;base64," + refB64 + "')).blob(); const f = new File([b], 'ref.jpg', { type: 'image/jpeg' }); const dt = new DataTransfer(); dt.items.add(f); const inp = document.getElementById('refFile'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true })); return true; })()");
+  const tL = await s.waitFor("/Look copiado/.test(document.getElementById('heroT').textContent)", 60000);
+  log('copiar look:', tL < 0 ? 'NÃO APLICOU' : (Date.now() - t3) + ' ms | ' + await s.ev("document.getElementById('heroT').textContent + ' | guardados: ' + document.querySelectorAll('.look.ref').length")); await sleep(2500); await s.shot('look-copiado.png');
+  await s.ev("document.querySelector('.look[data-id=\"\"]').click(); true"); await sleep(1500);
   // zoom por pinça com dois dedos de verdade (eventos de toque)
   const bx = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('view').getBoundingClientRect()))"));
   const pts = d => [{ x: bx.x - d, y: bx.y, id: 0 }, { x: bx.x + d, y: bx.y, id: 1 }];

@@ -16,6 +16,8 @@ No Android também dá para instalar o APK da página de versões.
 
 - **IA Revela**: rede neural treinada por nós que corrige luz, contraste e cor da foto inteira em menos de um décimo de segundo. É o motor padrão do Automático; o motor antigo, por regras, continua disponível como "Clássico".
 - 11 looks de cinema por cima da foto já corrigida, a um toque.
+- **Copiar o look de uma foto**: você escolhe uma foto de referência e o app leva a sua para a mesma luz, contraste e cor. O look fica guardado para as próximas fotos.
+- Foto amarelada de ambiente interno: quando tem gente, a cor da pele serve de referência para tirar o amarelado.
 - Pele, olhos, dentes, cabelo e barba tratados por região, bem dosados.
 - Fundo de cinema: desfoque do fundo com profundidade medida por IA, quando você pede.
 - Ajustar imagem, detalhes, curvas, balanço de branco, vinheta, preto e branco, desfoque de lente, granulação e 10 filtros.
