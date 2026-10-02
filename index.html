@@ -2965,6 +2965,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     setTimeout(step, 30);
   }
   function heroText() {
+    if (!S.prevData) { $("heroT").textContent = "Abra uma foto para começar"; $("heroS").textContent = "A IA do app ajusta luz e cor; depois você escolhe um look, se quiser."; $("tomRow").hidden = true; return; }
     const L = S.look && LOOKS[S.look], on = autoOn(), ia = on && motor() === "ia", ready = ia && !!S.tom;
     $("heroT").textContent = L ? "Look " + L.name + (ready ? " sobre a IA Revela" : "") : !on ? "Foto como você tirou" : ready ? "Melhorada pela IA Revela" : ia ? "IA Revela ajustando luz e cor…" : "Melhorada pelo modo clássico";
     $("heroS").textContent = L ? "Cor, grão e brilho de cinema por cima da foto já corrigida. Toque em Sem look para voltar, ou em outro cartão para trocar."

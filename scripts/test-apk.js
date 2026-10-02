@@ -13,15 +13,17 @@ async function connect() {
 async function session(pg) {
   const ws = new WebSocket(pg.webSocketDebuggerUrl); let id = 0; const pend = new Map();
   await new Promise((ok, no) => { ws.onopen = ok; ws.onerror = no; });
+  let fechou = false; ws.onclose = () => { fechou = true; };   // o Android encerrou o app (ou a página caiu)
   ws.onmessage = m => { const d = JSON.parse(m.data); if (d.id && pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); }
     else if (d.method === 'Runtime.consoleAPICalled') fs.appendFileSync('out/console.txt', d.params.type + ': ' + d.params.args.map(a => a.value ?? a.description ?? '').join(' ') + '\n');
     else if (d.method === 'Runtime.exceptionThrown') fs.appendFileSync('out/console.txt', 'ERRO: ' + JSON.stringify(d.params.exceptionDetails).slice(0, 600) + '\n'); };
   const send = (method, params = {}) => new Promise(r => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   await send('Runtime.enable');
   const ev = async expr => { const r = await Promise.race([send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }), sleep(30000).then(() => ({ result: { result: { value: 'SEM RESPOSTA (tela travada)' } } }))]); if (r.result && r.result.exceptionDetails) return 'EXC ' + JSON.stringify(r.result.exceptionDetails).slice(0, 300); return r.result && r.result.result ? r.result.result.value : null; };
-  const waitFor = async (expr, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr) === true) return Date.now() - t; await sleep(1000); } return -1; };
-  const shot = async name => { const r = await send('Page.captureScreenshot', { format: 'png' }); if (r.result && r.result.data) fs.writeFileSync('out/' + name, Buffer.from(r.result.data, 'base64')); };
-  return { ev, waitFor, shot, ws, send };
+  const waitFor = async (expr, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (fechou) throw new Error('o app foi encerrado no meio do teste'); if (await ev(expr) === true) return Date.now() - t; await sleep(1000); } return -1; };
+  const shot = async name => { const r = await Promise.race([send('Page.captureScreenshot', { format: 'png' }), sleep(20000).then(() => ({}))]); if (r.result && r.result.data) fs.writeFileSync('out/' + name, Buffer.from(r.result.data, 'base64')); };
+  const vivo = async () => { if (fechou) return false; for (let i = 0; i < 3; i++) { if (await ev('1 + 1') === 2) return true; } return false; };
+  return { ev, waitFor, shot, ws, send, vivo };
 }
 async function testPhoto(s, file, tag) {
   const b64 = fs.readFileSync(file).toString('base64');
@@ -29,13 +31,16 @@ async function testPhoto(s, file, tag) {
   await s.ev("(async () => { const b = await (await fetch('data:image/jpeg;base64," + b64 + "')).blob(); const f = new File([b], '" + tag + ".jpg', { type: 'image/jpeg' }); const dt = new DataTransfer(); dt.items.add(f); const inp = document.getElementById('file'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true })); return true; })()");
   const tShow = await s.waitFor("document.getElementById('capName').textContent === '" + tag + ".jpg' && document.getElementById('view').width > 100", 60000);
   log('[' + tag + '] foto na tela: ' + (tShow < 0 ? 'NÃO APARECEU' : (Date.now() - t0) + ' ms'));
-  const tIA = await s.waitFor("/IA Revela|clássico/.test(document.getElementById('heroT').textContent)", 60000);
+  if (!(await s.vivo())) throw new Error('a página parou de responder logo depois de abrir a foto');
+  const tIA = await s.waitFor("/Melhorada pela IA Revela|clássico/.test(document.getElementById('heroT').textContent)", 90000);
   log('[' + tag + '] IA Revela: ' + (tIA < 0 ? 'NÃO RODOU' : await s.ev("document.getElementById('heroT').textContent + ' | conta da rede ' + window.__tm.tom + ' ms | ' + document.getElementById('heroS').textContent.slice(0, 140)")));
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
   const tS0 = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
   log('[' + tag + '] salvar logo que a foto apareceu: ' + (tS0 < 0 ? 'SEM RESPOSTA em 3 min' : tS0 + ' ms') + ' | aviso: ' + await s.ev("document.getElementById('toast').textContent"));
   const tAI = await s.waitFor("document.getElementById('aiPill').hidden", 360000);
   log('[' + tag + '] IAs em segundo plano terminaram: ' + (tAI < 0 ? 'NÃO TERMINARAM em 6 min | etapa: ' + await s.ev("document.getElementById('aiPillT').textContent") : (Date.now() - t0) + ' ms'));
+  if (!(await s.vivo())) throw new Error('a página parou de responder durante as IAs de apoio');
+  log('[' + tag + '] tempos no aparelho (ms): ' + await s.ev("JSON.stringify(Object.fromEntries(Object.entries(window.__tm).filter(([k, v]) => typeof v === 'number')))"));
   log('[' + tag + '] o que o app fez: ' + await s.ev("[...document.querySelectorAll('#notes li')].map(l => l.textContent).slice(0, 3).join(' || ').slice(0, 500)"));
   await s.shot(tag + '-editado.png'); screencap(tag + '-tela-real.png');
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
@@ -78,5 +83,5 @@ async function testPhoto(s, file, tag) {
   await voltar(); log('Voltar 4 (sair): aviso =', await s.ev("document.getElementById('toast').textContent"), '| app continua aberto =', await s.ev("document.visibilityState"));
   let foco = ''; try { foco = execSync('adb shell dumpsys activity activities', { timeout: 20000 }).toString().split(/\r?\n/).filter(l => /mResumedActivity|topResumedActivity/.test(l)).join(' ').trim().slice(0, 200); } catch (e) {}
   log('atividade em primeiro plano:', foco);
-  s.ws.close();
+  s.ws.close(); log('TESTE COMPLETO'); process.exit(0);
 })().catch(e => { log('ERRO', e.message); process.exit(1); });
