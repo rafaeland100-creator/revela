@@ -73,6 +73,20 @@ async function testPhoto(s, file, tag) {
   const tL = await s.waitFor("/Look copiado/.test(document.getElementById('heroT').textContent)", 60000);
   log('copiar look:', tL < 0 ? 'NÃO APLICOU' : (Date.now() - t3) + ' ms | ' + await s.ev("document.getElementById('heroT').textContent + ' | guardados: ' + document.querySelectorAll('.look.ref').length")); await sleep(2500); await s.shot('look-copiado.png');
   await s.ev("document.querySelector('.look[data-id=\"\"]').click(); true"); await sleep(1500);
+  // borracha mágica: pinta um traço com o dedo e apaga (o modelo MI-GAN roda no aparelho)
+  await s.ev("document.getElementById('quickErase').click(); true"); await sleep(1200);
+  const vb = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left, y: r.top, w: r.width, h: r.height }))(document.getElementById('view').getBoundingClientRect()))"));
+  await s.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: vb.x + vb.w * 0.15, y: vb.y + vb.h * 0.12, id: 0 }] });
+  for (const f of [0.2, 0.25, 0.3, 0.35]) { await s.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: vb.x + vb.w * f, y: vb.y + vb.h * 0.12, id: 0 }] }); await sleep(60); }
+  await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(800);
+  log('borracha: marcação feita com o dedo =', await s.ev("!document.getElementById('erGo').disabled"));
+  const t4 = Date.now(); await s.ev("document.getElementById('erGo').click(); true");
+  const tE = await s.waitFor("/Apagado em|Não deu|Pinte primeiro/.test(document.getElementById('erMsg').textContent)", 420000);
+  log('borracha mágica:', tE < 0 ? 'NÃO TERMINOU em 7 min' : (Date.now() - t4) + ' ms | ' + await s.ev("document.getElementById('erMsg').textContent"));
+  await s.waitFor("document.getElementById('aiPill').hidden", 240000); await sleep(1500); await s.shot('borracha.png');
+  await s.ev("document.getElementById('erUndo').click(); true"); await sleep(1500); await s.waitFor("document.getElementById('aiPill').hidden", 240000);
+  log('borracha: desfazer =', await s.ev("document.getElementById('erMsg').textContent"));
+  await s.ev("document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1000);
   // zoom por pinça com dois dedos de verdade (eventos de toque)
   const bx = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('view').getBoundingClientRect()))"));
   const pts = d => [{ x: bx.x - d, y: bx.y, id: 0 }, { x: bx.x + d, y: bx.y, id: 1 }];
