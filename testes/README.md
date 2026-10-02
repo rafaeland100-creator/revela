@@ -8,16 +8,17 @@ python -m http.server 8765
 
 ## O que cada um faz
 
-- `suite.js <pasta_de_fotos> [endereço] [grupos]`: 82 testes em 9 grupos.
+- `suite.js <pasta_de_fotos> [endereço] [grupos]`: 96 testes em 10 grupos.
   - G1 abertura de arquivos (PNG com transparência, foto minúscula, 6000×4000, EXIF, arquivo corrompido)
   - G2 looks, automático, ajustes, formatos e salvamento
   - G3 as 26 ferramentas
   - G4 as IAs sob demanda (detalhe, rostos, cancelar)
-  - G5 celular 360×760 com toque de verdade (pinça, toque duplo, arrastar, botão Voltar)
+  - G5 celular 360×760 com toque de verdade (pinça, toque duplo, arrastar, botão Voltar, pintar com a foto ampliada, toque num botão logo depois de um traço rápido, fundo de estúdio)
   - G6 service worker e uso sem internet
   - G7 a IA Revela (foto escura, estourada, amarelada com gente, já boa, força, motor clássico, arquivo salvo)
   - G8 copiar o look de uma foto (aproximação da referência, intensidade, guardar, apagar, proteção do rosto)
-  - G9 borracha mágica (pintar, limpar, apagar um objeto sem mexer no resto, salvar, desfazer)
+  - G9 borracha mágica (pintar, zoom com a roda do mouse, limpar, apagar um objeto sem mexer no resto, salvar, desfazer)
+  - G10 fundo (estúdio escuro, claro e azul, luz do fundo, cor só na pessoa, arquivo salvo, foto sem gente, troca de foto)
 - `battery.js <pasta_de_fotos> <saída>`: roda o automático em todas as fotos e monta pranchas de antes e depois. É o teste que mostra se o automático melhora ou estraga.
 - `resumo.js <report.json>`: resume tempos e quais retoques entraram em cada foto da bateria.
 - `tomtest.js <index.html> <revela_tom.bin> <revela_tom_teste.json>`: confere que a conta da rede em JavaScript dá os mesmos números do PyTorch.

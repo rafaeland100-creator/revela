@@ -16,7 +16,8 @@ No Android também dá para instalar o APK da página de versões.
 
 - **IA Revela**: rede neural treinada por nós que corrige luz, contraste e cor da foto inteira em menos de um décimo de segundo. É o motor padrão do Automático; o motor antigo, por regras, continua disponível como "Clássico".
 - 11 looks de cinema por cima da foto já corrigida, a um toque.
-- **Borracha mágica**: você pinta por cima de um dedo, de alguém ao fundo ou de um objeto e ele some; a IA preenche com o que estaria atrás.
+- **Borracha mágica**: você pinta por cima de um dedo, de alguém ao fundo ou de um objeto e ele some; a IA preenche com o que estaria atrás. Com dois dedos a foto aproxima, para marcar detalhe pequeno, e o botão "Ver antes" compara com a foto original.
+- **Fundo**: deixa a cor só na pessoa (o cenário vira preto e branco) ou troca o cenário por um fundo de estúdio, escuro, claro ou colorido. A separação da pessoa é feita pela IA; a borda é refinada no tamanho da foto e a parte do cenário antigo que estava misturada nos fios de cabelo é trocada pela do fundo novo.
 - **Copiar o look de uma foto**: você escolhe uma foto de referência e o app leva a sua para a mesma luz, contraste e cor. O look fica guardado para as próximas fotos.
 - Foto amarelada de ambiente interno: quando tem gente, a cor da pele serve de referência para tirar o amarelado.
 - Pele, olhos, dentes, cabelo e barba tratados por região, bem dosados.
@@ -24,7 +25,7 @@ No Android também dá para instalar o APK da página de versões.
 - Ajustar imagem, detalhes, curvas, balanço de branco, vinheta, preto e branco, desfoque de lente, granulação e 10 filtros.
 - Cortar, girar e endireitar automático. Formatos prontos para Feed, Story e Reels.
 - Seletivo e pincel, com escolha de região (pele, cabelo, roupa, céu, fundo).
-- Zoom com pinça, toque duplo e arrastar.
+- Zoom com pinça, toque duplo e arrastar. Na borracha e no pincel um dedo pinta e dois dedos aproximam.
 - Melhor rosto entre várias fotos (em teste).
 
 ## A IA própria

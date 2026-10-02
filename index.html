@@ -132,6 +132,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; min-w
 .chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; }
 .chip[aria-pressed="true"], .fchip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .fchip { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 9px 6px; cursor: pointer; font-size: 12.5px; }
+.fdot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line); }
 .bthumbs { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .bthumb { position: relative; }
 .bthumb canvas { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; border: 2px solid var(--line); display: block; }
@@ -584,10 +585,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     film: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/>',
     filters: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5"/>',
     people: '<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 20c0-4 2-6.5 5-6.5s5 2.5 5 6.5M14 20c0-3 1-5 3-5s4 2 4 5"/>',
-    erase: '<path d="M4 15.5L13.5 6a2 2 0 0 1 2.8 0l2.7 2.7a2 2 0 0 1 0 2.8L11 19.5H7z"/><path d="M9.5 10l5.5 5.5M5 20h15"/>'
+    erase: '<path d="M4 15.5L13.5 6a2 2 0 0 1 2.8 0l2.7 2.7a2 2 0 0 1 0 2.8L11 19.5H7z"/><path d="M9.5 10l5.5 5.5M5 20h15"/>',
+    fundo: '<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2.5"/><circle cx="12" cy="10" r="3"/><path d="M6.5 21c0-3.6 2.2-5.5 5.5-5.5s5.5 1.9 5.5 5.5"/>'
   };
   const TOOLS = [
     { id: "erase", name: "Borracha mágica", keys: [], note: "Pinte por cima do que quer tirar (um dedo, alguém ao fundo, um fio, uma mancha) e toque em Apagar. A IA preenche com o que estaria atrás.", custom: "erase" },
+    { id: "fundo", name: "Fundo", keys: [], note: "Deixe a cor só na pessoa ou troque o cenário por um fundo de estúdio. Precisa de alguém na foto: quem separa a pessoa do cenário é a IA.", custom: "fundo" },
     { id: "adjust", name: "Ajustar imagem", keys: ["ev", "mid", "contrast", "sat", "vibrance", "clarity", "highlights", "shadows", "bp", "wp"], note: "Ambiente é o contraste local (clareza). Realces e Sombras também aceitam valores negativos." },
     { id: "detail", name: "Detalhes", keys: ["structure", "sharpen"], note: "Estrutura aumenta o detalhe fino e a textura. Nitidez afia as bordas. A pele é protegida." },
     { id: "curves", name: "Curvas", keys: [], note: "Toque na curva para criar um ponto e arraste. Toque duas vezes num ponto para remover. \"Sugerida\" calcula a curva pela sua foto.", custom: "curves" },
@@ -747,7 +750,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         S.beard = tm("beard", () => buildBeard(S.segRef, S.skin)); S.an.beard = S.beard ? S.beard.frac : 0;
         S.seg = $("refine").checked ? S.segRef : S.segRaw;
         S.segMs = Math.round(performance.now() - t0);
-        tm("onSeg", () => onSeg(S.segMs));
+        tm("onSeg", () => onSeg(S.segMs)); renderFundo();
         runFace();
       } catch (e) { setSegStatus("A segmentação falhou nesta foto: " + (e.message || e), false); console.log("[revela] segmentação falhou: " + (e.message || e)); pill(null); }
     }, 30);
@@ -1988,6 +1991,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       p.curveLut = S.curveLut;
       if (S.an && S.an.mono && !("bw" in S.manual)) p.bw = 1;
     }
+    // fundo de estúdio: desfoque de fundo, céu e receitas por cena olhariam para um cenário que não existe mais
+    const FDs = fundoSel(); if (FDs && !FDs.mono) { p.fundoOn = 1; p.bgBlur = 0; p.dof = 0; p.skyDeep = 0; p.scene = 0; }
     return p;
   }
 
@@ -2248,7 +2253,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     L.adj.ev = 0.3; L.m = new Float32Array(w * h); return addLayer(L);
   }
   function stamp(L, sx, sy) {
-    const { w, h } = lmDims(), d = S.prevData.data, B = S.brush, mn = Math.min(w, h), R = B.size * mn, c = avgColor(sx, sy), sig = 0.14, lk = L.lock ? regionMask(L.lock) : null;
+    // com a foto ampliada o pincel afina junto (na tela fica do mesmo tamanho)
+    const { w, h } = lmDims(), d = S.prevData.data, B = S.brush, mn = Math.min(w, h), R = Math.max(1.5, B.size * mn / Z.s), c = avgColor(sx, sy), sig = 0.14, lk = L.lock ? regionMask(L.lock) : null;
     const cxp = sx * w, cyp = sy * h, x0 = Math.max(0, Math.floor(cxp - R)), x1 = Math.min(w - 1, Math.ceil(cxp + R)), y0 = Math.max(0, Math.floor(cyp - R)), y1 = Math.min(h - 1, Math.ceil(cyp + R));
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const t = Math.hypot(x - cxp, y - cyp) / R; if (t >= 1) continue;
@@ -2324,8 +2330,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   // toque e pincel na foto
   let bdrag = null;
+  // segundo dedo na foto: o gesto vira zoom, e a pincelada que tinha acabado de começar é desfeita
+  function brushAbort(e) {
+    if (!bdrag) return;
+    if (!bdrag.move && mal(bdrag, e)) { const u = S.undo.pop(); if (u && S.locals.includes(u.L)) { u.L.raw.set(u.raw); combine(u.L); } }
+    bdrag = null; S.painting = false; schedule();
+  }
   view.addEventListener("pointerdown", e => {
     if (S.tool !== "brush" && S.tool !== "selective") return;
+    if (S.tool === "brush" && (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0))) { brushAbort(e); return; }
     const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height), { w, h } = lmDims();
     if (q[0] < 0 || q[0] > 1 || q[1] < 0 || q[1] > 1) return;
     if (S.tool === "selective") {
@@ -2335,14 +2348,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     }
     let L = S.locals[S.sel]; if (!L || L.type !== "brush") L = addBrush();
     S.undo.push({ L, raw: L.raw.slice() }); if (S.undo.length > 10) S.undo.shift();
-    bdrag = { last: q }; S.painting = true; stamp(L, q[0], q[1]); view.setPointerCapture(e.pointerId); markCustom(); schedule(); e.preventDefault();
+    bdrag = { last: q, t0: e.timeStamp, len: 0, px: e.clientX, py: e.clientY, pid: e.pointerId }; S.painting = true; stamp(L, q[0], q[1]); view.setPointerCapture(e.pointerId); markCustom(); schedule(); e.preventDefault();
   });
   view.addEventListener("pointermove", e => {
-    if (!bdrag) return;
+    if (!bdrag || (bdrag.pid !== undefined && e.pointerId !== bdrag.pid)) return;
     const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height), L = S.locals[S.sel];
     if (bdrag.move && L && L.type === "point") { L.cx = Math.min(1, Math.max(0, q[0])); L.cy = Math.min(1, Math.max(0, q[1])); buildPointRaw(L); schedule(); return; }
     if (!L || L.type !== "brush") return;
-    const { w, h } = lmDims(), step = Math.max(1, S.brush.size * Math.min(w, h) * 0.3), dist = Math.hypot((q[0] - bdrag.last[0]) * w, (q[1] - bdrag.last[1]) * h), n = Math.max(1, Math.ceil(dist / step));
+    andou(bdrag, e);
+    const { w, h } = lmDims(), step = Math.max(1, S.brush.size * Math.min(w, h) * 0.3 / Z.s), dist = Math.hypot((q[0] - bdrag.last[0]) * w, (q[1] - bdrag.last[1]) * h), n = Math.max(1, Math.ceil(dist / step));
     for (let i = 1; i <= n; i++) stamp(L, bdrag.last[0] + (q[0] - bdrag.last[0]) * i / n, bdrag.last[1] + (q[1] - bdrag.last[1]) * i / n);
     bdrag.last = q; schedule();
   });
@@ -2550,14 +2564,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   // versão pequena para responder rápido enquanto o controle é arrastado
   function getSmall() {
-    if (S.small && S.small.src === S.prevData) return S.small;
+    const FD = fundoPrev(), base = FD ? FD.data : S.prevData;
+    if (S.small && S.small.src === base) return S.small;
     const W = S.prevData.width, H = S.prevData.height, sc = Math.min(1, 360 / Math.max(W, H)), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
-    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
-    const d = cx.getImageData(0, 0, w, h); S.small = { src: S.prevData, c, cx, d, w, h, dt: makeDetail(d.data, w, h) }; return S.small;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(FD ? FD.cv : S.prev, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h); S.small = { src: base, c, cx, d, w, h, dt: makeDetail(d.data, w, h) }; return S.small;
   }
   function fastDraw() {
-    const t0 = performance.now(), sm = getSmall();
-    const img = render(sm.d, sm.w, sm.h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender());
+    const t0 = performance.now(), sm = getSmall(), FD = fundoPrev();
+    const img = render(sm.d, sm.w, sm.h, effective(true), FD ? FD.mask : S.mask, null, FD ? FD.sg : S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, sm.dt, localsForRender());
     sm.cx.putImageData(img, 0, 0); rcx.imageSmoothingEnabled = true; rcx.drawImage(sm.c, 0, 0, rc.width, rc.height);
     present(); drawSplit(); TM.fast = Math.round(performance.now() - t0);
   }
@@ -2570,7 +2585,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (S.fast && !S.painting) { fastDraw(); return; }
     const h = new Float64Array(256);
     if (!S.depth && effective(true).dof > 0.005) ensureDepth();
-    const img = (S.painting && S.lastRender) ? S.lastRender : render(S.prevData, S.prevData.width, S.prevData.height, effective(true), S.mask, h, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, S.detail || (S.detail = makeDetail(S.prevData.data, S.prevData.width, S.prevData.height)), localsForRender());
+    const FD = fundoPrev(), base = FD ? FD.data : S.prevData;
+    const img = (S.painting && S.lastRender) ? S.lastRender : render(base, base.width, base.height, effective(true), FD ? FD.mask : S.mask, h, FD ? FD.sg : S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, FD ? (FD.detail || (FD.detail = makeDetail(base.data, base.width, base.height))) : (S.detail || (S.detail = makeDetail(S.prevData.data, S.prevData.width, S.prevData.height))), localsForRender());
     S.lastRender = img; rcx.putImageData(img, 0, 0);
     if (S.tool === "lens") { const e = effective(), m2 = Math.min(rc.width, rc.height); rcx.save(); rcx.strokeStyle = "rgba(255,255,255,.9)"; rcx.lineWidth = 2; rcx.setLineDash([8, 6]); rcx.beginPath(); rcx.arc(e.lensX * rc.width, e.lensY * rc.height, e.lensSize * m2, 0, 7); rcx.stroke(); rcx.restore(); }
     if ((S.tool === "selective" || S.tool === "brush") && S.showMask) drawLocalOverlay();
@@ -2620,6 +2636,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (t.custom === "rotate") buildCropPane(pane, true);
       if (t.custom === "filters") buildFilters(pane);
       if (t.custom === "erase") buildErasePane(pane);
+      if (t.custom === "fundo") buildFundoPane(pane);
       for (const key of t.keys) {
         const [, label, min, max, step] = SD[key];
         const row = document.createElement("div"); row.className = "field"; row.dataset.key = key;
@@ -2629,7 +2646,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       }
       const z = document.createElement("p"); z.style.margin = "14px 0 0";
       z.innerHTML = '<button class="linkbtn" type="button">Zerar esta ferramenta</button>';
-      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; Object.assign(S.brush, { size: 0.06, hard: 0.5, edge: 0.6, erase: false }); if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } if (t.custom === "erase") { eraseClear(); return; } markCustom(); schedule(); });
+      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; Object.assign(S.brush, { size: 0.06, hard: 0.5, edge: 0.6, erase: false }); if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } if (t.custom === "erase") { eraseClear(); return; } if (t.custom === "fundo") { S.fundo = ""; S.fd = null; delete S.manual.bgLight; renderFundo(); renderQuick(); scheduleThumbs(); } markCustom(); schedule(); });
       pane.appendChild(z); panes.appendChild(pane);
     }
   }
@@ -2727,11 +2744,12 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   function openTool(id) {
     if (typeof resetZoom === "function") resetZoom();
     S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens", "depth", "erase"].includes(id) ? "none" : ""; $("toolList").hidden = true;
-    if (id === "erase") { eraseUI(); if (!ER.sujo && !ER.undo.length) $("erMsg").textContent = "Pinte por cima do que quer tirar e toque em Apagar."; }
+    if (id === "fundo") renderFundo();
+    if (id === "erase") { eraseUI(); if (!ER.sujo && !ER.undo.length) $("erMsg").textContent = "Pinte por cima do que quer tirar e toque em Apagar. Com dois dedos você aproxima a foto para pegar detalhe pequeno."; }
     $("toolBack").dataset.name = (TOOLS.find(t => t.id === id) || {}).name || "";
     if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false; if (id === "depth") ensureDepth();
     document.querySelectorAll(".toolpane").forEach(p2 => { p2.hidden = p2.dataset.tool !== id; });
-    if (id === "selective" || id === "brush") { const pane = document.querySelector(`.toolpane[data-tool="${id}"]`); if (!S.lbox) S.lbox = buildLocalBox(); pane.insertBefore(S.lbox, pane.querySelector("p:last-child")); renderLocalBox(); }
+    if (id === "selective" || id === "brush") { const pane = document.querySelector(`.toolpane[data-tool="${id}"]`); if (!S.lbox) S.lbox = buildLocalBox(); pane.insertBefore(S.lbox, pane.querySelector(":scope > p:last-child")); renderLocalBox(); }
     schedule();
   }
   function closeTool() { S.tool = null; S.painting = false; view.style.touchAction = ""; $("toolList").hidden = false; $("toolView").hidden = true; schedule(); }
@@ -2753,7 +2771,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     }
     if (!$("tomRow").hidden && document.activeElement !== $("tomK")) { const v = Math.round(p.ai * 100); $("tomK").value = v; $("tomKOut").textContent = v + "%"; }
     document.querySelectorAll(".chip[data-i]").forEach(c => c.setAttribute("aria-pressed", String(Math.round(p.bwFilter) === +c.dataset.i)));
-    document.querySelectorAll(".fchip").forEach(c => c.setAttribute("aria-pressed", String((S.filter || "") === c.dataset.f)));
+    document.querySelectorAll('.toolpane[data-tool="filters"] .fchip').forEach(c => c.setAttribute("aria-pressed", String((S.filter || "") === c.dataset.f)));
     for (const t of TOOLS) { const b = document.querySelector(`.tool[data-tool="${t.id}"]`); if (b) b.dataset.dirty = (t.keys.some(k => Math.abs(p[k] - NEUTRAL[k]) > 0.005) || (t.custom === "filters" && S.filter) || (t.custom === "curves" && S.curveLut) || (t.custom === "local" && S.locals.length) || ((t.custom === "crop" || t.custom === "rotate") && !geoIsId(S.geo))) ? "1" : "0"; }
   }
   function markCustom() { $("reset").hidden = false; }
@@ -2971,34 +2989,189 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     hideLoading(); ["aiAll", "aiFace", "aiFast", "aiBest"].forEach(i => { $(i).disabled = false; }); AI.busy = false; releaseHeavy();
   }
 
+  /* ---------- fundo: cor só na pessoa, ou o cenário trocado por um fundo de estúdio ----------
+     A troca é feita na própria foto, antes de qualquer ajuste. Assim a luz por região, o detalhe e o brilho que o
+     app calcula já enxergam o fundo novo e não sobra "fantasma" do cenário antigo.
+     Na borda (fios de cabelo) o pixel é mistura de pessoa e cenário: sai a parte do cenário antigo e entra a do novo,
+     cor' = cor + (1 − α)·(fundo novo − fundo antigo), com o fundo antigo estimado pelo cenário borrado. */
+  const FUNDOS = [
+    { id: "", name: "Original" },
+    { id: "pb", name: "Cor só na pessoa", mono: true },
+    { id: "escuro", name: "Estúdio escuro", c: [52, 52, 56], centro: 1.3, borda: 0.3 },
+    { id: "claro", name: "Estúdio claro", c: [232, 231, 228], centro: 1.05, borda: 0.86 },
+    { id: "cinza", name: "Cinza", c: [120, 120, 123], centro: 1.25, borda: 0.55 },
+    { id: "azul", name: "Azul", c: [46, 78, 124], centro: 1.35, borda: 0.4 },
+    { id: "areia", name: "Areia", c: [190, 167, 139], centro: 1.14, borda: 0.7 },
+    { id: "rosa", name: "Rosa", c: [205, 146, 156], centro: 1.14, borda: 0.7 },
+    { id: "verde", name: "Verde", c: [58, 92, 78], centro: 1.3, borda: 0.45 }
+  ];
+  /* Recorte limpo para a troca de fundo. A separação da IA às vezes marca como "pessoa" um reflexo na mesa, um objeto
+     ou um pedaço solto (um dedo na borda). Fica só o que é pessoa de verdade: as manchas grandes, mais a borda suave
+     em volta delas. O resto vira cenário. Devolve a separação já corrigida, no mesmo formato da original. */
+  const FDSEG = new WeakMap();
+  function fundoSeg(sg) {
+    if (FDSEG.has(sg)) return FDSEG.get(sg);
+    const w = sg.w, h = sg.h, n = w * h, c0 = sg.cls[0], lab = new Int32Array(n), pilha = new Int32Array(n), area = [0];
+    let nl = 0;
+    for (let i = 0; i < n; i++) {
+      if (lab[i] || c0[i] > 145) continue;   // núcleo: mais de 43% de certeza de ser pessoa
+      let top = 0, cnt = 0; pilha[top++] = i; lab[i] = ++nl;
+      while (top) {
+        const q = pilha[--top], x = q % w; cnt++;
+        if (x > 0 && !lab[q - 1] && c0[q - 1] <= 145) { lab[q - 1] = nl; pilha[top++] = q - 1; }
+        if (x < w - 1 && !lab[q + 1] && c0[q + 1] <= 145) { lab[q + 1] = nl; pilha[top++] = q + 1; }
+        if (q >= w && !lab[q - w] && c0[q - w] <= 145) { lab[q - w] = nl; pilha[top++] = q - w; }
+        if (q < n - w && !lab[q + w] && c0[q + w] <= 145) { lab[q + w] = nl; pilha[top++] = q + w; }
+      }
+      area.push(cnt);
+    }
+    let maior = 0; for (let k = 1; k <= nl; k++) if (area[k] > maior) maior = area[k];
+    const lim = Math.max(maior * 0.12, n * 0.002), dist = new Float32Array(n);
+    for (let i = 0; i < n; i++) dist[i] = lab[i] && area[lab[i]] >= lim ? 0 : 1e9;
+    // distância até a pessoa mais próxima que ficou (duas passadas)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; let v = dist[i]; if (v === 0) continue; if (x > 0 && dist[i - 1] + 1 < v) v = dist[i - 1] + 1; if (y > 0) { if (dist[i - w] + 1 < v) v = dist[i - w] + 1; if (x > 0 && dist[i - w - 1] + 1.414 < v) v = dist[i - w - 1] + 1.414; if (x < w - 1 && dist[i - w + 1] + 1.414 < v) v = dist[i - w + 1] + 1.414; } dist[i] = v; }
+    for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; let v = dist[i]; if (v === 0) continue; if (x < w - 1 && dist[i + 1] + 1 < v) v = dist[i + 1] + 1; if (y < h - 1) { if (dist[i + w] + 1 < v) v = dist[i + w] + 1; if (x < w - 1 && dist[i + w + 1] + 1.414 < v) v = dist[i + w + 1] + 1.414; if (x > 0 && dist[i + w - 1] + 1.414 < v) v = dist[i + w - 1] + 1.414; } dist[i] = v; }
+    const d0 = Math.max(5, w * 0.02), d1 = Math.max(10, w * 0.045), cls = sg.cls.map(c => new Uint8Array(c)); let tirou = 0;
+    for (let i = 0; i < n; i++) {
+      const dd = dist[i]; if (dd <= d0 || c0[i] === 255) continue;
+      const k = dd >= d1 ? 0 : 1 - (dd - d0) / (d1 - d0); let resto = 0;
+      for (let c = 1; c < cls.length; c++) { cls[c][i] = sg.cls[c][i] * k; resto += cls[c][i]; }
+      cls[0][i] = 255 - Math.min(255, resto); if (c0[i] <= 145) tirou++;
+    }
+    const lim2 = { de: sg, w, h, cls, n: sg.n, tirou: tirou / n }; FDSEG.set(sg, lim2);
+    return lim2;
+  }
+  const fundoSel = () => (S.fundo && S.seg && S.bgb && S.an && S.an.seg && S.an.seg.person >= 0.03 && FUNDOS.find(f => f.id === S.fundo)) || null;
+  /* Recorte da pessoa no tamanho da imagem. O mapa da IA tem 256 pontos de lado; ampliado direto, a borda sairia em
+     degraus na foto grande. Aqui ele é refeito como função local da luminância da foto (filtro guiado), então a borda
+     acompanha os contornos de verdade. Medido em fotos de teste: partir do mapa bruto dá borda mais lisa no cabelo do
+     que partir do mapa já refinado em 720 px. Para poupar memória o refino vai até 1400 px; acima disso amplia suave. */
+  function fundoAlpha(sg, canvas) {
+    const sc = Math.min(1, 1400 / Math.max(canvas.width, canvas.height)), w = Math.max(8, Math.round(canvas.width * sc)), h = Math.max(8, Math.round(canvas.height * sc)), n = w * h;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(canvas, 0, 0, w, h);
+    const px = cx.getImageData(0, 0, w, h).data, I = new Float32Array(n), P = new Float32Array(n), c0 = sg.cls[0], sw = sg.w, sh = sg.h;
+    for (let i = 0; i < n; i++) I[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
+    for (let y = 0; y < h; y++) {
+      const fy = y / Math.max(1, h - 1) * (sh - 1), y0 = Math.min(sh - 2, fy | 0), ty = fy - y0;
+      for (let x = 0; x < w; x++) { const fx = x / Math.max(1, w - 1) * (sw - 1), x0 = Math.min(sw - 2, fx | 0), tx = fx - x0, j = y0 * sw + x0; P[y * w + x] = 1 - ((c0[j] * (1 - tx) + c0[j + 1] * tx) * (1 - ty) + (c0[j + sw] * (1 - tx) + c0[j + sw + 1] * tx) * ty) / 255; }
+    }
+    const r = Math.max(2, Math.round(2.5 * w / sw)), eps = 0.0008, tmp = new Float32Array(n), m1 = new Float32Array(n), m2 = new Float32Array(n), m3 = new Float32Array(n), m4 = new Float32Array(n);
+    boxF(I, w, h, r, m1, tmp);
+    for (let i = 0; i < n; i++) m3[i] = I[i] * I[i];
+    boxF(m3, w, h, r, m2, tmp); for (let i = 0; i < n; i++) m2[i] -= m1[i] * m1[i];
+    boxF(P, w, h, r, m3, tmp);
+    for (let i = 0; i < n; i++) P[i] *= I[i];
+    boxF(P, w, h, r, m4, tmp);
+    for (let i = 0; i < n; i++) { const a = (m4[i] - m1[i] * m3[i]) / (m2[i] + eps); m4[i] = a; m3[i] -= a * m1[i]; }
+    boxF(m4, w, h, r, m1, tmp); boxF(m3, w, h, r, m2, tmp);
+    for (let i = 0; i < n; i++) { const v = m1[i] * I[i] + m2[i]; P[i] = v < 0 ? 0 : v > 1 ? 1 : v; }
+    return { w, h, a: P };
+  }
+  function fundoCompose(d, w, h, F, A, bg) {
+    const aw = A.w, ah = A.h, pa = A.a, bW = bg.w, bH = bg.h, BR = bg.R, BG = bg.G, BB = bg.B;
+    // a luz do fundo de estúdio fica atrás da pessoa, do peito para cima
+    let sx = 0, sy = 0, sn = 0, top = ah;
+    for (let y = 0; y < ah; y += 3) for (let x = 0; x < aw; x += 3) if (pa[y * aw + x] > 0.5) { sx += x; sy += y; sn++; if (y < top) top = y; }
+    const cx = sn ? sx / sn / aw : 0.5, cy = sn ? Math.min(sy / sn / ah, top / ah + 0.3) : 0.45, asp = h / w;
+    const st = (e0, e1, v) => { const t = v <= e0 ? 0 : v >= e1 ? 1 : (v - e0) / (e1 - e0); return t * t * (3 - 2 * t); };
+    const sxi = new Int32Array(w), sxf = new Float32Array(w), bxi = new Int32Array(w), bxf = new Float32Array(w);
+    for (let x = 0; x < w; x++) { let f = x / Math.max(1, w - 1) * (aw - 1); sxi[x] = Math.min(aw - 2, f | 0); sxf[x] = f - sxi[x]; f = x / Math.max(1, w - 1) * (bW - 1); bxi[x] = Math.min(bW - 2, f | 0); bxf[x] = f - bxi[x]; }
+    for (let y = 0; y < h; y++) {
+      let f = y / Math.max(1, h - 1) * (ah - 1); const sy0 = Math.min(ah - 2, f | 0), sty = f - sy0;
+      f = y / Math.max(1, h - 1) * (bH - 1); const by0 = Math.min(bH - 2, f | 0), bty = f - by0, dy = (y / h - cy) * asp;
+      for (let x = 0; x < w; x++) {
+        const j = sy0 * aw + sxi[x], tx = sxf[x], pes = (pa[j] * (1 - tx) + pa[j + 1] * tx) * (1 - sty) + (pa[j + aw] * (1 - tx) + pa[j + aw + 1] * tx) * sty;
+        if (pes > 0.98) continue;   // pessoa: fica como está
+        // α da pessoa, com a borda um pouco para dentro (o recorte da IA costuma sobrar um fio de cenário em volta)
+        const al = st(FUNDO_A[0], FUNDO_A[1], pes); if (al >= 0.999) continue;
+        const i = (y * w + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2];
+        if (F.mono) { const Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, k = 1 - al; d[i] = r + (Y - r) * k; d[i + 1] = g + (Y - g) * k; d[i + 2] = b + (Y - b) * k; continue; }
+        const dx = x / w - cx, sd = F.borda + (F.centro - F.borda) * Math.exp(-(dx * dx + dy * dy) / 0.18), nr = F.c[0] * sd, ng = F.c[1] * sd, nb = F.c[2] * sd;
+        if (al <= 0.001) { d[i] = nr; d[i + 1] = ng; d[i + 2] = nb; continue; }
+        const k = by0 * bW + bxi[x], u = bxf[x], k1 = 1 - al, wg = st(0.02, 0.3, al);
+        const or = ((BR[k] * (1 - u) + BR[k + 1] * u) * (1 - bty) + (BR[k + bW] * (1 - u) + BR[k + bW + 1] * u) * bty) * 255;
+        const og = ((BG[k] * (1 - u) + BG[k + 1] * u) * (1 - bty) + (BG[k + bW] * (1 - u) + BG[k + bW + 1] * u) * bty) * 255;
+        const ob = ((BB[k] * (1 - u) + BB[k + 1] * u) * (1 - bty) + (BB[k + bW] * (1 - u) + BB[k + bW + 1] * u) * bty) * 255;
+        d[i] = nr + wg * (r + k1 * (nr - or) - nr); d[i + 1] = ng + wg * (g + k1 * (ng - og) - ng); d[i + 2] = nb + wg * (b + k1 * (nb - ob) - nb);
+      }
+    }
+  }
+  const FUNDO_A = [0.25, 0.85];
+  // prévia já com o fundo novo, mais as medidas que dependem dela (luz por região e detalhe). Só é refeita quando algo muda.
+  function fundoPrev() {
+    const F = fundoSel(); if (!F || !S.prevData) return null;
+    const c = S.fd; if (c && c.id === F.id && c.src === S.prevData && c.seg === S.seg) return c;
+    const t0 = performance.now(), w = S.prevData.width, h = S.prevData.height, data = new ImageData(new Uint8ClampedArray(S.prevData.data), w, h);
+    const sg = fundoSeg(S.seg), bruto = fundoSeg(S.segRaw || S.seg);
+    if (!S.fdA || S.fdA.sg !== bruto || S.fdA.src !== S.prevData) S.fdA = { sg: bruto, src: S.prevData, A: fundoAlpha(bruto, S.prev) };
+    fundoCompose(data.data, w, h, F, S.fdA.A, S.bgb);
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.getContext("2d").putImageData(data, 0, 0);
+    S.fd = { id: F.id, src: S.prevData, seg: S.seg, sg, data, cv, mask: buildMask(cv), detail: null }; TM.fundo = Math.round(performance.now() - t0);
+    return S.fd;
+  }
+  function renderFundo() {
+    document.querySelectorAll("#fdGrid .fchip").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.f || "") === (S.fundo || ""))));
+    const m = $("fdMsg"); if (!m) return;
+    const pes = S.an && S.an.seg ? S.an.seg.person : 0;
+    m.textContent = !S.prevData ? "" : !S.seg ? "A IA ainda está separando a pessoa do cenário. Daqui a um instante o fundo entra." : pes < 0.03 ? "Não achei pessoa nesta foto, então não há o que separar do fundo." : S.fundo === "pb" ? "O cenário ficou em preto e branco e a pessoa manteve a cor." : S.fundo ? "Cenário trocado por fundo de estúdio. A Luz do fundo, abaixo, clareia ou escurece." : "";
+    const lz = $("fd_luz"); if (lz && document.activeElement !== lz) { const v = effective().bgLight; lz.value = v; lz.parentNode.querySelector("output").textContent = sgn(v, 2); }
+  }
+  function setFundo(id) { S.fundo = id || ""; S.fd = null; renderFundo(); markCustom(); renderQuick(); schedule(); scheduleThumbs(); }
+  function buildFundoPane(pane) {
+    const g = document.createElement("div"); g.className = "fgrid"; g.id = "fdGrid";
+    FUNDOS.forEach(F => { const b = document.createElement("button"); b.type = "button"; b.className = "fchip"; b.dataset.f = F.id; b.innerHTML = (F.c ? '<i class="fdot" style="background:rgb(' + F.c.join(",") + ')"></i>' : "") + F.name; g.appendChild(b); });
+    g.addEventListener("click", e => { const b = e.target.closest(".fchip"); if (b) setFundo(b.dataset.f); });
+    pane.appendChild(g);
+    const m = document.createElement("p"); m.className = "bmsg"; m.id = "fdMsg"; pane.appendChild(m);
+    const row = document.createElement("div"); row.className = "field";
+    row.innerHTML = '<label for="fd_luz">Luz do fundo</label><input type="range" id="fd_luz" min="-0.8" max="0.6" step="0.01" value="0"><output>0</output>';
+    row.querySelector("input").addEventListener("input", e => { S.manual.bgLight = parseFloat(e.target.value); row.querySelector("output").textContent = sgn(S.manual.bgLight, 2); markCustom(); schedule(); });
+    pane.appendChild(row);
+  }
+
   /* ---------- borracha mágica: apaga o que for pintado e preenche com o fundo ----------
      Usa o MI-GAN (Picsart AI Research, licença MIT), um modelo de preenchimento feito para celular.
      A máscara dele é 0 onde é para apagar e 255 onde é para manter. */
-  const ER = { cv: null, cx: null, size: 0.05, sujo: false, undo: [] };
+  const ER = { cv: null, cx: null, size: 0.05, sujo: false, undo: [], feito: 0 };
   function eraseMask() {
     // tela de marcação do tamanho da prévia, em coordenadas da foto (não da tela): vale mesmo com corte ou giro
     if (!ER.cv || ER.cv.width !== S.prev.width || ER.cv.height !== S.prev.height) { ER.cv = document.createElement("canvas"); ER.cv.width = S.prev.width; ER.cv.height = S.prev.height; ER.cx = ER.cv.getContext("2d", { willReadFrequently: true }); ER.sujo = false; }
     return ER.cx;
   }
-  function eraseUI() { if (!$("erGo")) return; $("erGo").disabled = !ER.sujo || AI.busy; $("erClear").disabled = !ER.sujo || AI.busy; $("erUndo").disabled = !ER.undo.length || AI.busy; }
+  function eraseUI() { if (!$("erGo")) return; $("erGo").disabled = !ER.sujo || AI.busy; $("erClear").disabled = !ER.sujo || AI.busy; $("erUndo").disabled = !ER.undo.length || AI.busy; $("erCmp").hidden = !ER.feito; }
   function eraseClear() { if (ER.cx) ER.cx.clearRect(0, 0, ER.cv.width, ER.cv.height); ER.sujo = false; eraseUI(); schedule(); }
   function eraseStroke(a, b) {
     const x = eraseMask(), W = ER.cv.width, H = ER.cv.height;
-    x.strokeStyle = "rgb(255,70,70)"; x.lineCap = "round"; x.lineJoin = "round"; x.lineWidth = Math.max(4, ER.size * Math.min(W, H) * 2);
+    // com a foto ampliada o traço afina junto: na tela o pincel fica do mesmo tamanho e pega detalhe pequeno
+    x.strokeStyle = "rgb(255,70,70)"; x.lineCap = "round"; x.lineJoin = "round"; x.lineWidth = Math.max(3, ER.size * Math.min(W, H) * 2 / Z.s);
     x.beginPath(); x.moveTo(a[0] * W, a[1] * H); x.lineTo(b[0] * W + 0.01, b[1] * H + 0.01); x.stroke(); ER.sujo = true;
   }
   let edrag = null;
+  // segundo dedo na foto: o gesto vira zoom. O traço que tinha acabado de começar some; um traço já feito fica.
+  // "Acabado de começar" é medido pelo horário do toque e pelo quanto o dedo andou, não pelo relógio da tela,
+  // para valer também em aparelho lento.
+  const mal = (g, e) => e.timeStamp - g.t0 < 400 || g.len < 16;
+  const andou = (g, e) => { g.len += Math.hypot(e.clientX - g.px, e.clientY - g.py); g.px = e.clientX; g.py = e.clientY; };
+  function eraseAbort(e) {
+    if (!edrag) return;
+    if (mal(ER, e) && ER.bk) { ER.cx.clearRect(0, 0, ER.cv.width, ER.cv.height); ER.cx.drawImage(ER.bk, 0, 0); ER.sujo = ER.sujo0; }
+    edrag = null; S.painting = false; eraseUI(); schedule();
+  }
   view.addEventListener("pointerdown", e => {
     if (S.tool !== "erase" || AI.busy || !S.prev) return;
+    if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) { eraseAbort(e); return; }
     const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    eraseMask(); if (!ER.bk || ER.bk.width !== ER.cv.width || ER.bk.height !== ER.cv.height) { ER.bk = document.createElement("canvas"); ER.bk.width = ER.cv.width; ER.bk.height = ER.cv.height; }
+    const bk = ER.bk.getContext("2d"); bk.clearRect(0, 0, ER.bk.width, ER.bk.height); bk.drawImage(ER.cv, 0, 0); ER.sujo0 = ER.sujo;
+    ER.t0 = e.timeStamp; ER.len = 0; ER.px = e.clientX; ER.py = e.clientY; ER.pid = e.pointerId;
     edrag = q; S.painting = true; eraseStroke(q, q); try { view.setPointerCapture(e.pointerId); } catch (err) { /* ponteiro já solto */ } eraseUI(); schedule(); e.preventDefault();
   });
   view.addEventListener("pointermove", e => {
-    if (!edrag || S.tool !== "erase") return;
+    if (!edrag || S.tool !== "erase" || e.pointerId !== ER.pid) return;
     const r = view.getBoundingClientRect(), q = viewToSource((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
-    eraseStroke(edrag, q); edrag = q; schedule();
+    andou(ER, e); eraseStroke(edrag, q); edrag = q; schedule();
   });
-  ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, () => { if (!edrag) return; edrag = null; S.painting = false; schedule(); }));
+  ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, e => { if (!edrag || e.pointerId !== ER.pid) return; edrag = null; S.painting = false; schedule(); }));
   async function eraseSession() {
     if (AI.esess) return AI.esess; await ortReady();
     AI.esess = await AI.ort.InferenceSession.create(new URL("vendor/models/migan_pipeline_v2.onnx", location.href).href, { executionProviders: ["wasm"] });
@@ -3042,22 +3215,27 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       const out = ix.createImageData(w, h), od = out.data; for (let i = 0; i < n; i++) { const al = (kd[i * 4 + 3] - 24) * 4; od[i * 4] = o[i]; od[i * 4 + 1] = o[n + i]; od[i * 4 + 2] = o[2 * n + i]; od[i * 4 + 3] = al < 0 ? 0 : al > 255 ? 255 : al; }
       ix.putImageData(out, 0, 0);
       const ox = S.orig.getContext("2d", { willReadFrequently: true });
-      ER.undo.push({ x: cx0, y: cy0, d: ox.getImageData(cx0, cy0, cw, ch) }); while (ER.undo.length > 3) ER.undo.shift();
+      ER.undo.push({ x: cx0, y: cy0, d: ox.getImageData(cx0, cy0, cw, ch) }); while (ER.undo.length > 3) ER.undo.shift(); ER.feito++;
       ox.imageSmoothingQuality = "high"; ox.drawImage(ic, 0, 0, w, h, cx0, cy0, cw, ch);
       eraseClear(); eraseRefresh();
-      $("erMsg").textContent = `Apagado em ${Math.max(1, Math.round((performance.now() - t0) / 1000))} s. Se sobrou marca, pinte de novo um pouco mais largo. Segure na foto para ver como era.`;
+      $("erMsg").textContent = `Apagado em ${Math.max(1, Math.round((performance.now() - t0) / 1000))} s. Se sobrou marca, pinte de novo um pouco mais largo. Toque em Ver antes para comparar.`;
     } catch (e) { $("erMsg").textContent = e.message === "VAZIO" ? "Pinte primeiro por cima do que quer apagar." : "Não deu para apagar aqui: " + (e.message || e); }
     hideLoading(); AI.busy = false; if (AI.esess) { try { AI.esess.release(); } catch (e) { /* já liberado */ } AI.esess = null; } eraseUI();
   }
   function eraseUndo() {
-    const u = ER.undo.pop(); if (!u || !S.orig || AI.busy) return;
+    const u = ER.undo.pop(); if (!u || !S.orig || AI.busy) return; ER.feito = Math.max(0, ER.feito - 1);
     S.orig.getContext("2d", { willReadFrequently: true }).putImageData(u.d, u.x, u.y); eraseRefresh(); eraseUI(); $("erMsg").textContent = "Desfeito: a parte apagada voltou.";
   }
   function buildErasePane(pane) {
     const box = document.createElement("div");
     box.innerHTML = '<div class="field"><label for="er_size">Tamanho</label><input type="range" id="er_size" min="0.01" max="0.15" step="0.005" value="0.05"><output>5%</output></div>'
-      + '<div class="chips" style="margin-top:10px;align-items:center"><button class="btn primary" id="erGo" type="button" disabled>Apagar</button><button class="chip" id="erClear" type="button" disabled>Limpar marcação</button><button class="chip" id="erUndo" type="button" disabled>Desfazer</button></div><p class="bmsg" id="erMsg"></p>';
+      + '<div class="chips" style="margin-top:10px;align-items:center"><button class="btn primary" id="erGo" type="button" disabled>Apagar</button><button class="chip" id="erClear" type="button" disabled>Limpar marcação</button><button class="chip" id="erUndo" type="button" disabled>Desfazer</button><button class="chip" id="erCmp" type="button" hidden>Ver antes</button></div><p class="bmsg" id="erMsg"></p>';
     pane.appendChild(box);
+    // dentro da borracha o dedo na foto pinta, então a comparação com o original fica neste botão:
+    // segurar mostra enquanto segura; um toque rápido mostra por um segundo
+    const ec = box.querySelector("#erCmp"); let ec0 = 0, ecT = null;
+    ec.addEventListener("pointerdown", e => { e.preventDefault(); clearTimeout(ecT); ec0 = performance.now(); cmp(true); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => ec.addEventListener(ev, () => { if (!comparing) return; clearTimeout(ecT); if (performance.now() - ec0 < 350) ecT = setTimeout(() => cmp(false), 1100); else cmp(false); }));
     box.querySelector("#er_size").addEventListener("input", e => { ER.size = parseFloat(e.target.value); e.target.parentNode.querySelector("output").textContent = Math.round(ER.size * 100) + "%"; });
     box.querySelector("#erGo").addEventListener("click", eraseRun);
     box.querySelector("#erClear").addEventListener("click", eraseClear);
@@ -3223,10 +3401,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     return [...first, ...LOOK_ORDER.filter(k => !first.includes(k))];
   }
   function getThumb() {
-    if (S.thumb && S.thumb.src === S.prevData) return S.thumb;
+    const FD = fundoPrev(), base = FD ? FD.data : S.prevData;
+    if (S.thumb && S.thumb.src === base) return S.thumb;
     const W = S.prevData.width, H = S.prevData.height, sc = 200 / Math.max(W, H), w = Math.max(8, Math.round(W * sc)), h = Math.max(8, Math.round(H * sc));
-    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(S.prev, 0, 0, w, h);
-    const d = cx.getImageData(0, 0, w, h); S.thumb = { src: S.prevData, c, cx, d, w, h, dt: makeDetail(d.data, w, h) }; return S.thumb;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(FD ? FD.cv : S.prev, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h); S.thumb = { src: base, c, cx, d, w, h, mask: FD ? FD.mask : null, sg: FD ? FD.sg : null, dt: makeDetail(d.data, w, h) }; return S.thumb;
   }
   let thumbJob = 0;
   function refreshThumbs() {
@@ -3241,7 +3420,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const list = [...box.querySelectorAll(".look")].filter(b => !b.classList.contains("add")); let k = 0;
     const step = () => {
       if (job !== thumbJob || k >= list.length) return;
-      const b = list[k++], id = b.dataset.id || null, p = effective(true, id), img = render(t.d, t.w, t.h, p, S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, t.dt, { w: 0, h: 0, list: [] });
+      const b = list[k++], id = b.dataset.id || null, p = effective(true, id), img = render(t.d, t.w, t.h, p, t.mask || S.mask, null, t.sg || S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, t.dt, { w: 0, h: 0, list: [] });
       t.cx.putImageData(img, 0, 0); const cv = b.querySelector("canvas"), x = cv.getContext("2d"), r = Math.max(cv.width / t.w, cv.height / t.h), dw = t.w * r, dh = t.h * r;
       x.fillStyle = "#000"; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(t.c, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
       const st = b.querySelector(".star"), star = id && rank.slice(0, 2).includes(id);
@@ -3271,14 +3450,17 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     QUICK.forEach(([k, n, v]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip q"; c.dataset.k = k; c.textContent = n;
       c.addEventListener("click", () => {
         const on = (effective()[k] || 0) > 0.05; $("quickMsg").textContent = "";
+        if ((k === "dof" || k === "skyDeep") && effective().fundoOn) { $("quickMsg").textContent = "Com fundo de estúdio não há cenário para desfocar nem céu para realçar. Volte o fundo para Original para usar este retoque."; return; }
         if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "dof" && !S.depth) { $("quickMsg").textContent = "Medindo a profundidade da foto para desfocar só o fundo…"; ensureDepth().then(ok => { $("quickMsg").textContent = ok ? "" : "Não consegui medir a profundidade desta foto, então o fundo ficou como estava."; }); } }
         markCustom(); renderQuick(); schedule(); scheduleThumbs();
       }); box.appendChild(c); });
     // atalho para a borracha mágica (abre a ferramenta; não é liga e desliga como os outros)
     const er = document.createElement("button"); er.type = "button"; er.className = "chip"; er.id = "quickErase"; er.textContent = "Borracha mágica";
     er.addEventListener("click", () => { if (!S.prev) { toast("Abra uma foto primeiro."); return; } setTab("ferramentas"); openTool("erase"); }); box.appendChild(er);
+    const fd = document.createElement("button"); fd.type = "button"; fd.className = "chip"; fd.id = "quickFundo"; fd.textContent = "Trocar fundo";
+    fd.addEventListener("click", () => { if (!S.prev) { toast("Abra uma foto primeiro."); return; } setTab("ferramentas"); openTool("fundo"); }); box.appendChild(fd);
   }
-  function renderQuick() { const p = effective(); document.querySelectorAll("#quick .chip").forEach(c => c.setAttribute("aria-pressed", String((p[c.dataset.k] || 0) > 0.05))); }
+  function renderQuick() { const p = effective(); document.querySelectorAll("#quick .chip").forEach(c => c.setAttribute("aria-pressed", String(c.id === "quickFundo" ? !!fundoSel() : (p[c.dataset.k] || 0) > 0.05))); }
 
   const ADJ = [["ev", "Brilho"], ["contrast", "Contraste"], ["sat", "Saturação"], ["vibrance", "Vibração"], ["temp", "Calor"], ["highlights", "Realces"], ["shadows", "Sombras"], ["sharpen", "Nitidez"], ["structure", "Estrutura"], ["clarity", "Ambiente"], ["faceEnh", "Rosto"], ["vignette", "Vinheta"]];
   function buildAdjust() {
@@ -3334,7 +3516,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     S.forceRules = false; S.tom = null;
     S.t128 = tomThumb(S.prevData.data, pw, ph); S.refBase = null; S.refT = {};
-    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; eraseUI();
+    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); S.fundo = ""; S.fd = null; renderFundo();
     if (TOM.net) tomCompute();
     else if (TOM.state !== "failed") tomLoad().then(() => { if (S.orig !== canvas) return; if (TOM.net) tomCompute(); applyStyle(); });
     showStats(S.an); applyStyle();
@@ -3428,7 +3610,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   let aiT = null; $("aiStr").addEventListener("input", e => { $("aiStrOut").textContent = e.target.value + "%"; clearTimeout(aiT); aiT = setTimeout(applyAiBlend, 250); });
   // zoom: pinça com dois dedos, arrastar para andar, toque duplo para aproximar e voltar
   const Z = { s: 1, tx: 0, ty: 0, pts: new Map(), start: null, lastTap: 0, lastX: 0, lastY: 0, multi: false, down: null };
-  const zoomBlocked = () => !!S.tool || S.split;
+  // nas ferramentas de pintar (borracha e pincel) um dedo pinta e dois dedos aproximam e andam pela foto
+  function pinta() { return S.tool === "erase" || S.tool === "brush"; }
+  const zoomBlocked = () => (!!S.tool && !pinta()) || S.split;
   function applyZoom() {
     if (Z.s <= 1.001) { Z.s = 1; Z.tx = 0; Z.ty = 0; view.style.transform = ""; $("zoomHint").hidden = true; return; }
     const mx = view.offsetWidth * (Z.s - 1), my = view.offsetHeight * (Z.s - 1);
@@ -3444,9 +3628,10 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   function resetZoom() { Z.s = 1; Z.tx = 0; Z.ty = 0; applyZoom(); }
   const pinchStart = () => { const [a, b] = [...Z.pts.values()], o = zoomOrigin(), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2; Z.start = { d: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), s: Z.s, u: (cx - o.L - Z.tx) / Z.s, v: (cy - o.T - Z.ty) / Z.s, o }; };
   view.addEventListener("pointerdown", e => {
-    if (zoomBlocked()) return; Z.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (zoomBlocked()) return; if (e.isPrimary) Z.pts.clear(); Z.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { view.setPointerCapture(e.pointerId); } catch (err) { /* ponteiro já solto */ }
-    if (Z.pts.size === 1) { Z.multi = false; Z.down = { x: e.clientX, y: e.clientY, t: performance.now() }; if (Z.s > 1) Z.start = { pan: true, x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty }; }
+    // um dedo só: anda pela foto ampliada. Nas ferramentas de pintar esse dedo pinta, então não anda.
+    if (Z.pts.size === 1) { Z.multi = false; Z.down = { x: e.clientX, y: e.clientY, t: performance.now() }; Z.start = Z.s > 1 && !pinta() ? { pan: true, x: e.clientX, y: e.clientY, tx: Z.tx, ty: Z.ty } : null; }
     else if (Z.pts.size === 2) { Z.multi = true; pinchStart(); if (lp) { clearTimeout(lp); lp = null; } if (comparing) cmp(false); }
   });
   view.addEventListener("pointermove", e => {
@@ -3462,7 +3647,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (Z.pts.size > 1) { pinchStart(); return; }
     Z.start = null;
     // toque duplo: só vale para um dedo, parado e rápido. Soltar os dois dedos da pinça não conta.
-    if (e.type === "pointerup" && !Z.multi && Z.down && !zoomBlocked()) {
+    if (e.type === "pointerup" && !Z.multi && Z.down && !zoomBlocked() && !pinta()) {
       const now = performance.now(), still = Math.hypot(e.clientX - Z.down.x, e.clientY - Z.down.y) < 14 && now - Z.down.t < 320;
       if (still && now - Z.lastTap < 380 && Math.hypot(e.clientX - Z.lastX, e.clientY - Z.lastY) < 44) { Z.lastTap = 0; if (Z.s > 1) resetZoom(); else zoomAt(2.5, e.clientX, e.clientY); }
       else if (still) { Z.lastTap = now; Z.lastX = e.clientX; Z.lastY = e.clientY; } else Z.lastTap = 0;
@@ -3471,6 +3656,22 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   };
   ["pointerup", "pointercancel"].forEach(ev => view.addEventListener(ev, zEnd));
   view.addEventListener("wheel", e => { if (zoomBlocked()) return; e.preventDefault(); zoomAt(Z.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
+  /* Toque engolido depois de um gesto rápido na foto: quando o dedo sai da foto ainda em movimento (um traço da
+     borracha, arrastar a foto ampliada), o navegador entende o toque seguinte como "parar o deslize" e não gera
+     o clique. Medido: até uns 0,6 s depois, o toque num botão falha de vez em quando. Então, logo depois de um
+     gesto na foto, se o dedo desceu e subiu no mesmo botão e o clique não veio, o app dispara o clique. */
+  const TAPFIX = { fim: -1e9, d: null, feito: null };
+  view.addEventListener("pointerup", e => { if (e.pointerType === "touch") TAPFIX.fim = e.timeStamp; }, true);
+  document.addEventListener("pointerdown", e => { TAPFIX.d = e.pointerType === "touch" && e.isPrimary && e.target !== view && e.timeStamp - TAPFIX.fim < 1200 ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp, el: e.target } : null; }, true);
+  document.addEventListener("pointerup", e => {
+    const d = TAPFIX.d; TAPFIX.d = null;
+    if (!d || e.pointerId !== d.id || e.timeStamp - d.t > 500 || Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) return;
+    const el = d.el.closest ? d.el.closest("button, label, summary, a[href]") : null; if (!el || el.disabled) return;
+    let veio = false; const on = () => { veio = true; }; document.addEventListener("click", on, true);
+    setTimeout(() => { document.removeEventListener("click", on, true); if (veio || el.disabled || !document.contains(el)) return; TAPFIX.feito = { el, ate: performance.now() + 700 }; el.click(); }, 90);
+  }, true);
+  // se o clique do navegador chegar atrasado depois do nosso, ele é descartado (senão o botão dispararia duas vezes)
+  document.addEventListener("click", e => { const f = TAPFIX.feito; if (!f || !e.isTrusted) return; TAPFIX.feito = null; if (performance.now() < f.ate && f.el.contains(e.target)) { e.stopPropagation(); e.preventDefault(); } }, true);
   $("btAdd").addEventListener("click", () => $("btFiles").click());
   $("btFiles").addEventListener("change", e => { btAddFiles(e.target.files); e.target.value = ""; });
   $("btMake").addEventListener("click", btMake);
@@ -3523,7 +3724,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (!S.orig) { toast("Abra uma foto primeiro."); return; }
     toast("Preparando a foto em alta qualidade…", 8000);
     const w = S.orig.width, h = S.orig.height, src = S.orig.getContext("2d").getImageData(0, 0, w, h);
-    const out = render(src, w, h, effective(true), S.mask, null, S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
+    const FD = fundoPrev(); if (FD) fundoCompose(src.data, w, h, fundoSel(), fundoAlpha(fundoSeg(S.segRaw || S.seg), S.orig), S.bgb);
+    const out = render(src, w, h, effective(true), FD ? FD.mask : S.mask, null, FD ? FD.sg : S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
     const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").putImageData(out, 0, 0);
     let outCv = geoIsId(S.geo) ? c : geoRender(c, S.geo, null, 6000);
     const wantW = { feed: 1080, story: 1080, sq: 1080 }[S.fmt];

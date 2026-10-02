@@ -80,13 +80,38 @@ async function testPhoto(s, file, tag) {
   for (const f of [0.2, 0.25, 0.3, 0.35]) { await s.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: vb.x + vb.w * f, y: vb.y + vb.h * 0.12, id: 0 }] }); await sleep(60); }
   await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(800);
   log('borracha: marcação feita com o dedo =', await s.ev("!document.getElementById('erGo').disabled"));
-  const t4 = Date.now(); await s.ev("document.getElementById('erGo').click(); true");
+  // dois dedos dentro da borracha: aproxima a foto sem deixar marca; depois um dedo pinta com a foto ampliada
+  const vc = { x: vb.x + vb.w / 2, y: vb.y + vb.h * 0.45 }, dois = d => [{ x: vc.x - d, y: vc.y, id: 0 }, { x: vc.x + d, y: vc.y, id: 1 }];
+  await s.ev("document.getElementById('erClear').click(); true"); await sleep(600);
+  await s.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: dois(30) });
+  for (const d of [45, 60, 75]) { await s.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: dois(d) }); await sleep(60); }
+  await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(800);
+  log('borracha: pinça dentro da ferramenta: zoom =', await s.ev("document.getElementById('view').style.transform || 'sem zoom'"), '| deixou marca =', await s.ev("!document.getElementById('erGo').disabled"));
+  await s.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: vb.x + vb.w * 0.3, y: vb.y + vb.h * 0.2, id: 0 }] });
+  for (const f of [0.4, 0.5, 0.6]) { await s.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: vb.x + vb.w * f, y: vb.y + vb.h * 0.2, id: 0 }] }); await sleep(40); }
+  await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  // o dedo saiu da foto em movimento: o toque seguinte no botão Apagar tem que valer (o navegador costuma engolir)
+  await sleep(250); const tb = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('erGo').getBoundingClientRect()))"));
+  const t4 = Date.now(); await s.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tb.x, y: tb.y, id: 0 }] }); await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const tT = await s.waitFor("!document.getElementById('loading').hidden || /Apagado em|Não deu|Pinte primeiro/.test(document.getElementById('erMsg').textContent)", 4000);
+  log('borracha: toque em Apagar logo depois do traço', tT < 0 ? 'NÃO REGISTROU (apagando por comando)' : 'registrou');
+  if (tT < 0) await s.ev("document.getElementById('erGo').click(); true");
   const tE = await s.waitFor("/Apagado em|Não deu|Pinte primeiro/.test(document.getElementById('erMsg').textContent)", 420000);
-  log('borracha mágica:', tE < 0 ? 'NÃO TERMINOU em 7 min' : (Date.now() - t4) + ' ms | ' + await s.ev("document.getElementById('erMsg').textContent"));
-  await s.waitFor("document.getElementById('aiPill').hidden", 240000); await sleep(1500); await s.shot('borracha.png');
+  log('borracha mágica (com a foto ampliada):', tE < 0 ? 'NÃO TERMINOU em 7 min' : (Date.now() - t4) + ' ms | ' + await s.ev("document.getElementById('erMsg').textContent"), '| zoom depois de apagar =', await s.ev("document.getElementById('view').style.transform || 'sem zoom'"));
+  await s.waitFor("document.getElementById('aiPill').hidden", 240000); await sleep(1500); await s.shot('borracha.png'); screencap('borracha-tela-real.png');
+  log('borracha: botão Ver antes visível =', await s.ev("!document.getElementById('erCmp').hidden"));
   await s.ev("document.getElementById('erUndo').click(); true"); await sleep(1500); await s.waitFor("document.getElementById('aiPill').hidden", 240000);
   log('borracha: desfazer =', await s.ev("document.getElementById('erMsg').textContent"));
-  await s.ev("document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1000);
+  await s.ev("if (document.getElementById('view').style.transform) window.revelaBack(); document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1000);
+  // fundo de estúdio: troca o cenário atrás da pessoa (usa a separação que a IA já fez ao abrir a foto)
+  await s.ev("document.getElementById('quickFundo').click(); true"); await sleep(1000);
+  const t5 = Date.now(); await s.ev("document.querySelector('#fdGrid .fchip[data-f=escuro]').click(); true");
+  const tF = await s.waitFor("/fundo de estúdio|Não achei pessoa|ainda está separando/.test(document.getElementById('fdMsg').textContent)", 60000), dF = Date.now() - t5; await sleep(2500);
+  log('fundo de estúdio:', tF < 0 ? 'NÃO RESPONDEU' : 'respondeu em ' + dF + ' ms | ' + await s.ev("document.getElementById('fdMsg').textContent + ' | montar o fundo ' + window.__tm.fundo + ' ms | render ' + window.__tm.render + ' ms'")); screencap('fundo-tela-real.png');
+  await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
+  const tS5 = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
+  log('salvar com fundo de estúdio:', tS5 < 0 ? 'SEM RESPOSTA em 3 min' : tS5 + ' ms | ' + await s.ev("document.getElementById('toast').textContent"));
+  await s.ev("document.querySelector('#fdGrid .fchip[data-f=\"\"]').click(); document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1500);
   // zoom por pinça com dois dedos de verdade (eventos de toque)
   const bx = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('view').getBoundingClientRect()))"));
   const pts = d => [{ x: bx.x - d, y: bx.y, id: 0 }, { x: bx.x + d, y: bx.y, id: 1 }];
