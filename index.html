@@ -1078,7 +1078,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   function onSeg(ms) {
     const sg = S.seg, n = sg.w * sg.h, a = S.an, P = S.prevData, sx = P.width / sg.w, sy = P.height / sg.h;
-    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0, skR = 0, skG = 0, skB = 0, nR = 0, nG = 0, nB = 0, nN = 0; const skinYs = [];
+    const cover = new Float64Array(6); let bgY = 0, bgN = 0, sjY = 0, sjN = 0, skR = 0, skG = 0, skB = 0, nR = 0, nG = 0, nB = 0, nN = 0; const skinYs = [], rostoYs = [];
     const ov = document.createElement("canvas"); ov.width = sg.w; ov.height = sg.h;
     const ox = ov.getContext("2d"), oi = ox.createImageData(sg.w, sg.h);
     for (let i = 0; i < n; i++) {
@@ -1092,12 +1092,14 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (bw > 0.7 && Y > 0.25 && Y < 0.9) { const r3 = P.data[px], g3 = P.data[px + 1], b3 = P.data[px + 2], m3 = Math.max(r3, g3, b3); if (m3 - Math.min(r3, g3, b3) < 0.5 * m3) { nR += r3; nG += g3; nB += b3; nN++; } }
       // pele do corpo + pele do rosto com 60% de certeza ou mais (as classes somam 255; o limite antigo, 400, nunca era atingido)
       if (sg.cls[2][i] + sg.cls[3][i] > 150) { skinYs.push(Y); skR += P.data[px]; skG += P.data[px + 1]; skB += P.data[px + 2]; }
+      if (sg.cls[3][i] > 150) rostoYs.push(Y);
       if (best !== 0) { const c = REG[best].rgb; oi.data[i * 4] = c[0]; oi.data[i * 4 + 1] = c[1]; oi.data[i * 4 + 2] = c[2]; oi.data[i * 4 + 3] = 110; }
     }
     S.rm = {};
     ox.putImageData(oi, 0, 0); S.ov = ov;
     const fr = Array.from(cover, v => v / n);
-    skinYs.sort((x, y) => x - y);
+    skinYs.sort((x, y) => x - y); rostoYs.sort((x, y) => x - y);
+    const peleR = rostoYs.length > 40 ? rostoYs : skinYs;   // pele do rosto; sem rosto separado, a pele toda
     let gs = 0, gn = 0;
     for (let y = 2; y < P.height - 2; y += 3) for (let x = 2; x < P.width - 2; x += 3) {
       const q = Math.min(sg.h - 1, (y * sg.h / P.height) | 0) * sg.w + Math.min(sg.w - 1, (x * sg.w / P.width) | 0);
@@ -1108,7 +1110,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     }
     const bgGrad = gn > 50 ? gs / gn : 0;
     let shineN = 0; for (const v of skinYs) if (v > 0.8) shineN++;
-    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr, skinRGB: skinYs.length > 20 ? [skR / skinYs.length / 255, skG / skinYs.length / 255, skB / skinYs.length / 255] : null, neutro: nN > n * 0.03 ? [nR / nN / 255, nG / nN / 255, nB / nN / 255] : null };
+    a.seg = { bgGrad, shine: skinYs.length ? Math.min(0.6, shineN / skinYs.length * 3) : 0, person: 1 - fr[0], bgY: bgN ? bgY / bgN : 0.5, subjY: sjN ? sjY / sjN : 0.5, skin: fr[2] + fr[3], hair: fr[1], cloth: fr[4], fr, skinRGB: skinYs.length > 20 ? [skR / skinYs.length / 255, skG / skinYs.length / 255, skB / skinYs.length / 255] : null, neutro: nN > n * 0.03 ? [nR / nN / 255, nG / nN / 255, nB / nN / 255] : null, rostoY: peleR.length > 40 ? peleR[peleR.length >> 1] : -1, rostoP95: peleR.length > 40 ? peleR[Math.floor(peleR.length * 0.95)] : -1 };
     a.skinFrac = fr[2] + fr[3];
     if (skinYs.length > 20) a.skinY = skinYs[skinYs.length >> 1];
     a.scene = a.med < 0.2 ? "Pouca luz" : (fr[3] > 0.05 || a.seg.person > 0.35) ? "Retrato" : a.seg.person > 0.05 ? "Pessoa no ambiente" : (a.skyFrac > 0.15 || a.greenFrac > 0.2) ? "Paisagem" : "Cena geral";
@@ -1263,6 +1265,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (seg && seg.person > 0.08) {
       const gap = seg.bgY - seg.subjY;
       if (a.skinFrac > 0.03 && gap > 0.1) { P.subjLight = clamp(gap * 0.6, 0, 0.3); notes.push(`As pessoas estavam mais escuras que o cenário. Iluminei só elas em ${sgn(P.subjLight, 1)} EV.`); }
+      // Contraluz: rosto escuro contra fundo claro. A referência é a parte mais clara da pele do rosto: em pele escura bem
+      // iluminada os brilhos do rosto passam de 60% de luz, e numa contraluz nem eles chegam a 45%. Só quando até eles estão
+      // escuros, e o fundo é claro e bem mais claro que a pessoa, a luz sobe nas pessoas, na medida do que falta.
+      // Medido em 20 fotos com gente: dispara só na contraluz; pele escura, low-key e silhueta ficam como estão.
+      if (a.skinFrac > 0.02 && seg.rostoP95 > 0) {
+        const yl = v => S.tom.yl[clamp(Math.round(v * 255), 0, 255)], deg = (e0, e1, v) => { const t = clamp((v - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+        const brilho = yl(seg.rostoP95), fundoY = yl(seg.bgY), cl = clamp((0.58 - brilho) * 6, 0, 1.1) * deg(0.10, 0.20, fundoY - yl(seg.subjY)) * deg(0.40, 0.52, fundoY);
+        if (cl > P.subjLight + 0.05) { P.subjLight = cl; notes.push(`Contraluz: até a parte mais clara do rosto estava escura (${Math.round(brilho * 100)}% de luz) contra um fundo claro (${Math.round(fundoY * 100)}%). Levantei a luz só nas pessoas em ${sgn(cl, 1)} EV; o fundo ficou como estava.`); }
+      }
       // quando a rede escurece a foto para dar profundidade, as pessoas recebem parte da luz de volta
       if (a.skinFrac > 0.03 && inf.luz < -0.04) { const s = clamp(-inf.luz * 3, 0, 0.45); P.subjLight += s; S.comp = s; notes.push(`A rede escureceu a cena para dar profundidade; devolvi ${sgn(s, 1)} EV de luz só às pessoas, para os rostos não ficarem apagados.`); }
       if (seg.skin > 0.02) { P.skinSmooth = 0.2; P.skinEven = 0.22; P.skinShine = seg.shine * 0.8; notes.push("Pele: suavizei de leve a textura fina e uniformizei o tom. Barba, sobrancelhas, olhos e lábios ficam de fora."); }

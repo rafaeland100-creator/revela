@@ -21,6 +21,7 @@ No Android também dá para instalar o APK da página de versões.
 - **Fundo**: deixa a cor só na pessoa (o cenário vira preto e branco), troca o cenário por um fundo de estúdio (escuro, claro ou colorido) ou por uma foto sua, com desfoque de lente de retrato. A separação da pessoa é feita pela IA; a borda é refinada no tamanho da foto e a parte do cenário antigo que estava misturada nos fios de cabelo é trocada pela do fundo novo.
 - **Copiar o look de uma foto**: você escolhe uma foto de referência e o app leva a sua para a mesma luz, contraste e cor. O look fica guardado para as próximas fotos.
 - Foto amarelada de ambiente interno: quando tem gente, a cor da pele serve de referência para tirar o amarelado.
+- Rosto escuro contra a luz: quando até a parte mais clara do rosto está escura e o fundo é claro, o automático levanta a luz só nas pessoas. Pele escura bem iluminada, low-key e silhueta de pôr do sol ficam como estão.
 - Pele, olhos, dentes, cabelo e barba tratados por região, bem dosados.
 - Fundo de cinema: desfoque do fundo com profundidade medida por IA, quando você pede.
 - Ajustar imagem, detalhes, curvas, balanço de branco, vinheta, preto e branco, desfoque de lente, granulação e 10 filtros.
