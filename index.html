@@ -244,6 +244,8 @@ body { background: var(--bg); }
 .switch input:focus-visible + .tr { outline: 2px solid var(--accent); outline-offset: 2px; }
 .switch b { font-size: 15px; }
 .switch small { display: block; color: var(--mute); font-size: 12px; font-weight: 400; }
+.gosto { display: flex; align-items: center; gap: 10px; margin: -4px 0 10px; }
+.gosto .switch { flex: 1; min-width: 0; }
 .detail { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
 .detail[hidden] { display: none; }
 .dpair { display: flex; gap: 8px; width: min(920px, 100%); }
@@ -370,6 +372,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         <div class="hero" id="hero"><b id="heroT">Abra uma foto para começar</b><span id="heroS">A IA do app ajusta luz e cor; depois você escolhe um look, se quiser.</span>
           <div class="field" id="tomRow" hidden style="margin-top:8px"><label for="tomK">Força da IA</label><input type="range" id="tomK" min="0" max="150" step="1" value="100"><output id="tomKOut">100%</output></div>
           <div class="chips"><button class="chip" id="barsChip" type="button" aria-pressed="true" hidden>Faixas de cinema</button><button class="chip" id="grainChip" type="button" aria-pressed="true" hidden>Grão de filme</button></div></div>
+        <div class="gosto" id="gostoBox" hidden><label class="switch"><input type="checkbox" id="gostoSw" checked><span class="tr"></span><span><b>Meu gosto</b><small id="gostoHint"></small></span></label><button class="linkbtn" id="gostoEsq" type="button">Esquecer</button></div>
         <div class="looks" id="looks"></div>
         <div class="field lookk"><label for="lookK">Intensidade</label><input type="range" id="lookK" min="0" max="120" step="1" value="100"><output id="lookKOut">100%</output></div>
         <h3 class="mini">Retoques em 1 toque</h3>
@@ -2795,10 +2798,55 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       b.querySelector(".meter i").style.width = Math.round((S.an.scores[k]) * 100) + "%";
     });
   }
+  /* ---------- meu gosto: o app aprende com as fotos que você salva ----------
+     Ao salvar, o app compara os ajustes finais com o que o automático tinha proposto para aquela foto. A média dessas
+     diferenças é o "seu gosto", e ela passa a entrar sozinha nas próximas fotos (a partir da segunda foto salva, com
+     força crescente até a quarta). Fica tudo no aparelho; dá para desligar ou esquecer.
+     Ajustes que dependem da foto (brilho, temperatura, sombras) entram com menos peso do que os de estilo. */
+  const GOSTO_K = ["ai", "ev", "mid", "contrast", "sat", "vibrance", "temp", "tint", "shadows", "highlights", "clarity", "structure", "sharpen", "vignette", "grain", "fade", "skinSmooth", "faceEnh"];
+  const GOSTO_P = { ev: 0.5, mid: 0.5, temp: 0.6, tint: 0.5, shadows: 0.6, highlights: 0.6 };
+  const GOSTO_T = { ai: ["IA mais forte", "IA mais suave"], ev: ["mais clara", "mais escura"], mid: ["mais clara", "mais escura"], contrast: ["mais contraste", "menos contraste"], sat: ["mais cor", "menos cor"], vibrance: ["mais cor", "menos cor"], temp: ["mais quente", "mais fria"], tint: ["mais magenta", "mais verde"], shadows: ["sombras mais abertas", "sombras mais fechadas"], highlights: ["realces mais fortes", "realces mais contidos"], clarity: ["mais ambiente", "menos ambiente"], structure: ["mais textura", "menos textura"], sharpen: ["mais nitidez", "menos nitidez"], vignette: ["mais vinheta", "menos vinheta"], grain: ["mais grão", "menos grão"], fade: ["pretos mais lavados", "pretos mais firmes"], skinSmooth: ["pele mais lisa", "pele mais natural"], faceEnh: ["rosto mais realçado", "rosto menos realçado"] };
+  let GOSTO = { n: 0, g: {}, on: true };
+  try { const j = JSON.parse(localStorage.getItem("revela_gosto") || "null"); if (j && typeof j === "object") GOSTO = { n: j.n | 0, g: j.g && typeof j.g === "object" ? j.g : {}, on: j.on !== false }; } catch (e) { /* sem armazenamento: aprende só nesta sessão */ }
+  const gostoGrava = () => { try { localStorage.setItem("revela_gosto", JSON.stringify(GOSTO)); } catch (e) { /* segue sem guardar */ } };
+  const gostoFaixa = k => { const sd = SD[k]; return sd ? [sd[2], sd[3]] : [0, 1.5]; };
+  const gostoForca = () => (GOSTO.on && GOSTO.n >= 2 ? Math.min(1, GOSTO.n / 4) : 0);
+  // guarda o que o automático propôs (para medir a diferença ao salvar) e soma o gosto por cima
+  function gostoAplica(P) {
+    S.gostoBase = {}; S.gostoD = {}; for (const k of GOSTO_K) S.gostoBase[k] = P[k];
+    const f = gostoForca(); if (!f) return P;
+    const semCor = S.an && (S.an.mono || S.an.toned);
+    for (const k of GOSTO_K) {
+      if (semCor && (k === "sat" || k === "vibrance" || k === "temp" || k === "tint")) continue;   // foto sem cor: os ajustes de cor não entram
+      const [lo, hi] = gostoFaixa(k), d = (GOSTO.g[k] || 0) * f * (GOSTO_P[k] || 1); if (Math.abs(d) < (hi - lo) * 0.012) continue;
+      const v = Math.min(hi, Math.max(lo, P[k] + d)); if (v !== P[k]) { S.gostoD[k] = v - P[k]; P[k] = v; }
+    }
+    return P;
+  }
+  function gostoTexto(D) {
+    const itens = []; for (const k of GOSTO_K) { const v = D[k]; if (!v) continue; const [lo, hi] = gostoFaixa(k); if (Math.abs(v) < (hi - lo) * 0.012) continue; itens.push([Math.abs(v) / (hi - lo), GOSTO_T[k][v > 0 ? 0 : 1]]); }
+    itens.sort((a, b) => b[0] - a[0]); const vistos = []; for (const it of itens) if (!vistos.includes(it[1])) vistos.push(it[1]);
+    return vistos.slice(0, 3).join(", ");
+  }
+  // chamado ao salvar: o que ficou diferente do automático puro vira aprendizado. A mesma foto salva de novo conta uma vez só.
+  function gostoAprende() {
+    if (!GOSTO.on || !autoOn() || !S.gostoBase || !S.an) return;
+    if (S.gostoAntes) { const on = GOSTO.on; GOSTO = JSON.parse(S.gostoAntes); GOSTO.on = on; } else S.gostoAntes = JSON.stringify(GOSTO);
+    const p = effective(), a = 1 / Math.min(GOSTO.n + 1, 5);
+    for (const k of GOSTO_K) { const [lo, hi] = gostoFaixa(k), m = (hi - lo) * 0.5, d = Math.max(-m, Math.min(m, p[k] - S.gostoBase[k])), g = GOSTO.g[k] || 0; GOSTO.g[k] = +(g + a * (d - g)).toFixed(4); }
+    GOSTO.n++; gostoGrava(); renderGosto();
+  }
+  function renderGosto() {
+    const box = $("gostoBox"); if (!box) return; box.hidden = GOSTO.n < 1 || !autoOn(); $("gostoSw").checked = GOSTO.on;
+    const t = gostoTexto(GOSTO.g);
+    $("gostoHint").textContent = !GOSTO.on ? "Desligado. As fotos abrem só com o automático." : GOSTO.n < 2 ? "Aprendendo com o que você salva. A partir da próxima foto salva eu começo a usar." : t ? `Aprendido em ${GOSTO.n} fotos salvas: ${t}.` : `Aprendido em ${GOSTO.n} fotos salvas: você tem ficado com o automático como ele vem.`;
+  }
   function applyStyle() {
     // motor IA Revela: a rede decide luz e cor; enquanto ela carrega (só na primeira foto) a imagem fica como foi tirada
     const ia = motor() === "ia", r = ia ? (S.tom ? iaParams(S.an) : { P: { ...NEUTRAL }, notes: ["A IA Revela está carregando. Em instantes ela ajusta a luz e a cor desta foto."] }) : autoParams(S.style, S.an);
-    S.target = autoOn() ? r.P : { ...NEUTRAL }; S.notes = autoOn() ? r.notes : ["O modo Automático está desligado. A foto está como você tirou, e você escolhe tudo à mão."];
+    S.target = autoOn() ? gostoAplica(r.P) : { ...NEUTRAL }; S.notes = autoOn() ? r.notes : ["O modo Automático está desligado. A foto está como você tirou, e você escolhe tudo à mão."];
+    if (autoOn() && S.gostoD && Object.keys(S.gostoD).length) S.notes.push(`Seu gosto (aprendido em ${GOSTO.n} fotos salvas): ${gostoTexto(S.gostoD)}. Dá para desligar em Meu gosto, na aba Looks.`);
+    renderGosto();
     $("notes").innerHTML = ""; S.notes.forEach(t => { const li = document.createElement("li"); li.textContent = t; $("notes").appendChild(li); });
     $("reset").hidden = Object.keys(S.manual).length === 0;
     refreshStyleCards(); scheduleTune(); schedule();
@@ -3476,7 +3524,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("heroS").textContent = R ? "Luz, contraste e cor levados para perto da foto de referência. Use a Intensidade para dosar; o look fica guardado para as próximas fotos."
       : L ? "Cor, grão e brilho de cinema por cima da foto já corrigida. Toque em Sem look para voltar, ou em outro cartão para trocar."
       : !on ? "O Automático está desligado. Escolha um look ou ajuste à mão."
-      : ready ? "A rede neural do app " + tomText(S.tom.info) + " Para um visual de cinema, toque num look abaixo."
+      : ready ? "A rede neural do app " + tomText(S.tom.info) + (S.gostoD && Object.keys(S.gostoD).length ? " Somei o seu gosto: " + gostoTexto(S.gostoD) + "." : "") + " Para um visual de cinema, toque num look abaixo."
       : ia ? "Só na primeira foto leva um instante." : "Ajuste por regras fixas, sem a rede neural. Para um visual de cinema, toque num look abaixo.";
     $("tomRow").hidden = !ready; if (ready && document.activeElement !== $("tomK")) { const v = Math.round(effective().ai * 100); $("tomK").value = v; $("tomKOut").textContent = v + "%"; }
     $("barsChip").hidden = !(L && L.d.bars); $("barsChip").setAttribute("aria-pressed", String(S.noBars === null || S.noBars === undefined ? !outPortrait() : !S.noBars)); $("grainChip").hidden = !(L && L.d.grain);
@@ -3556,7 +3604,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     S.forceRules = false; S.tom = null;
     S.t128 = tomThumb(S.prevData.data, pw, ph); S.refBase = null; S.refT = {};
-    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); S.fundo = ""; S.fd = null; renderFundo();
+    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); S.fundo = ""; S.fd = null; renderFundo(); S.gostoAntes = null; S.gostoBase = null; S.gostoD = {};
     if (TOM.net) tomCompute();
     else if (TOM.state !== "failed") tomLoad().then(() => { if (S.orig !== canvas) return; if (TOM.net) tomCompute(); applyStyle(); });
     showStats(S.an); applyStyle();
@@ -3638,6 +3686,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   $("motorRg").addEventListener("click", () => setMotor("regras"));
   $("tomK").addEventListener("input", e => { S.manual.ai = e.target.value / 100; $("tomKOut").textContent = e.target.value + "%"; markCustom(); schedule(); scheduleThumbs(); });
   renderMotor(); tomLoad().then(renderMotor);
+  $("gostoSw").addEventListener("change", e => { GOSTO.on = e.target.checked; gostoGrava(); renderGosto(); if (S.an) applyStyle(); });
+  $("gostoEsq").addEventListener("click", () => { GOSTO = { n: 0, g: {}, on: true }; gostoGrava(); S.gostoAntes = null; renderGosto(); if (S.an) applyStyle(); toast("Esqueci o seu gosto. Volto a aprender com as próximas fotos que você salvar."); });
+  renderGosto();
   $("barsChip").addEventListener("click", () => { const on = S.noBars === null || S.noBars === undefined ? !outPortrait() : !S.noBars; S.noBars = on; heroText(); schedule(); scheduleThumbs(); });
   $("grainChip").addEventListener("click", () => { S.noGrain = !S.noGrain; heroText(); schedule(); scheduleThumbs(); });
   $("aiAll").addEventListener("click", () => aiFaces(true));
@@ -3762,6 +3813,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
 
   $("saveBtn").addEventListener("click", () => {
     if (!S.orig) { toast("Abra uma foto primeiro."); return; }
+    gostoAprende();
     toast("Preparando a foto em alta qualidade…", 8000);
     const w = S.orig.width, h = S.orig.height, src = S.orig.getContext("2d").getImageData(0, 0, w, h);
     const FD = fundoPrev(); if (FD) { const F = fundoSel(); fundoCompose(src.data, w, h, F, fundoAlpha(fundoSeg(S.segRaw || S.seg), S.orig), S.bgb, F.foto ? fundoBack(w, h) : null); }

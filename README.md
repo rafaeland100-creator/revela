@@ -15,6 +15,7 @@ No Android também dá para instalar o APK da página de versões.
 ## O que tem
 
 - **IA Revela**: rede neural treinada por nós que corrige luz, contraste e cor da foto inteira em menos de um décimo de segundo. É o motor padrão do Automático; o motor antigo, por regras, continua disponível como "Clássico".
+- **Meu gosto**: quando você salva uma foto, o app compara os seus ajustes com o que o automático tinha proposto. A partir da segunda foto salva, a média dessas diferenças (mais contraste, mais cor, mais quente...) passa a entrar sozinha nas próximas. Fica só no aparelho, e dá para desligar ou esquecer.
 - 11 looks de cinema por cima da foto já corrigida, a um toque.
 - **Borracha mágica**: você pinta por cima de um dedo, de alguém ao fundo ou de um objeto e ele some; a IA preenche com o que estaria atrás. Com dois dedos a foto aproxima, para marcar detalhe pequeno, e o botão "Ver antes" compara com a foto original.
 - **Fundo**: deixa a cor só na pessoa (o cenário vira preto e branco), troca o cenário por um fundo de estúdio (escuro, claro ou colorido) ou por uma foto sua, com desfoque de lente de retrato. A separação da pessoa é feita pela IA; a borda é refinada no tamanho da foto e a parte do cenário antigo que estava misturada nos fios de cabelo é trocada pela do fundo novo.

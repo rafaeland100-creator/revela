@@ -43,6 +43,9 @@ async function testPhoto(s, file, tag) {
   log('[' + tag + '] tempos no aparelho (ms): ' + await s.ev("JSON.stringify(Object.fromEntries(Object.entries(window.__tm).filter(([k, v]) => typeof v === 'number')))"));
   log('[' + tag + '] o que o app fez: ' + await s.ev("[...document.querySelectorAll('#notes li')].map(l => l.textContent).slice(0, 3).join(' || ').slice(0, 500)"));
   await s.shot(tag + '-editado.png'); screencap(tag + '-tela-real.png');
+  // meu gosto: nas duas primeiras fotos o contraste sobe 0,20 antes de salvar; a terceira tem de abrir já com parte disso
+  if (tag === 'retrato2') log('[' + tag + '] meu gosto: ' + await s.ev("document.getElementById('gostoHint').textContent + ' | caixa visível = ' + !document.getElementById('gostoBox').hidden + ' | a explicação cita o gosto = ' + /Seu gosto/.test(document.getElementById('notes').textContent)"));
+  else { await s.ev("document.querySelector('.tabbtn[data-tab=ajustar]').click(); document.querySelector('#adjChips .chip[data-k=contrast]').click(); true"); await sleep(400); log('[' + tag + '] contraste antes de salvar: ' + await s.ev("(() => { const r = document.getElementById('adjRange'), a = +r.value; r.value = (a + 0.2).toFixed(2); r.dispatchEvent(new Event('input', { bubbles: true })); return a + ' -> ' + r.value; })()")); await s.ev("document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(900); }
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
   const tSave = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
   log('[' + tag + '] salvar: ' + (tSave < 0 ? 'SEM RESPOSTA' : tSave + ' ms') + ' | aviso: ' + await s.ev("document.getElementById('toast').textContent"));
