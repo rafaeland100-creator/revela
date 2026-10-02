@@ -289,6 +289,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   .linkbtn { min-height: 40px; }
   .switch { min-height: 44px; }
 }
+/* no celular o topo fica numa linha só, mesmo com o botão Compartilhar: sobra mais altura para a foto */
+@media (max-width: 860px) {
+  .top { flex-wrap: nowrap; gap: 8px; }
+  .brand { margin-right: 0; flex: none; }
+  .tools { margin-left: auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .tools::-webkit-scrollbar { display: none; }
+  .tools .btn { padding: 8px 12px; flex: none; }
+  .hm { display: none; }
+}
 /* no celular a ferramenta aberta mostra direto os controles: o nome dela vai no botão de voltar */
 @media (max-width: 860px) {
   .panes { padding-top: 6px; }
@@ -307,7 +316,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       <button class="btn" id="sPort" type="button">Retrato</button>
     </div>
     <div class="tools">
-      <button class="btn" id="openBtn" type="button">Abrir foto</button>
+      <button class="btn" id="openBtn" type="button">Abrir<span class="hm"> foto</span></button>
       <button class="btn" id="cmpBtn" type="button">Comparar</button>
       <button class="btn primary" id="saveBtn" type="button">Salvar</button>
       <button class="btn" id="shareBtn" type="button" hidden>Compartilhar</button>
