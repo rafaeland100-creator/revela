@@ -52,6 +52,7 @@ async function testPhoto(s, file, tag) {
   let pg = await connect(); await sleep(8000); pg = await connect();
   const s = await session(pg);
   log('url:', await s.ev('location.href'), '| nativo:', await s.ev('!!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())'), '| vários núcleos:', await s.ev('self.crossOriginIsolated'), '| núcleos:', await s.ev('navigator.hardwareConcurrency'));
+  log('tela:', await s.ev("innerWidth + '×' + innerHeight + ' px de página | densidade ' + devicePixelRatio + ' | tela física ' + screen.width + '×' + screen.height + ' | largura visível ' + Math.round(visualViewport.width) + ' | documento ' + document.documentElement.scrollWidth"));
   log('service worker ativo:', await s.ev('!!(navigator.serviceWorker && navigator.serviceWorker.controller)'));
   log('plugins nativos:', await s.ev('Object.keys((window.Capacitor && window.Capacitor.Plugins) || {}).join(",")'));
   log('núcleos da IA e preparo:', await s.ev("typeof SharedArrayBuffer !== 'undefined'"));
@@ -111,6 +112,11 @@ async function testPhoto(s, file, tag) {
   await s.ev("document.getElementById('toast').textContent = ''; document.getElementById('saveBtn').click(); true");
   const tS5 = await s.waitFor("/salva|Não consegui/.test(document.getElementById('toast').textContent)", 180000);
   log('salvar com fundo de estúdio:', tS5 < 0 ? 'SEM RESPOSTA em 3 min' : tS5 + ' ms | ' + await s.ev("document.getElementById('toast').textContent"));
+  // uma foto como fundo (a paisagem de teste), com o desfoque de lente
+  const t6 = Date.now();
+  await s.ev("(async () => { const b = await (await fetch('data:image/jpeg;base64," + refB64 + "')).blob(); const f = new File([b], 'fundo.jpg', { type: 'image/jpeg' }); const dt = new DataTransfer(); dt.items.add(f); const inp = document.getElementById('fdFile'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true })); return true; })()");
+  const tG = await s.waitFor("/sua foto/.test(document.getElementById('fdMsg').textContent)", 60000), dG = Date.now() - t6; await sleep(2500);
+  log('foto como fundo:', tG < 0 ? 'NÃO APLICOU' : 'aplicou em ' + dG + ' ms | ' + await s.ev("'montar o fundo ' + window.__tm.fundo + ' ms | render ' + window.__tm.render + ' ms | desfoque visível = ' + !document.getElementById('fdBlurRow').hidden")); screencap('fundo-foto-tela-real.png');
   await s.ev("document.querySelector('#fdGrid .fchip[data-f=\"\"]').click(); document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1500);
   // zoom por pinça com dois dedos de verdade (eventos de toque)
   const bx = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('view').getBoundingClientRect()))"));

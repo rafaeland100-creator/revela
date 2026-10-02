@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<style>html{color-scheme:light;touch-action:pan-x pan-y}body{margin:0;overscroll-behavior:none}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>html{color-scheme:light;touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}body{margin:0;overscroll-behavior:none}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Revela</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -330,6 +330,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     <input type="file" id="file" accept="image/*" hidden>
     <input type="file" id="cam" accept="image/*" capture="environment" hidden>
     <input type="file" id="refFile" accept="image/*" hidden>
+    <input type="file" id="fdFile" accept="image/*" hidden>
   </header>
 
   <div class="main">
@@ -3003,8 +3004,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     { id: "azul", name: "Azul", c: [46, 78, 124], centro: 1.35, borda: 0.4 },
     { id: "areia", name: "Areia", c: [190, 167, 139], centro: 1.14, borda: 0.7 },
     { id: "rosa", name: "Rosa", c: [205, 146, 156], centro: 1.14, borda: 0.7 },
-    { id: "verde", name: "Verde", c: [58, 92, 78], centro: 1.3, borda: 0.45 }
+    { id: "verde", name: "Verde", c: [58, 92, 78], centro: 1.3, borda: 0.45 },
+    { id: "foto", name: "Sua foto", foto: true }
   ];
+  // a foto de fundo escolhida vale para as próximas fotos enquanto o app estiver aberto
+  S.fundoImg = null; S.fundoBlur = 0.35; S.fundoVer = 0;
   /* Recorte limpo para a troca de fundo. A separação da IA às vezes marca como "pessoa" um reflexo na mesa, um objeto
      ou um pedaço solto (um dedo na borda). Fica só o que é pessoa de verdade: as manchas grandes, mais a borda suave
      em volta delas. O resto vira cenário. Devolve a separação já corrigida, no mesmo formato da original. */
@@ -3041,7 +3045,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const lim2 = { de: sg, w, h, cls, n: sg.n, tirou: tirou / n }; FDSEG.set(sg, lim2);
     return lim2;
   }
-  const fundoSel = () => (S.fundo && S.seg && S.bgb && S.an && S.an.seg && S.an.seg.person >= 0.03 && FUNDOS.find(f => f.id === S.fundo)) || null;
+  const fundoSel = () => (S.fundo && S.seg && S.bgb && S.an && S.an.seg && S.an.seg.person >= 0.03 && FUNDOS.find(f => f.id === S.fundo && (!f.foto || S.fundoImg))) || null;
   /* Recorte da pessoa no tamanho da imagem. O mapa da IA tem 256 pontos de lado; ampliado direto, a borda sairia em
      degraus na foto grande. Aqui ele é refeito como função local da luminância da foto (filtro guiado), então a borda
      acompanha os contornos de verdade. Medido em fotos de teste: partir do mapa bruto dá borda mais lisa no cabelo do
@@ -3065,10 +3069,22 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     for (let i = 0; i < n; i++) { const a = (m4[i] - m1[i] * m3[i]) / (m2[i] + eps); m4[i] = a; m3[i] -= a * m1[i]; }
     boxF(m4, w, h, r, m1, tmp); boxF(m3, w, h, r, m2, tmp);
     for (let i = 0; i < n; i++) { const v = m1[i] * I[i] + m2[i]; P[i] = v < 0 ? 0 : v > 1 ? 1 : v; }
-    return { w, h, a: P };
+    // recorte borrado: diz o quanto cada ponto de dentro da pessoa está perto da borda (para a luz do fundo novo chegar nela)
+    const rw = Math.max(2, Math.round(w * 0.012)); boxF(P, w, h, rw, m1, tmp); boxF(m1, w, h, rw, m2, tmp);
+    return { w, h, a: P, s: m2 };
   }
-  function fundoCompose(d, w, h, F, A, bg) {
-    const aw = A.w, ah = A.h, pa = A.a, bW = bg.w, bH = bg.h, BR = bg.R, BG = bg.G, BB = bg.B;
+  /* A foto escolhida como fundo, cobrindo a imagem inteira e desfocada como o fundo de uma lente de retrato.
+     É desenhada um pouco maior que o quadro para o desfoque não escurecer as beiradas. */
+  function fundoBack(w, h) {
+    const im = S.fundoImg, bl = Math.max(0, S.fundoBlur) * 0.022 * w, k = Math.max(w / im.width, h / im.height) * (1 + 4 * bl / Math.min(w, h)), dw = im.width * k, dh = im.height * k;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d", { willReadFrequently: true }); x.imageSmoothingQuality = "high";
+    if (bl > 0.3) x.filter = "blur(" + bl.toFixed(1) + "px)";
+    x.drawImage(im, (w - dw) / 2, (h - dh) / 2, dw, dh); x.filter = "none";
+    return x;
+  }
+  function fundoCompose(d, w, h, F, A, bg, back) {
+    const aw = A.w, ah = A.h, pa = A.a, ps = A.s, WK = F.mono ? 0 : 0.2, bW = bg.w, bH = bg.h, BR = bg.R, BG = bg.G, BB = bg.B;
+    let bd = null, bdy = 0, bdh = 0;   // a foto de fundo é lida em tiras, para não dobrar a memória na foto grande
     // a luz do fundo de estúdio fica atrás da pessoa, do peito para cima
     let sx = 0, sy = 0, sn = 0, top = ah;
     for (let y = 0; y < ah; y += 3) for (let x = 0; x < aw; x += 3) if (pa[y * aw + x] > 0.5) { sx += x; sy += y; sn++; if (y < top) top = y; }
@@ -3079,14 +3095,22 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     for (let y = 0; y < h; y++) {
       let f = y / Math.max(1, h - 1) * (ah - 1); const sy0 = Math.min(ah - 2, f | 0), sty = f - sy0;
       f = y / Math.max(1, h - 1) * (bH - 1); const by0 = Math.min(bH - 2, f | 0), bty = f - by0, dy = (y / h - cy) * asp;
+      if (back && y >= bdy + bdh) { bdy = y; bdh = Math.min(160, h - y); bd = back.getImageData(0, y, w, bdh).data; }
+      const bo = back ? (y - bdy) * w * 4 : 0;
       for (let x = 0; x < w; x++) {
         const j = sy0 * aw + sxi[x], tx = sxf[x], pes = (pa[j] * (1 - tx) + pa[j + 1] * tx) * (1 - sty) + (pa[j + aw] * (1 - tx) + pa[j + aw + 1] * tx) * sty;
-        if (pes > 0.98) continue;   // pessoa: fica como está
+        if (pes > 0.98 && !WK) continue;   // pessoa: fica como está
         // α da pessoa, com a borda um pouco para dentro (o recorte da IA costuma sobrar um fio de cenário em volta)
-        const al = st(FUNDO_A[0], FUNDO_A[1], pes); if (al >= 0.999) continue;
+        const al = st(FUNDO_A[0], FUNDO_A[1], pes); if (al >= 0.999 && !WK) continue;
         const i = (y * w + x) * 4, r = d[i], g = d[i + 1], b = d[i + 2];
         if (F.mono) { const Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, k = 1 - al; d[i] = r + (Y - r) * k; d[i + 1] = g + (Y - g) * k; d[i + 2] = b + (Y - b) * k; continue; }
-        const dx = x / w - cx, sd = F.borda + (F.centro - F.borda) * Math.exp(-(dx * dx + dy * dy) / 0.18), nr = F.c[0] * sd, ng = F.c[1] * sd, nb = F.c[2] * sd;
+        let nr, ng, nb;
+        if (back) { const q = bo + x * 4; nr = bd[q]; ng = bd[q + 1]; nb = bd[q + 2]; }
+        else { const dx = x / w - cx, sd = F.borda + (F.centro - F.borda) * Math.exp(-(dx * dx + dy * dy) / 0.18); nr = F.c[0] * sd; ng = F.c[1] * sd; nb = F.c[2] * sd; }
+        if (al >= 0.999) {   // dentro da pessoa, perto da borda: 20% da luz do fundo novo, para a pessoa não parecer colada
+          const sf = (ps[j] * (1 - tx) + ps[j + 1] * tx) * (1 - sty) + (ps[j + aw] * (1 - tx) + ps[j + aw + 1] * tx) * sty, ww = WK * (1 - sf); if (ww < 0.004) continue;
+          d[i] = r + (nr - r) * ww; d[i + 1] = g + (ng - g) * ww; d[i + 2] = b + (nb - b) * ww; continue;
+        }
         if (al <= 0.001) { d[i] = nr; d[i + 1] = ng; d[i + 2] = nb; continue; }
         const k = by0 * bW + bxi[x], u = bxf[x], k1 = 1 - al, wg = st(0.02, 0.3, al);
         const or = ((BR[k] * (1 - u) + BR[k + 1] * u) * (1 - bty) + (BR[k + bW] * (1 - u) + BR[k + bW + 1] * u) * bty) * 255;
@@ -3100,29 +3124,45 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
   // prévia já com o fundo novo, mais as medidas que dependem dela (luz por região e detalhe). Só é refeita quando algo muda.
   function fundoPrev() {
     const F = fundoSel(); if (!F || !S.prevData) return null;
-    const c = S.fd; if (c && c.id === F.id && c.src === S.prevData && c.seg === S.seg) return c;
+    const c = S.fd; if (c && c.id === F.id && c.src === S.prevData && c.seg === S.seg && c.ver === S.fundoVer) return c;
     const t0 = performance.now(), w = S.prevData.width, h = S.prevData.height, data = new ImageData(new Uint8ClampedArray(S.prevData.data), w, h);
     const sg = fundoSeg(S.seg), bruto = fundoSeg(S.segRaw || S.seg);
     if (!S.fdA || S.fdA.sg !== bruto || S.fdA.src !== S.prevData) S.fdA = { sg: bruto, src: S.prevData, A: fundoAlpha(bruto, S.prev) };
-    fundoCompose(data.data, w, h, F, S.fdA.A, S.bgb);
+    fundoCompose(data.data, w, h, F, S.fdA.A, S.bgb, F.foto ? fundoBack(w, h) : null);
     const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.getContext("2d").putImageData(data, 0, 0);
-    S.fd = { id: F.id, src: S.prevData, seg: S.seg, sg, data, cv, mask: buildMask(cv), detail: null }; TM.fundo = Math.round(performance.now() - t0);
+    S.fd = { id: F.id, ver: S.fundoVer, src: S.prevData, seg: S.seg, sg, data, cv, mask: buildMask(cv), detail: null }; TM.fundo = Math.round(performance.now() - t0);
     return S.fd;
   }
   function renderFundo() {
     document.querySelectorAll("#fdGrid .fchip").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.f || "") === (S.fundo || ""))));
     const m = $("fdMsg"); if (!m) return;
     const pes = S.an && S.an.seg ? S.an.seg.person : 0;
-    m.textContent = !S.prevData ? "" : !S.seg ? "A IA ainda está separando a pessoa do cenário. Daqui a um instante o fundo entra." : pes < 0.03 ? "Não achei pessoa nesta foto, então não há o que separar do fundo." : S.fundo === "pb" ? "O cenário ficou em preto e branco e a pessoa manteve a cor." : S.fundo ? "Cenário trocado por fundo de estúdio. A Luz do fundo, abaixo, clareia ou escurece." : "";
+    m.textContent = !S.prevData ? "" : !S.seg ? "A IA ainda está separando a pessoa do cenário. Daqui a um instante o fundo entra." : pes < 0.03 ? "Não achei pessoa nesta foto, então não há o que separar do fundo." : S.fundo === "pb" ? "O cenário ficou em preto e branco e a pessoa manteve a cor." : S.fundo === "foto" ? "Cenário trocado pela sua foto. O desfoque imita uma lente de retrato. Toque de novo em Sua foto para escolher outra." : S.fundo ? "Cenário trocado por fundo de estúdio. A Luz do fundo, abaixo, clareia ou escurece." : "";
+    const fb = document.querySelector('#fdGrid .fchip[data-f="foto"]'); if (fb) fb.textContent = S.fundoImg ? "Sua foto" : "+ Sua foto";
+    if ($("fdBlurRow")) $("fdBlurRow").hidden = S.fundo !== "foto";
     const lz = $("fd_luz"); if (lz && document.activeElement !== lz) { const v = effective().bgLight; lz.value = v; lz.parentNode.querySelector("output").textContent = sgn(v, 2); }
   }
   function setFundo(id) { S.fundo = id || ""; S.fd = null; renderFundo(); markCustom(); renderQuick(); schedule(); scheduleThumbs(); }
   function buildFundoPane(pane) {
     const g = document.createElement("div"); g.className = "fgrid"; g.id = "fdGrid";
     FUNDOS.forEach(F => { const b = document.createElement("button"); b.type = "button"; b.className = "fchip"; b.dataset.f = F.id; b.innerHTML = (F.c ? '<i class="fdot" style="background:rgb(' + F.c.join(",") + ')"></i>' : "") + F.name; g.appendChild(b); });
-    g.addEventListener("click", e => { const b = e.target.closest(".fchip"); if (b) setFundo(b.dataset.f); });
+    // "Sua foto": sem foto escolhida (ou já selecionada) abre a galeria; com foto escolhida, um toque a aplica
+    g.addEventListener("click", e => { const b = e.target.closest(".fchip"); if (!b) return; if (b.dataset.f === "foto" && (!S.fundoImg || S.fundo === "foto")) { if (!S.prev) { toast("Abra uma foto primeiro."); return; } $("fdFile").click(); return; } setFundo(b.dataset.f); });
     pane.appendChild(g);
+    $("fdFile").addEventListener("change", e => {
+      const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+      if (f.type && !f.type.startsWith("image/")) { toast("Escolha uma foto para servir de fundo."); return; }
+      createImageBitmap(f).then(img => {
+        const sc = Math.min(1, 2000 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); img.close(); S.fundoImg = c; S.fundoVer++; setFundo("foto");
+      }).catch(() => toast("Não consegui abrir essa foto de fundo. Tente JPG ou PNG.", 5000));
+    });
     const m = document.createElement("p"); m.className = "bmsg"; m.id = "fdMsg"; pane.appendChild(m);
+    const br = document.createElement("div"); br.className = "field"; br.id = "fdBlurRow"; br.hidden = true;
+    br.innerHTML = '<label for="fd_blur">Desfoque do fundo</label><input type="range" id="fd_blur" min="0" max="100" step="1" value="35"><output>35%</output>';
+    br.querySelector("input").addEventListener("input", e => { S.fundoBlur = e.target.value / 100; S.fundoVer++; br.querySelector("output").textContent = e.target.value + "%"; schedule(); });
+    br.querySelector("input").addEventListener("change", scheduleThumbs);
+    pane.appendChild(br);
     const row = document.createElement("div"); row.className = "field";
     row.innerHTML = '<label for="fd_luz">Luz do fundo</label><input type="range" id="fd_luz" min="-0.8" max="0.6" step="0.01" value="0"><output>0</output>';
     row.querySelector("input").addEventListener("input", e => { S.manual.bgLight = parseFloat(e.target.value); row.querySelector("output").textContent = sgn(S.manual.bgLight, 2); markCustom(); schedule(); });
@@ -3450,7 +3490,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     QUICK.forEach(([k, n, v]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip q"; c.dataset.k = k; c.textContent = n;
       c.addEventListener("click", () => {
         const on = (effective()[k] || 0) > 0.05; $("quickMsg").textContent = "";
-        if ((k === "dof" || k === "skyDeep") && effective().fundoOn) { $("quickMsg").textContent = "Com fundo de estúdio não há cenário para desfocar nem céu para realçar. Volte o fundo para Original para usar este retoque."; return; }
+        if ((k === "dof" || k === "skyDeep") && effective().fundoOn) { $("quickMsg").textContent = "Com o fundo trocado não há cenário para desfocar nem céu para realçar. Volte o fundo para Original para usar este retoque."; return; }
         if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "dof" && !S.depth) { $("quickMsg").textContent = "Medindo a profundidade da foto para desfocar só o fundo…"; ensureDepth().then(ok => { $("quickMsg").textContent = ok ? "" : "Não consegui medir a profundidade desta foto, então o fundo ficou como estava."; }); } }
         markCustom(); renderQuick(); schedule(); scheduleThumbs();
       }); box.appendChild(c); });
@@ -3724,7 +3764,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (!S.orig) { toast("Abra uma foto primeiro."); return; }
     toast("Preparando a foto em alta qualidade…", 8000);
     const w = S.orig.width, h = S.orig.height, src = S.orig.getContext("2d").getImageData(0, 0, w, h);
-    const FD = fundoPrev(); if (FD) fundoCompose(src.data, w, h, fundoSel(), fundoAlpha(fundoSeg(S.segRaw || S.seg), S.orig), S.bgb);
+    const FD = fundoPrev(); if (FD) { const F = fundoSel(); fundoCompose(src.data, w, h, F, fundoAlpha(fundoSeg(S.segRaw || S.seg), S.orig), S.bgb, F.foto ? fundoBack(w, h) : null); }
     const out = render(src, w, h, effective(true), FD ? FD.mask : S.mask, null, FD ? FD.sg : S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
     const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").putImageData(out, 0, 0);
     let outCv = geoIsId(S.geo) ? c : geoRender(c, S.geo, null, 6000);
