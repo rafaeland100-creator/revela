@@ -400,6 +400,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
         <h3 class="mini" style="margin-top:2px">Formato para postar</h3>
         <div class="fmtgrid" id="fmtGrid"></div>
         <p class="bmsg" id="fmtMsg"></p>
+        <div class="chips" id="fmtExpRow" hidden><button class="chip" id="fmtExpand" type="button">Completar com IA, sem cortar</button></div>
         <div class="chips">
           <button class="chip" id="fmtStraight" type="button">Endireitar</button>
           <button class="chip" id="fmtRot" type="button">Girar 90°</button>
@@ -3462,6 +3463,87 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     } catch (e) { $("erMsg").textContent = e.message === "VAZIO" ? "Pinte primeiro por cima do que quer apagar." : "Não deu para apagar aqui: " + (e.message || e); }
     hideLoading(); AI.busy = false; if (AI.esess) { try { AI.esess.release(); } catch (e) { /* já liberado */ } AI.esess = null; } eraseUI();
   }
+  /* ---------- expandir: muda o formato completando as bordas com IA, em vez de cortar ----------
+     Usa a mesma IA da borracha (MI-GAN). Ela foi feita para apagar objetos; medido em fotos de teste, completar bordas
+     fica natural até uns 25% da foto final (céu, parede, chão, mata) e passa a inventar formas estranhas acima disso.
+     Então a foto cresce no máximo isso e, se ainda faltar, o resto do formato vem de um corte pequeno. A foto original
+     fica intacta no meio; desfazer (ou escolher outro formato) devolve a foto como era. */
+  const EXP = { max: 0.25, antes: null };
+  function expandPlan(W, H, t) {
+    const a = W / H; if (Math.abs(a - t) / t < 0.02) return null;
+    let NW = W, NH = H;
+    if (t < a) NH = Math.min(Math.round(W / t), Math.round(H / (1 - EXP.max))); else NW = Math.min(Math.round(H * t), Math.round(W / (1 - EXP.max)));
+    return { NW, NH, ox: Math.round((NW - W) / 2), oy: Math.round((NH - H) / 2), nova: 1 - (W * H) / (NW * NH), corta: Math.abs(NW / NH - t) / t > 0.01 };
+  }
+  function expandVolta() {
+    if (!EXP.antes) return false;
+    S.orig = EXP.antes.orig; EXP.antes = null; ER.undo = []; ER.feito = 0; eraseClear();
+    eraseRefresh(); S.prevData0 = null; rc.width = S.prevData.width; rc.height = S.prevData.height; $("capSize").textContent = S.orig.width + " × " + S.orig.height + " px"; return true;
+  }
+  function renderExpand() {
+    const f = FORMATS.find(x => x[0] === S.fmt), row = $("fmtExpRow"); if (!row) return;
+    const base = EXP.antes ? EXP.antes.orig : S.orig, pl = f && f[4] && base ? expandPlan(base.width, base.height, f[4]) : null;
+    row.hidden = !pl && !EXP.antes; $("fmtExpand").textContent = EXP.antes ? "Desfazer: voltar a cortar" : "Completar com IA, sem cortar";
+    $("fmtExpand").disabled = AI.busy;
+  }
+  // a IA às vezes inventa uma mancha de cor que não existe na foto (visto: ciano num céu cinza-esverdeado). A cor de cada
+  // borda nova fica presa à faixa de cores (Cb, Cr) que a foto tem perto daquela beira; a luz, que leva a textura, é a da IA.
+  function expandCor(o, img, w, h, ox, oy, iw, ih) {
+    const n = w * h, sh = Math.max(4, Math.round(ih * 0.08)), sw = Math.max(4, Math.round(iw * 0.08));
+    // [região inventada x0,x1,y0,y1] e [faixa da foto x0,x1,y0,y1]
+    const lados = [[0, w, 0, oy, ox, ox + iw, oy + 2, oy + 2 + sh], [0, w, oy + ih, h, ox, ox + iw, oy + ih - 2 - sh, oy + ih - 2],
+      [0, ox, 0, h, ox + 2, ox + 2 + sw, oy, oy + ih], [ox + iw, w, 0, h, ox + iw - 2 - sw, ox + iw - 2, oy, oy + ih]];
+    const pct = (hh, tot, q) => { let a = 0; for (let v = 0; v < 512; v++) { a += hh[v]; if (a >= tot * q) return v - 256; } return 255; };
+    for (const [rx0, rx1, ry0, ry1, sx0, sx1, sy0, sy1] of lados) {
+      if (rx1 <= rx0 || ry1 <= ry0) continue;
+      const hb = new Uint32Array(512), hr = new Uint32Array(512); let tot = 0;
+      for (let y = Math.max(0, sy0); y < Math.min(h, sy1); y++) for (let x = Math.max(0, sx0); x < Math.min(w, sx1); x++) {
+        const i = y * w + x, r = img[i], g = img[n + i], b = img[2 * n + i];
+        hb[Math.round(-0.169 * r - 0.331 * g + 0.5 * b) + 256]++; hr[Math.round(0.5 * r - 0.419 * g - 0.081 * b) + 256]++; tot++;
+      }
+      if (!tot) continue;
+      const b0 = pct(hb, tot, 0.02) - 1.5, b1 = pct(hb, tot, 0.98) + 1.5, r0 = pct(hr, tot, 0.02) - 1.5, r1 = pct(hr, tot, 0.98) + 1.5;
+      for (let y = ry0; y < ry1; y++) for (let x = rx0; x < rx1; x++) {
+        const i = y * w + x, r = o[i], g = o[n + i], b = o[2 * n + i];
+        const cb = -0.169 * r - 0.331 * g + 0.5 * b, cr = 0.5 * r - 0.419 * g - 0.081 * b;
+        const nb = Math.min(b1, Math.max(b0, cb)), nr = Math.min(r1, Math.max(r0, cr)); if (nb === cb && nr === cr) continue;
+        const Y = 0.299 * r + 0.587 * g + 0.114 * b;
+        o[i] = Math.max(0, Math.min(255, Math.round(Y + 1.402 * nr))); o[n + i] = Math.max(0, Math.min(255, Math.round(Y - 0.344 * nb - 0.714 * nr))); o[2 * n + i] = Math.max(0, Math.min(255, Math.round(Y + 1.772 * nb)));
+      }
+    }
+  }
+  async function expandRun() {
+    if (EXP.antes) { expandVolta(); applyFormat(S.fmt); return; }
+    const f = FORMATS.find(x => x[0] === S.fmt); if (!f || !f[4] || AI.busy || !S.orig) return;
+    const base = S.orig, W = base.width, H = base.height, pl = expandPlan(W, H, f[4]); if (!pl) { $("fmtMsg").textContent = "A foto já está nesse formato."; return; }
+    AI.busy = true; renderExpand(); showLoading("Completando as bordas", "Carregando a IA…", ["Carregar", "Completar", "Encaixar"], false); setLoading(0.08, null, 0);
+    const t0 = performance.now();
+    try {
+      // em tamanho de trabalho: a foto no meio, as bordas novas começam com o pixel da beira esticado (só uma pista)
+      const k = Math.min(1, 1280 / Math.max(pl.NW, pl.NH)), w = Math.round(pl.NW * k), h = Math.round(pl.NH * k), ox = Math.round(pl.ox * k), oy = Math.round(pl.oy * k), iw = Math.round(W * k), ih = Math.round(H * k), n = w * h;
+      const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d", { willReadFrequently: true }); x.imageSmoothingQuality = "high";
+      x.drawImage(base, 0, 0, W, 1, ox, 0, iw, oy + 1); x.drawImage(base, 0, H - 1, W, 1, ox, oy + ih - 1, iw, h - oy - ih + 1); x.drawImage(base, 0, 0, 1, H, 0, oy, ox + 1, ih); x.drawImage(base, W - 1, 0, 1, H, ox + iw - 1, oy, w - ox - iw + 1, ih);
+      x.drawImage(base, ox, oy, iw, ih);
+      const d = x.getImageData(0, 0, w, h).data, img = new Uint8Array(3 * n), msk = new Uint8Array(n);
+      for (let i = 0; i < n; i++) { img[i] = d[i * 4]; img[n + i] = d[i * 4 + 1]; img[2 * n + i] = d[i * 4 + 2]; const xx = i % w, yy = (i / w) | 0; msk[i] = xx >= ox + 2 && xx < ox + iw - 2 && yy >= oy + 2 && yy < oy + ih - 2 ? 255 : 0; }
+      setLoading(0.3, "Inventando o que estaria fora da foto… leva alguns segundos.", 1); await nextTick();
+      const sess = await eraseSession(), res = await sess.run({ image: new AI.ort.Tensor("uint8", img, [1, 3, h, w]), mask: new AI.ort.Tensor("uint8", msk, [1, 1, h, w]) }), o = res[sess.outputNames[0]].data;
+      setLoading(0.9, "Encaixando na foto…", 2); await nextTick(); expandCor(o, img, w, h, ox, oy, iw, ih);
+      const g = x.createImageData(w, h); for (let i = 0; i < n; i++) { g.data[i * 4] = o[i]; g.data[i * 4 + 1] = o[n + i]; g.data[i * 4 + 2] = o[2 * n + i]; g.data[i * 4 + 3] = 255; }
+      x.putImageData(g, 0, 0);
+      // no tamanho final (até 3000 px): as bordas inventadas ampliadas e a foto original por cima, com a emenda suavizada
+      const kf = Math.min(1, 3000 / Math.max(pl.NW, pl.NH)), FW = Math.round(pl.NW * kf), FH = Math.round(pl.NH * kf), fx = Math.round(pl.ox * kf), fy = Math.round(pl.oy * kf), fw = Math.round(W * kf), fh = Math.round(H * kf);
+      const out = document.createElement("canvas"); out.width = FW; out.height = FH; const ox2 = out.getContext("2d", { willReadFrequently: true }); ox2.imageSmoothingQuality = "high"; ox2.drawImage(c, 0, 0, FW, FH);
+      const fe = Math.max(2, Math.round(Math.min(fw, fh) * 0.008)), L = document.createElement("canvas"); L.width = fw; L.height = fh; const lx = L.getContext("2d");
+      lx.drawImage(base, 0, 0, fw, fh); lx.globalCompositeOperation = "destination-in"; lx.filter = "blur(" + fe + "px)"; lx.fillStyle = "#fff"; lx.fillRect(fe * 1.5, fe * 1.5, fw - fe * 3, fh - fe * 3); lx.filter = "none";
+      ox2.drawImage(L, fx, fy);
+      EXP.antes = { orig: base, fmt: S.fmt };
+      S.orig = out; ER.undo = []; ER.feito = 0; eraseClear(); eraseRefresh(); S.prevData0 = null; rc.width = S.prevData.width; rc.height = S.prevData.height; $("capSize").textContent = FW + " × " + FH + " px";
+      S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; S.geo.aspect = f[3]; applyAspect(); syncGeo(); renderFormats();
+      $("fmtMsg").textContent = `Bordas completadas pela IA em ${Math.max(1, Math.round((performance.now() - t0) / 1000))} s: ${Math.round(pl.nova * 100)}% da foto foi inventado (o que estaria fora do enquadramento).` + (pl.corta ? " Para não inventar demais, o resto do formato veio de um corte pequeno." : " Nada da foto foi cortado.") + " Para voltar, toque em Desfazer.";
+    } catch (e) { $("fmtMsg").textContent = "Não deu para completar as bordas aqui: " + (e.message || e); }
+    hideLoading(); AI.busy = false; if (AI.esess) { try { AI.esess.release(); } catch (e) { /* já liberado */ } AI.esess = null; } renderExpand(); schedule();
+  }
   function eraseUndo() {
     const u = ER.undo.pop(); if (!u || !S.orig || AI.busy) return; ER.feito = Math.max(0, ER.feito - 1);
     S.orig.getContext("2d", { willReadFrequently: true }).putImageData(u.d, u.x, u.y); eraseRefresh(); eraseUI(); $("erMsg").textContent = "Desfeito: a parte apagada voltou.";
@@ -3730,13 +3812,15 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("fmtStraight").addEventListener("click", () => { $("fmtMsg").textContent = autoStraighten(); markCustom(); syncGeo(); schedule(); });
     $("fmtRot").addEventListener("click", () => { S.geo.rot = (S.geo.rot + 1) % 4; S.geo.crop = { x: 0, y: 0, w: 1, h: 1 }; S.geo.aspect = "free"; S.fmt = "orig"; renderFormats(); markCustom(); syncGeo(); schedule(); });
     $("fmtManual").addEventListener("click", () => { setTab("ferramentas"); openTool("crop"); });
+    $("fmtExpand").addEventListener("click", expandRun);
     renderFormats();
   }
   function applyFormat(id) {
+    expandVolta();
     const f = FORMATS.find(x => x[0] === id), g = S.geo; S.fmt = id; g.crop = { x: 0, y: 0, w: 1, h: 1 };
     if (id === "orig") { g.aspect = "free"; $("fmtMsg").textContent = ""; }
     else { g.aspect = f[3]; applyAspect(); $("fmtMsg").textContent = suggestCrop(); }
-    renderFormats(); markCustom(); syncGeo(); schedule();
+    renderFormats(); markCustom(); syncGeo(); schedule(); renderExpand();
   }
   function renderFormats() { document.querySelectorAll(".fmt").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === S.fmt))); }
 
@@ -3759,7 +3843,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     S.forceRules = false; S.tom = null;
     S.t128 = tomThumb(S.prevData.data, pw, ph); S.refBase = null; S.refT = {};
-    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); S.fundo = ""; S.fd = null; S.ceuA = null; S.cenaErro = false; renderFundo(); renderCeu(); S.gostoAntes = null; S.gostoBase = null; S.gostoD = {};
+    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); EXP.antes = null; renderExpand(); renderFormats(); S.fundo = ""; S.fd = null; S.ceuA = null; S.cenaErro = false; renderFundo(); renderCeu(); S.gostoAntes = null; S.gostoBase = null; S.gostoD = {};
     if (TOM.net) tomCompute();
     else if (TOM.state !== "failed") tomLoad().then(() => { if (S.orig !== canvas) return; if (TOM.net) tomCompute(); applyStyle(); });
     showStats(S.an); applyStyle();

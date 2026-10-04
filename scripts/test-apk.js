@@ -127,6 +127,15 @@ async function testPhoto(s, file, tag) {
   const tG = await s.waitFor("/sua foto/.test(document.getElementById('fdMsg').textContent)", 60000), dG = Date.now() - t6; await sleep(2500);
   log('foto como fundo:', tG < 0 ? 'NÃO APLICOU' : 'aplicou em ' + dG + ' ms | ' + await s.ev("'montar o fundo ' + window.__tm.fundo + ' ms | render ' + window.__tm.render + ' ms | desfoque visível = ' + !document.getElementById('fdBlurRow').hidden")); screencap('fundo-foto-tela-real.png');
   await s.ev("document.querySelector('#fdGrid .fchip[data-f=\"\"]').click(); document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1500);
+  // expandir: a foto vira Story 9:16 com as bordas completadas pela IA da borracha, sem cortar; depois desfaz
+  await s.ev("document.querySelector('.tabbtn[data-tab=formato]').click(); document.querySelector('.fmt[data-id=story]').click(); true"); await sleep(1200);
+  const t7 = Date.now(); await s.ev("document.getElementById('fmtExpand').click(); true");
+  const tX = await s.waitFor("/Bordas completadas|Não deu|já está/.test(document.getElementById('fmtMsg').textContent)", 420000), dX = Date.now() - t7;
+  await s.waitFor("document.getElementById('aiPill').hidden", 240000); await sleep(1500);
+  log('expandir para Story:', tX < 0 ? 'NÃO TERMINOU em 7 min' : dX + ' ms | ' + await s.ev("document.getElementById('fmtMsg').textContent.slice(0, 120) + ' | tamanho ' + document.getElementById('capSize').textContent")); screencap('expandir-tela-real.png');
+  await s.ev("document.getElementById('fmtExpand').click(); true"); await sleep(1500);
+  log('expandir: desfazer =', await s.ev("document.getElementById('fmtExpand').textContent + ' | tamanho ' + document.getElementById('capSize').textContent"));
+  await s.ev("document.querySelector('.fmt[data-id=orig]').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1500);
   // zoom por pinça com dois dedos de verdade (eventos de toque)
   const bx = JSON.parse(await s.ev("JSON.stringify((r => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }))(document.getElementById('view').getBoundingClientRect()))"));
   const pts = d => [{ x: bx.x - d, y: bx.y, id: 0 }, { x: bx.x + d, y: bx.y, id: 1 }];

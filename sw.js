@@ -1,5 +1,5 @@
 /* Revela: cache do app e dos modelos para funcionar sem internet depois da primeira abertura. */
-const VERSION = "revela-v22";
+const VERSION = "revela-v23";
 // a rede própria do app (IA Revela) é pequena e entra junto com a casca
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "vendor/models/revela_tom.bin"];
 // bibliotecas e modelos, para o app funcionar sem internet desde a primeira instalação

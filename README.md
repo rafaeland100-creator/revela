@@ -27,6 +27,7 @@ No Android também dá para instalar o APK da página de versões.
 - Fundo de cinema: desfoque do fundo com profundidade medida por IA, quando você pede.
 - Ajustar imagem, detalhes, curvas, balanço de branco, vinheta, preto e branco, desfoque de lente, granulação e 10 filtros.
 - Cortar, girar e endireitar automático. Formatos prontos para Feed, Story e Reels.
+- **Expandir com IA**: em vez de cortar a foto para caber no formato, a IA da borracha completa as bordas (céu, parede, chão). Ela inventa no máximo 25% da foto final, porque acima disso começa a criar formas estranhas; se ainda faltar, o resto vem de um corte pequeno.
 - Seletivo e pincel, com escolha de região (pele, cabelo, roupa, céu, fundo).
 - Zoom com pinça, toque duplo e arrastar. Na borracha e no pincel um dedo pinta e dois dedos aproximam.
 - Melhor rosto entre várias fotos (em teste).
