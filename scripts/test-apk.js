@@ -62,6 +62,12 @@ async function testPhoto(s, file, tag) {
   log('IAs prontas em', await s.waitFor("/pronta|indispon/.test(document.getElementById('segStat').textContent)", 120000), 'ms |', await s.ev("document.getElementById('segStat').textContent"));
   await testPhoto(s, 'scripts/teste-retrato.jpg', 'retrato');
   await testPhoto(s, 'scripts/teste-paisagem.jpg', 'paisagem');
+  // troca de céu na paisagem: o recorte vem da IA de cena, que já rodou ao abrir a foto
+  await s.ev("document.getElementById('quickCeu').click(); true"); await sleep(1000);
+  const t0c = Date.now(); await s.ev("document.querySelector('#ceuGrid .fchip[data-f=ceu-por]').click(); true");
+  const tC = await s.waitFor("/Céu trocado|Não achei céu|ainda está reconhecendo/.test(document.getElementById('ceuMsg').textContent)", 60000), dC = Date.now() - t0c; await sleep(2500);
+  log('trocar céu (pôr do sol):', tC < 0 ? 'NÃO RESPONDEU' : 'respondeu em ' + dC + ' ms | ' + await s.ev("document.getElementById('ceuMsg').textContent + ' | montar o céu ' + window.__tm.fundo + ' ms | render ' + window.__tm.render + ' ms'")); screencap('ceu-tela-real.png');
+  await s.ev("document.querySelector('#ceuGrid .fchip[data-f=\"\"]').click(); document.getElementById('toolBack').click(); document.querySelector('.tabbtn[data-tab=looks]').click(); true"); await sleep(1500);
   const t1 = Date.now(); await s.ev("document.getElementById('aiFast').click(); true");
   const tA = await s.waitFor("/Pronto em|Não deu|Cancelado/.test(document.getElementById('aiSub').textContent)", 480000);
   log('IA de detalhe (Só fundo):', tA < 0 ? 'NÃO TERMINOU em 8 min' : (Date.now() - t1) + ' ms', '|', await s.ev("document.getElementById('aiSub').textContent"));

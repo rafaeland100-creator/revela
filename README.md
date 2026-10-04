@@ -19,6 +19,7 @@ No Android também dá para instalar o APK da página de versões.
 - 11 looks de cinema por cima da foto já corrigida, a um toque.
 - **Borracha mágica**: você pinta por cima de um dedo, de alguém ao fundo ou de um objeto e ele some; a IA preenche com o que estaria atrás. Com dois dedos a foto aproxima, para marcar detalhe pequeno, e o botão "Ver antes" compara com a foto original.
 - **Fundo**: deixa a cor só na pessoa (o cenário vira preto e branco), troca o cenário por um fundo de estúdio (escuro, claro ou colorido) ou por uma foto sua, com desfoque de lente de retrato. A separação da pessoa é feita pela IA; a borda é refinada no tamanho da foto e a parte do cenário antigo que estava misturada nos fios de cabelo é trocada pela do fundo novo.
+- **Céu**: troca o céu da foto por um céu limpo, um pôr do sol, um fim de tarde, um céu dramático ou a parte de cima de uma foto sua. O recorte vem da IA de cena e é refinado no tamanho da foto; as nuvens que já existiam continuam, com a luz do céu novo, e o lado em que estava o sol continua mais claro.
 - **Copiar o look de uma foto**: você escolhe uma foto de referência e o app leva a sua para a mesma luz, contraste e cor. O look fica guardado para as próximas fotos.
 - Foto amarelada de ambiente interno: quando tem gente, a cor da pele serve de referência para tirar o amarelado.
 - Rosto escuro contra a luz: quando até a parte mais clara do rosto está escura e o fundo é claro, o automático levanta a luz só nas pessoas. Pele escura bem iluminada, low-key e silhueta de pôr do sol ficam como estão.

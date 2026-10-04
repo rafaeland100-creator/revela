@@ -8,7 +8,7 @@ python -m http.server 8765
 
 ## O que cada um faz
 
-- `suite.js <pasta_de_fotos> [endereço] [grupos]`: 109 testes em 11 grupos.
+- `suite.js <pasta_de_fotos> [endereço] [grupos]`: 118 testes em 12 grupos.
   - G1 abertura de arquivos (PNG com transparência, foto minúscula, 6000×4000, EXIF, arquivo corrompido)
   - G2 looks, automático, ajustes, formatos e salvamento
   - G3 as 26 ferramentas
@@ -20,6 +20,7 @@ python -m http.server 8765
   - G9 borracha mágica (pintar, zoom com a roda do mouse, limpar, apagar um objeto sem mexer no resto, salvar, desfazer)
   - G10 fundo (estúdio escuro, claro e azul, luz do fundo, cor só na pessoa, foto do usuário como fundo e o desfoque dela, arquivo salvo, foto sem gente, troca de foto)
   - G11 meu gosto (aprender ao salvar, a mesma foto conta uma vez, aplicar na terceira foto, chave liga e desliga, continuar depois de reabrir, foto sem cor, esquecer). Nos outros grupos o gosto fica desligado, para não misturar com o que eles medem.
+  - G12 céu (azul limpo, pôr do sol, arquivo salvo, foto de céu do usuário e quanto dela entra, céu e fundo não se somam, foto sem céu, troca de foto)
 - `battery.js <pasta_de_fotos> <saída>`: roda o automático em todas as fotos e monta pranchas de antes e depois. É o teste que mostra se o automático melhora ou estraga.
 - `resumo.js <report.json>`: resume tempos e quais retoques entraram em cada foto da bateria.
 - `tomtest.js <index.html> <revela_tom.bin> <revela_tom_teste.json>`: confere que a conta da rede em JavaScript dá os mesmos números do PyTorch.

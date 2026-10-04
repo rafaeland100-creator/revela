@@ -333,6 +333,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     <input type="file" id="cam" accept="image/*" capture="environment" hidden>
     <input type="file" id="refFile" accept="image/*" hidden>
     <input type="file" id="fdFile" accept="image/*" hidden>
+    <input type="file" id="ceuFile" accept="image/*" hidden>
   </header>
 
   <div class="main">
@@ -590,11 +591,13 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     filters: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5"/>',
     people: '<circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 20c0-4 2-6.5 5-6.5s5 2.5 5 6.5M14 20c0-3 1-5 3-5s4 2 4 5"/>',
     erase: '<path d="M4 15.5L13.5 6a2 2 0 0 1 2.8 0l2.7 2.7a2 2 0 0 1 0 2.8L11 19.5H7z"/><path d="M9.5 10l5.5 5.5M5 20h15"/>',
+    ceu: '<circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M2 8h1.5M3.8 3.8l1 1M12.2 3.8l-1 1"/><path d="M9 20h8.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.3A3 3 0 0 0 9 20z"/>',
     fundo: '<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2.5"/><circle cx="12" cy="10" r="3"/><path d="M6.5 21c0-3.6 2.2-5.5 5.5-5.5s5.5 1.9 5.5 5.5"/>'
   };
   const TOOLS = [
     { id: "erase", name: "Borracha mágica", keys: [], note: "Pinte por cima do que quer tirar (um dedo, alguém ao fundo, um fio, uma mancha) e toque em Apagar. A IA preenche com o que estaria atrás.", custom: "erase" },
     { id: "fundo", name: "Fundo", keys: [], note: "Deixe a cor só na pessoa ou troque o cenário por um fundo de estúdio. Precisa de alguém na foto: quem separa a pessoa do cenário é a IA.", custom: "fundo" },
+    { id: "ceu", name: "Céu", keys: [], note: "Troque o céu por um céu limpo, um pôr do sol ou uma foto sua. As nuvens que a foto já tinha continuam. Funciona quando a IA reconhece céu na foto.", custom: "ceu" },
     { id: "adjust", name: "Ajustar imagem", keys: ["ev", "mid", "contrast", "sat", "vibrance", "clarity", "highlights", "shadows", "bp", "wp"], note: "Ambiente é o contraste local (clareza). Realces e Sombras também aceitam valores negativos." },
     { id: "detail", name: "Detalhes", keys: ["structure", "sharpen"], note: "Estrutura aumenta o detalhe fino e a textura. Nitidez afia as bordas. A pele é protegida." },
     { id: "curves", name: "Curvas", keys: [], note: "Toque na curva para criar um ponto e arraste. Toque duas vezes num ponto para remover. \"Sugerida\" calcula a curva pela sua foto.", custom: "curves" },
@@ -1707,18 +1710,20 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       for (const key in Fm.r) { const v = Fm.r[key], dst = F2[key]; for (let i = 0; i < nn; i++) dst[i] += msk[i] * v; }
     });
     const found = FAM.map((F, j) => ({ n: F.n, d: F.d, p: cov2[j] / nn })).filter(z => z.p > 0.03).sort((a, b) => b.p - a.p);
-    return { w: fw, h: fh, f: F2, found };
+    // probabilidade de céu no tamanho em que a rede responde: é o recorte usado para trocar o céu
+    const jc = FAM.findIndex(F => F.k === "sky");
+    return { w: fw, h: fh, f: F2, found, ceu: jc >= 0 ? { w: W, h: H, p: fam[jc], cobre: cover[jc] / m } : null };
   }
   async function runScene() {
     const token = S.prev;
     try {
       pill("A IA está reconhecendo o que há na foto…"); await nextTick();
       const t0 = performance.now(), R = await withTimeout(computeScene(S.prev), 90000, "cena"); if (token !== S.prev) return; console.log("[revela] cena " + Math.round(performance.now() - t0) + " ms");
-      S.sceneAI = R; S.an.scene2 = R.found;
+      S.sceneAI = R; S.an.scene2 = R.found; renderCeu();
       const el = document.getElementById("sceneList");
       if (el) el.textContent = R.found.length ? "Reconheci: " + R.found.map(z => `${z.n} (${Math.round(z.p * 100)}%)`).join(", ") + "." : "Não reconheci objetos específicos nesta foto.";
       applyStyle();
-    } catch (e) { S.sceneAI = null; console.log("[revela] cena falhou: " + (e.message || e)); }
+    } catch (e) { S.sceneAI = null; if (token === S.prev) { S.cenaErro = true; renderCeu(); } console.log("[revela] cena falhou: " + (e.message || e)); }
   }
 
   /* ---------- motor de render ---------- */
@@ -2007,7 +2012,9 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (S.an && S.an.mono && !("bw" in S.manual)) p.bw = 1;
     }
     // fundo de estúdio: desfoque de fundo, céu e receitas por cena olhariam para um cenário que não existe mais
-    const FDs = fundoSel(); if (FDs && !FDs.mono) { p.fundoOn = 1; p.bgBlur = 0; p.dof = 0; p.skyDeep = 0; p.scene = 0; }
+    const FDs = fundoSel();
+    if (FDs && FDs.ceu) { p.ceuOn = 1; p.skyDeep = 0; if (FDs.tom) for (const k in FDs.tom) if (!(k in S.manual)) { const sd = SD[k], v = p[k] + FDs.tom[k]; p[k] = sd ? Math.min(sd[3], Math.max(sd[2], v)) : v; } }
+    else if (FDs && !FDs.mono) { p.fundoOn = 1; p.bgBlur = 0; p.dof = 0; p.skyDeep = 0; p.scene = 0; }
     return p;
   }
 
@@ -2652,6 +2659,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       if (t.custom === "filters") buildFilters(pane);
       if (t.custom === "erase") buildErasePane(pane);
       if (t.custom === "fundo") buildFundoPane(pane);
+      if (t.custom === "ceu") buildCeuPane(pane);
       for (const key of t.keys) {
         const [, label, min, max, step] = SD[key];
         const row = document.createElement("div"); row.className = "field"; row.dataset.key = key;
@@ -2661,7 +2669,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
       }
       const z = document.createElement("p"); z.style.margin = "14px 0 0";
       z.innerHTML = '<button class="linkbtn" type="button">Zerar esta ferramenta</button>';
-      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; Object.assign(S.brush, { size: 0.06, hard: 0.5, edge: 0.6, erase: false }); if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } if (t.custom === "erase") { eraseClear(); return; } if (t.custom === "fundo") { S.fundo = ""; S.fd = null; delete S.manual.bgLight; renderFundo(); renderQuick(); scheduleThumbs(); } markCustom(); schedule(); });
+      z.querySelector("button").addEventListener("click", () => { t.keys.forEach(k => { S.manual[k] = NEUTRAL[k]; }); if (t.id === "bw") S.manual.bwFilter = NEUTRAL.bwFilter; if (t.custom === "curves") resetCurves(); if (t.custom === "crop" || t.custom === "rotate") resetGeo(); if (t.custom === "local") { S.locals = []; S.sel = -1; Object.assign(S.brush, { size: 0.06, hard: 0.5, edge: 0.6, erase: false }); if (S.lbox) renderLocalBox(); } if (t.custom === "filters") { S.filter = null; S.filterK = 1; } if (t.custom === "erase") { eraseClear(); return; } if (t.custom === "fundo") { S.fundo = ""; S.fd = null; delete S.manual.bgLight; renderFundo(); renderCeu(); renderQuick(); scheduleThumbs(); } if (t.custom === "ceu") { S.fundo = ""; S.fd = null; renderFundo(); renderCeu(); renderQuick(); scheduleThumbs(); } markCustom(); schedule(); });
       pane.appendChild(z); panes.appendChild(pane);
     }
   }
@@ -2760,6 +2768,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     if (typeof resetZoom === "function") resetZoom();
     S.tool = id; view.style.touchAction = ["crop", "brush", "selective", "lens", "depth", "erase"].includes(id) ? "none" : ""; $("toolList").hidden = true;
     if (id === "fundo") renderFundo();
+    if (id === "ceu") renderCeu();
     if (id === "erase") { eraseUI(); if (!ER.sujo && !ER.undo.length) $("erMsg").textContent = "Pinte por cima do que quer tirar e toque em Apagar. Com dois dedos você aproxima a foto para pegar detalhe pequeno."; }
     $("toolBack").dataset.name = (TOOLS.find(t => t.id === id) || {}).name || "";
     if (id === "curves") setTimeout(drawCurve, 0); $("toolView").hidden = false; if (id === "depth") ensureDepth();
@@ -3104,7 +3113,11 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     const lim2 = { de: sg, w, h, cls, n: sg.n, tirou: tirou / n }; FDSEG.set(sg, lim2);
     return lim2;
   }
-  const fundoSel = () => (S.fundo && S.seg && S.bgb && S.an && S.an.seg && S.an.seg.person >= 0.03 && FUNDOS.find(f => f.id === S.fundo && (!f.foto || S.fundoImg))) || null;
+  const fundoSel = () => {
+    if (!S.fundo) return null;
+    const C = CEUS.find(f => f.id === S.fundo); if (C) return ceuTem() && (!C.foto || S.ceuImg) ? C : null;
+    return (S.seg && S.bgb && S.an && S.an.seg && S.an.seg.person >= 0.03 && FUNDOS.find(f => f.id === S.fundo && (!f.foto || S.fundoImg))) || null;
+  };
   /* Recorte da pessoa no tamanho da imagem. O mapa da IA tem 256 pontos de lado; ampliado direto, a borda sairia em
      degraus na foto grande. Aqui ele é refeito como função local da luminância da foto (filtro guiado), então a borda
      acompanha os contornos de verdade. Medido em fotos de teste: partir do mapa bruto dá borda mais lisa no cabelo do
@@ -3180,28 +3193,156 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     }
   }
   const FUNDO_A = [0.25, 0.85];
+
+  /* ---------- céu: troca o céu por outro ----------
+     O recorte vem da IA de cena (probabilidade de céu em 128×128 pontos), refinado no tamanho da foto pelo mesmo filtro
+     guiado do fundo. A composição também é a mesma: na linha do horizonte e entre galhos, sai a parte do céu antigo
+     misturada no pixel e entra a do céu novo. Onde a separação de pessoas vê gente, não há céu.
+     Os céus prontos são degradês do alto até o horizonte. As nuvens que a foto já tinha continuam: onde o céu era
+     mais claro que a média em volta, o céu novo também fica mais claro, puxado para a cor da luz daquele céu. */
+  const CEUS = [
+    { id: "ceu-azul", name: "Azul limpo", ceu: true, g: [[0, 38, 92, 186], [0.55, 96, 150, 220], [1, 176, 208, 238]], luz: [250, 250, 250] },
+    { id: "ceu-por", name: "Pôr do sol", ceu: true, g: [[0, 34, 48, 104], [0.45, 120, 84, 132], [0.78, 236, 132, 96], [1, 255, 190, 110]], luz: [255, 216, 172], tom: { temp: 0.2, ev: -0.1 } },
+    { id: "ceu-rosa", name: "Fim de tarde", ceu: true, g: [[0, 92, 116, 190], [0.6, 198, 160, 200], [1, 255, 200, 184]], luz: [255, 228, 222], tom: { temp: 0.08 } },
+    { id: "ceu-dram", name: "Dramático", ceu: true, g: [[0, 30, 40, 62], [0.6, 78, 92, 112], [1, 150, 158, 166]], luz: [206, 210, 216], tom: { contrast: 0.08, sat: -0.06 } },
+    { id: "ceu-foto", name: "Seu céu", ceu: true, foto: true }
+  ];
+  S.ceuImg = null; S.ceuFrac = 0.6;   // da foto de céu escolhida entra a parte de cima (o chão dela não é céu)
+  const ceuTem = () => !!(S.sceneAI && S.sceneAI.ceu && S.sceneAI.ceu.cobre >= 0.06);
+  function ceuAlpha(canvas) {
+    const C = S.sceneAI.ceu, sc = Math.min(1, 1400 / Math.max(canvas.width, canvas.height)), w = Math.max(8, Math.round(canvas.width * sc)), h = Math.max(8, Math.round(canvas.height * sc)), n = w * h;
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const cx = c.getContext("2d", { willReadFrequently: true }); cx.imageSmoothingQuality = "high"; cx.drawImage(canvas, 0, 0, w, h);
+    const px = cx.getImageData(0, 0, w, h).data, I = new Float32Array(n), P = new Float32Array(n), cp = C.p, sw = C.w, sh = C.h, sg = S.seg;
+    for (let i = 0; i < n; i++) I[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
+    // A IA de cena trabalha em 128 pontos e, em volta de uma pessoa, costuma parar o céu antes do rosto: sobraria ali uma
+    // faixa do céu antigo. Onde há gente por perto, o céu é estendido (máximo numa vizinhança de 2 pontos) e quem dá a
+    // borda é a separação de pessoas, que é mais fina.
+    let cd = cp, pd = null;
+    if (sg) {
+      const mx = a => { const o = new Float32Array(sw * sh); for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) { let m = 0; for (let yy = Math.max(0, y - 2); yy <= Math.min(sh - 1, y + 2); yy++) for (let xx = Math.max(0, x - 2); xx <= Math.min(sw - 1, x + 2); xx++) { const v = a[yy * sw + xx]; if (v > m) m = v; } o[y * sw + x] = m; } return o; };
+      const pp = new Float32Array(sw * sh); for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) pp[y * sw + x] = 1 - sg.cls[0][Math.min(sg.h - 1, ((y + 0.5) * sg.h / sh) | 0) * sg.w + Math.min(sg.w - 1, ((x + 0.5) * sg.w / sw) | 0)] / 255;
+      cd = mx(cp); pd = mx(pp);
+    }
+    for (let y = 0; y < h; y++) {
+      const fy = y / Math.max(1, h - 1) * (sh - 1), y0 = Math.min(sh - 2, fy | 0), ty = fy - y0, qy = sg ? Math.min(sg.h - 1, (y * sg.h / h) | 0) * sg.w : 0;
+      for (let x = 0; x < w; x++) {
+        const fx = x / Math.max(1, w - 1) * (sw - 1), x0 = Math.min(sw - 2, fx | 0), tx = fx - x0, j = y0 * sw + x0;
+        let v = (cp[j] * (1 - tx) + cp[j + 1] * tx) * (1 - ty) + (cp[j + sw] * (1 - tx) + cp[j + sw + 1] * tx) * ty;
+        if (pd) { const np = (pd[j] * (1 - tx) + pd[j + 1] * tx) * (1 - ty) + (pd[j + sw] * (1 - tx) + pd[j + sw + 1] * tx) * ty; if (np > 0.02) v += ((cd[j] * (1 - tx) + cd[j + 1] * tx) * (1 - ty) + (cd[j + sw] * (1 - tx) + cd[j + sw + 1] * tx) * ty - v) * Math.min(1, np * 1.5); }
+        // gente nunca é céu. A borda é firme: na faixa suave em volta da pessoa o céu conta inteiro, senão sobraria ali uma
+        // faixa do céu antigo ao lado do rosto
+        if (sg) { const b = sg.cls[0][qy + Math.min(sg.w - 1, (x * sg.w / w) | 0)] / 255; v *= b <= 0.25 ? 0 : b >= 0.6 ? 1 : (b - 0.25) / 0.35; }
+        P[y * w + x] = v;
+      }
+    }
+    const r = Math.max(2, Math.round(2.5 * w / sw)), eps = 0.0008, tmp = new Float32Array(n), m1 = new Float32Array(n), m2 = new Float32Array(n), m3 = new Float32Array(n), m4 = new Float32Array(n);
+    boxF(I, w, h, r, m1, tmp);
+    for (let i = 0; i < n; i++) m3[i] = I[i] * I[i];
+    boxF(m3, w, h, r, m2, tmp); for (let i = 0; i < n; i++) m2[i] -= m1[i] * m1[i];
+    boxF(P, w, h, r, m3, tmp);
+    const keep = new Float32Array(n); for (let i = 0; i < n; i++) keep[i] = P[i] * I[i];
+    boxF(keep, w, h, r, m4, tmp);
+    for (let i = 0; i < n; i++) { const a = (m4[i] - m1[i] * m3[i]) / (m2[i] + eps); m4[i] = a; m3[i] -= a * m1[i]; }
+    boxF(m4, w, h, r, m1, tmp); boxF(m3, w, h, r, m2, tmp);
+    // P = céu refinado; keep = o que fica da foto (tudo menos o céu); yh = até onde o céu desce
+    let yh = 0, sI = 0, sP = 0;
+    for (let y = 0; y < h; y++) { let sm = 0; for (let x = 0, i = y * w; x < w; x++, i++) { const v = m1[i] * I[i] + m2[i], k = v < 0 ? 0 : v > 1 ? 1 : v; P[i] = k; keep[i] = 1 - k; sm += k; sI += k * I[i]; } sP += sm; if (sm / w > 0.1) yh = y; }
+    const rw = Math.max(2, Math.round(w * 0.012)), sv = new Float32Array(n); boxF(keep, w, h, rw, m1, tmp); boxF(m1, w, h, rw, sv, tmp);
+    // em grade menor: cor do céu antigo (para tirar a mistura na borda) e luz média do céu em volta (para achar as nuvens)
+    const gw = Math.max(16, Math.round(w / 4)), gh = Math.max(16, Math.round(h / 4)), gn = gw * gh, wt = new Float32Array(gn), ch = [new Float32Array(gn), new Float32Array(gn), new Float32Array(gn), new Float32Array(gn)];
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { const i = Math.min(h - 1, y * 4 + 2) * w + Math.min(w - 1, x * 4 + 2), q = y * gw + x, k = P[i]; wt[q] = k; ch[0][q] = px[i * 4] / 255 * k; ch[1][q] = px[i * 4 + 1] / 255 * k; ch[2][q] = px[i * 4 + 2] / 255 * k; ch[3][q] = I[i] * k; }
+    const gr = Math.max(3, Math.round(gw * 0.05)), t1 = new Float32Array(gn), t2 = new Float32Array(gn), blur = a => { const o = new Float32Array(gn); boxF(a, gw, gh, gr, t2, t1); boxF(t2, gw, gh, gr, o, t1); return o; };
+    const den = blur(wt), out = ch.map(blur);
+    for (let q = 0; q < gn; q++) { const i = Math.min(h - 1, ((q / gw) | 0) * 4 + 2) * w + Math.min(w - 1, (q % gw) * 4 + 2), ok = den[q] > 0.02; for (let k = 0; k < 3; k++) out[k][q] = ok ? out[k][q] / den[q] : px[i * 4 + k] / 255; out[3][q] = ok ? out[3][q] / den[q] : I[i]; }
+    return { A: { w, h, a: keep, s: sv }, bg: { w: gw, h: gh, R: out[0], G: out[1], B: out[2] }, ym: out[3], ymed: sP > 0 ? sI / sP : 0.6, gw, gh, I, yh: (yh + 1) / h, w, h };
+  }
+  // o céu novo, do tamanho pedido: degradê com as nuvens da foto, ou a foto de céu escolhida
+  function ceuBack(w, h, F, CA) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d", { willReadFrequently: true }); x.imageSmoothingQuality = "high";
+    const yh = Math.max(0.05, CA.yh);
+    if (F.foto) {
+      // A parte de cima da foto de céu cobre a área do céu sem deformar: se sobra largura, corta dos lados; se a foto é
+      // estreita demais para a parte pedida, entram menos linhas. Abaixo do horizonte repete a última linha (ali não há céu).
+      const im = S.ceuImg, H2 = Math.min(h, Math.round(yh * h * 1.04)), ad = w / H2, sh = Math.max(4, Math.min(Math.round(im.height * S.ceuFrac), Math.round(im.width / ad))), sw2 = Math.min(im.width, Math.round(sh * ad));
+      x.drawImage(im, (im.width - sw2) / 2, 0, sw2, sh, 0, 0, w, H2); if (H2 < h) x.drawImage(im, (im.width - sw2) / 2, sh - 2, sw2, 2, 0, H2, w, h - H2);
+      return x;
+    }
+    const tw = CA.w, th = CA.h, t = document.createElement("canvas"); t.width = tw; t.height = th; const tc = t.getContext("2d"), o = tc.createImageData(tw, th), d = o.data, G = F.g, L = F.luz, ym = CA.ym, gw = CA.gw, gh = CA.gh, I = CA.I;
+    for (let y = 0; y < th; y++) {
+      const tt = Math.min(1, y / (yh * th)); let k = 0; while (k < G.length - 2 && tt > G[k + 1][0]) k++;
+      const a = G[k], b = G[k + 1], u = Math.min(1, Math.max(0, (tt - a[0]) / (b[0] - a[0]))), r0 = a[1] + (b[1] - a[1]) * u, g0 = a[2] + (b[2] - a[2]) * u, b0 = a[3] + (b[3] - a[3]) * u;
+      const fy = Math.min(gh - 1.001, y / Math.max(1, th - 1) * (gh - 1)), y0 = fy | 0, ty = fy - y0;
+      for (let xx = 0; xx < tw; xx++) {
+        const fx = Math.min(gw - 1.001, xx / Math.max(1, tw - 1) * (gw - 1)), x0 = fx | 0, tx = fx - x0, j = y0 * gw + x0, i = y * tw + xx;
+        const yb = (ym[j] * (1 - tx) + ym[j + 1] * tx) * (1 - ty) + (ym[j + gw] * (1 - tx) + ym[j + gw + 1] * tx) * ty, rz = yb > 0.05 ? I[i] / yb : 1;
+        // nuvem: mais clara que o céu em volta -> puxa para a luz do céu novo; mais escura -> escurece um pouco
+        const tn = rz <= 1.04 ? 0 : rz >= 1.4 ? 1 : (rz - 1.04) / 0.36, nv = tn * tn * (3 - 2 * tn) * 0.75, q = i * 4;
+        // o lado em que o céu antigo era mais claro (onde está o sol) continua mais claro: a luz do céu novo combina com a da cena
+        const lado = 1 + 0.5 * (Math.min(1.22, Math.max(0.82, yb / CA.ymed)) - 1), es = (rz < 1 ? Math.max(0.78, rz) : 1) * lado;
+        // pontilhado de menos de um nível, para o degradê não formar faixas
+        let hsh = Math.imul(i, 2654435761) >>> 0; hsh ^= hsh >>> 15; const pt = ((hsh & 255) / 255 - 0.5) * 1.6;
+        d[q] = (r0 + (L[0] - r0) * nv) * es + pt; d[q + 1] = (g0 + (L[1] - g0) * nv) * es + pt; d[q + 2] = (b0 + (L[2] - b0) * nv) * es + pt; d[q + 3] = 255;
+      }
+    }
+    tc.putImageData(o, 0, 0); x.drawImage(t, 0, 0, w, h); return x;
+  }
+  function renderCeu() {
+    const sky = S.fundo && S.fundo.slice(0, 4) === "ceu-";
+    document.querySelectorAll("#ceuGrid .fchip").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.f || "") === (sky ? S.fundo : ""))));
+    const m = $("ceuMsg"); if (!m) return;
+    const fb = document.querySelector('#ceuGrid .fchip[data-f="ceu-foto"]'); if (fb) fb.textContent = S.ceuImg ? "Seu céu" : "+ Seu céu";
+    if ($("ceuFracRow")) $("ceuFracRow").hidden = S.fundo !== "ceu-foto";
+    m.textContent = !S.prevData ? "" : !S.sceneAI ? (S.cenaErro ? "A IA que reconhece o céu não conseguiu rodar neste aparelho, então não dá para trocar o céu desta foto." : "A IA ainda está reconhecendo o que há na foto. Daqui a um instante o céu entra.") : !ceuTem() ? "Não achei céu nesta foto (ou ele é pequeno demais para trocar)." : S.fundo === "ceu-foto" ? "Céu trocado pela sua foto. Entra a parte de cima dela; o controle abaixo diz quanto. Toque de novo em Seu céu para escolher outra." : sky ? "Céu trocado. As nuvens que a foto já tinha continuam, com a luz do céu novo." : S.fundo ? "O fundo foi trocado na ferramenta Fundo. Escolher um céu aqui desfaz aquela troca." : "";
+  }
+  function buildCeuPane(pane) {
+    const g = document.createElement("div"); g.className = "fgrid"; g.id = "ceuGrid";
+    [{ id: "", name: "Original" }].concat(CEUS).forEach(F => { const b = document.createElement("button"); b.type = "button"; b.className = "fchip"; b.dataset.f = F.id; b.innerHTML = (F.g ? '<i class="fdot" style="background:linear-gradient(rgb(' + F.g[0].slice(1).join(",") + "),rgb(" + F.g[F.g.length - 1].slice(1).join(",") + '))"></i>' : "") + F.name; g.appendChild(b); });
+    g.addEventListener("click", e => { const b = e.target.closest(".fchip"); if (!b) return; if (b.dataset.f === "ceu-foto" && (!S.ceuImg || S.fundo === "ceu-foto")) { if (!S.prev) { toast("Abra uma foto primeiro."); return; } $("ceuFile").click(); return; } setFundo(b.dataset.f); });
+    pane.appendChild(g);
+    $("ceuFile").addEventListener("change", e => {
+      const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+      if (f.type && !f.type.startsWith("image/")) { toast("Escolha uma foto de céu."); return; }
+      createImageBitmap(f).then(img => {
+        const sc = Math.min(1, 2400 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); img.close(); S.ceuImg = c; S.fundoVer++; setFundo("ceu-foto");
+      }).catch(() => toast("Não consegui abrir essa foto de céu. Tente JPG ou PNG.", 5000));
+    });
+    const m = document.createElement("p"); m.className = "bmsg"; m.id = "ceuMsg"; pane.appendChild(m);
+    const fr = document.createElement("div"); fr.className = "field"; fr.id = "ceuFracRow"; fr.hidden = true;
+    fr.innerHTML = '<label for="ceu_frac">Parte de cima da foto</label><input type="range" id="ceu_frac" min="30" max="100" step="1" value="60"><output>60%</output>';
+    fr.querySelector("input").addEventListener("input", e => { S.ceuFrac = e.target.value / 100; S.fundoVer++; fr.querySelector("output").textContent = e.target.value + "%"; schedule(); });
+    fr.querySelector("input").addEventListener("change", scheduleThumbs);
+    pane.appendChild(fr);
+  }
   // prévia já com o fundo novo, mais as medidas que dependem dela (luz por região e detalhe). Só é refeita quando algo muda.
   function fundoPrev() {
     const F = fundoSel(); if (!F || !S.prevData) return null;
-    const c = S.fd; if (c && c.id === F.id && c.src === S.prevData && c.seg === S.seg && c.ver === S.fundoVer) return c;
+    const cena = F.ceu ? S.sceneAI : null, c = S.fd; if (c && c.id === F.id && c.src === S.prevData && c.seg === S.seg && c.cena === cena && c.ver === S.fundoVer) return c;
     const t0 = performance.now(), w = S.prevData.width, h = S.prevData.height, data = new ImageData(new Uint8ClampedArray(S.prevData.data), w, h);
-    const sg = fundoSeg(S.seg), bruto = fundoSeg(S.segRaw || S.seg);
-    if (!S.fdA || S.fdA.sg !== bruto || S.fdA.src !== S.prevData) S.fdA = { sg: bruto, src: S.prevData, A: fundoAlpha(bruto, S.prev) };
-    fundoCompose(data.data, w, h, F, S.fdA.A, S.bgb, F.foto ? fundoBack(w, h) : null);
+    let sg = S.seg;
+    if (F.ceu) {
+      if (!S.ceuA || S.ceuA.src !== S.prevData || S.ceuA.cena !== cena || S.ceuA.seg !== S.seg) S.ceuA = Object.assign(ceuAlpha(S.prev), { src: S.prevData, cena, seg: S.seg });
+      fundoCompose(data.data, w, h, F, S.ceuA.A, S.ceuA.bg, ceuBack(w, h, F, S.ceuA));
+    } else {
+      sg = fundoSeg(S.seg); const bruto = fundoSeg(S.segRaw || S.seg);
+      if (!S.fdA || S.fdA.sg !== bruto || S.fdA.src !== S.prevData) S.fdA = { sg: bruto, src: S.prevData, A: fundoAlpha(bruto, S.prev) };
+      fundoCompose(data.data, w, h, F, S.fdA.A, S.bgb, F.foto ? fundoBack(w, h) : null);
+    }
     const cv = document.createElement("canvas"); cv.width = w; cv.height = h; cv.getContext("2d").putImageData(data, 0, 0);
-    S.fd = { id: F.id, ver: S.fundoVer, src: S.prevData, seg: S.seg, sg, data, cv, mask: buildMask(cv), detail: null }; TM.fundo = Math.round(performance.now() - t0);
+    S.fd = { id: F.id, ver: S.fundoVer, src: S.prevData, seg: S.seg, cena, sg, data, cv, mask: buildMask(cv), detail: null }; TM.fundo = Math.round(performance.now() - t0);
     return S.fd;
   }
   function renderFundo() {
-    document.querySelectorAll("#fdGrid .fchip").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.f || "") === (S.fundo || ""))));
+    const sky = S.fundo && S.fundo.slice(0, 4) === "ceu-";
+    document.querySelectorAll("#fdGrid .fchip").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.f || "") === (sky ? "" : S.fundo || ""))));
     const m = $("fdMsg"); if (!m) return;
     const pes = S.an && S.an.seg ? S.an.seg.person : 0;
-    m.textContent = !S.prevData ? "" : !S.seg ? "A IA ainda está separando a pessoa do cenário. Daqui a um instante o fundo entra." : pes < 0.03 ? "Não achei pessoa nesta foto, então não há o que separar do fundo." : S.fundo === "pb" ? "O cenário ficou em preto e branco e a pessoa manteve a cor." : S.fundo === "foto" ? "Cenário trocado pela sua foto. O desfoque imita uma lente de retrato. Toque de novo em Sua foto para escolher outra." : S.fundo ? "Cenário trocado por fundo de estúdio. A Luz do fundo, abaixo, clareia ou escurece." : "";
+    m.textContent = !S.prevData ? "" : sky ? "O céu foi trocado na ferramenta Céu. Escolher um fundo aqui desfaz aquela troca." : !S.seg ? "A IA ainda está separando a pessoa do cenário. Daqui a um instante o fundo entra." : pes < 0.03 ? "Não achei pessoa nesta foto, então não há o que separar do fundo." : S.fundo === "pb" ? "O cenário ficou em preto e branco e a pessoa manteve a cor." : S.fundo === "foto" ? "Cenário trocado pela sua foto. O desfoque imita uma lente de retrato. Toque de novo em Sua foto para escolher outra." : S.fundo ? "Cenário trocado por fundo de estúdio. A Luz do fundo, abaixo, clareia ou escurece." : "";
     const fb = document.querySelector('#fdGrid .fchip[data-f="foto"]'); if (fb) fb.textContent = S.fundoImg ? "Sua foto" : "+ Sua foto";
     if ($("fdBlurRow")) $("fdBlurRow").hidden = S.fundo !== "foto";
     const lz = $("fd_luz"); if (lz && document.activeElement !== lz) { const v = effective().bgLight; lz.value = v; lz.parentNode.querySelector("output").textContent = sgn(v, 2); }
   }
-  function setFundo(id) { S.fundo = id || ""; S.fd = null; renderFundo(); markCustom(); renderQuick(); schedule(); scheduleThumbs(); }
+  function setFundo(id) { S.fundo = id || ""; S.fd = null; renderFundo(); renderCeu(); markCustom(); renderQuick(); schedule(); scheduleThumbs(); }
   function buildFundoPane(pane) {
     const g = document.createElement("div"); g.className = "fgrid"; g.id = "fdGrid";
     FUNDOS.forEach(F => { const b = document.createElement("button"); b.type = "button"; b.className = "fchip"; b.dataset.f = F.id; b.innerHTML = (F.c ? '<i class="fdot" style="background:rgb(' + F.c.join(",") + ')"></i>' : "") + F.name; g.appendChild(b); });
@@ -3549,6 +3690,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     QUICK.forEach(([k, n, v]) => { const c = document.createElement("button"); c.type = "button"; c.className = "chip q"; c.dataset.k = k; c.textContent = n;
       c.addEventListener("click", () => {
         const on = (effective()[k] || 0) > 0.05; $("quickMsg").textContent = "";
+        if (k === "skyDeep" && effective().ceuOn) { $("quickMsg").textContent = "O céu desta foto foi trocado, então não há céu antigo para realçar. Volte o céu para Original para usar este retoque."; return; }
         if ((k === "dof" || k === "skyDeep") && effective().fundoOn) { $("quickMsg").textContent = "Com o fundo trocado não há cenário para desfocar nem céu para realçar. Volte o fundo para Original para usar este retoque."; return; }
         if (on) S.manual[k] = 0; else { S.manual[k] = v; if (k === "faceEnh" && !S.face) $("quickMsg").textContent = "Não achei rosto nesta foto, então esse retoque não muda nada."; if (k === "dof" && !S.depth) { $("quickMsg").textContent = "Medindo a profundidade da foto para desfocar só o fundo…"; ensureDepth().then(ok => { $("quickMsg").textContent = ok ? "" : "Não consegui medir a profundidade desta foto, então o fundo ficou como estava."; }); } }
         markCustom(); renderQuick(); schedule(); scheduleThumbs();
@@ -3558,8 +3700,10 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     er.addEventListener("click", () => { if (!S.prev) { toast("Abra uma foto primeiro."); return; } setTab("ferramentas"); openTool("erase"); }); box.appendChild(er);
     const fd = document.createElement("button"); fd.type = "button"; fd.className = "chip"; fd.id = "quickFundo"; fd.textContent = "Trocar fundo";
     fd.addEventListener("click", () => { if (!S.prev) { toast("Abra uma foto primeiro."); return; } setTab("ferramentas"); openTool("fundo"); }); box.appendChild(fd);
+    const cu = document.createElement("button"); cu.type = "button"; cu.className = "chip"; cu.id = "quickCeu"; cu.textContent = "Trocar céu";
+    cu.addEventListener("click", () => { if (!S.prev) { toast("Abra uma foto primeiro."); return; } setTab("ferramentas"); openTool("ceu"); }); box.appendChild(cu);
   }
-  function renderQuick() { const p = effective(); document.querySelectorAll("#quick .chip").forEach(c => c.setAttribute("aria-pressed", String(c.id === "quickFundo" ? !!fundoSel() : (p[c.dataset.k] || 0) > 0.05))); }
+  function renderQuick() { const p = effective(); document.querySelectorAll("#quick .chip").forEach(c => c.setAttribute("aria-pressed", String(c.id === "quickFundo" ? !!p.fundoOn || (!!fundoSel() && !p.ceuOn) : c.id === "quickCeu" ? !!p.ceuOn : (p[c.dataset.k] || 0) > 0.05))); }
 
   const ADJ = [["ev", "Brilho"], ["contrast", "Contraste"], ["sat", "Saturação"], ["vibrance", "Vibração"], ["temp", "Calor"], ["highlights", "Realces"], ["shadows", "Sombras"], ["sharpen", "Nitidez"], ["structure", "Estrutura"], ["clarity", "Ambiente"], ["faceEnh", "Rosto"], ["vignette", "Vinheta"]];
   function buildAdjust() {
@@ -3615,7 +3759,7 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     $("final").classList.remove("show"); $("start").hidden = true; $("shareBtn").hidden = true;
     S.forceRules = false; S.tom = null;
     S.t128 = tomThumb(S.prevData.data, pw, ph); S.refBase = null; S.refT = {};
-    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); S.fundo = ""; S.fd = null; renderFundo(); S.gostoAntes = null; S.gostoBase = null; S.gostoD = {};
+    ER.cv = null; ER.cx = null; ER.sujo = false; ER.undo = []; ER.feito = 0; eraseUI(); S.fundo = ""; S.fd = null; S.ceuA = null; S.cenaErro = false; renderFundo(); renderCeu(); S.gostoAntes = null; S.gostoBase = null; S.gostoD = {};
     if (TOM.net) tomCompute();
     else if (TOM.state !== "failed") tomLoad().then(() => { if (S.orig !== canvas) return; if (TOM.net) tomCompute(); applyStyle(); });
     showStats(S.an); applyStyle();
@@ -3827,7 +3971,8 @@ input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius
     gostoAprende();
     toast("Preparando a foto em alta qualidade…", 8000);
     const w = S.orig.width, h = S.orig.height, src = S.orig.getContext("2d").getImageData(0, 0, w, h);
-    const FD = fundoPrev(); if (FD) { const F = fundoSel(); fundoCompose(src.data, w, h, F, fundoAlpha(fundoSeg(S.segRaw || S.seg), S.orig), S.bgb, F.foto ? fundoBack(w, h) : null); }
+    const FD = fundoPrev();
+    if (FD) { const F = fundoSel(); if (F.ceu) { const CA = ceuAlpha(S.orig); fundoCompose(src.data, w, h, F, CA.A, CA.bg, ceuBack(w, h, F, CA)); } else fundoCompose(src.data, w, h, F, fundoAlpha(fundoSeg(S.segRaw || S.seg), S.orig), S.bgb, F.foto ? fundoBack(w, h) : null); }
     const out = render(src, w, h, effective(true), FD ? FD.mask : S.mask, null, FD ? FD.sg : S.seg, S.skin, S.bgb, S.face, S.beard && S.beard.arr, makeDetail(src.data, w, h), localsForRender());
     const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").putImageData(out, 0, 0);
     let outCv = geoIsId(S.geo) ? c : geoRender(c, S.geo, null, 6000);
